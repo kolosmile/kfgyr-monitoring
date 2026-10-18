@@ -1,0 +1,15 @@
+# Public MTConnect demonstration endpoint; availability is external.
+# This example is not the live deployment configuration.
+client:
+  name: Example Monitoring
+  timezone: Europe/Budapest
+relay:
+  agents:
+    - alias: PublicDemo
+      url: https://demo.mtconnect.org
+      retention: 1week
+      devices:
+        - id: OKUMA.123456
+          alias: OKUMA
+        - id: d1
+          alias: Mazak

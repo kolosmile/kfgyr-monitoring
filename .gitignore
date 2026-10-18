@@ -1,0 +1,41 @@
+# Local credentials and settings
+.env
+.env.*
+!.env.example
+*.local
+*.local.*
+secrets/
+credentials/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Runtime configuration and data
+setup.yaml
+runtime/
+data/
+backups/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sql
+*.dump
+*.log
+
+# Build outputs and dependencies
+node_modules/
+dist/
+coverage/
+bin/
+*.zip
+.venv/
+__pycache__/
+*.py[cod]
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
