@@ -16,7 +16,7 @@ A Grafana a hivatalos image marad. A `GF_PLUGINS_PREINSTALL_SYNC` a kiadott plug
 4. A Coolify Compose Service-ben alkalmazd a `compose.yaml` tartalmát. Meglévő telepítésnél őrizd meg a Grafana és TimescaleDB volume kulcsait, hogy a Coolify ugyanazokat a köteteket használja.
 5. Ellenőrizd a runner healthcheckjét, a plugin telepítését és az adatgyűjtést. Az adminoldal útvonala `/a/kfgyr-monitoring-app/agents`.
 
-A Grafana és a runner ugyanazt a `KFGYR_CONFIG_VOLUME` külső kötetet használja; a konténeren belüli útvonalat a `KFGYR_CONFIG_DIR` határozza meg. Ezek mindkét szolgáltatásnál közös beállítások. A runner `status.json` és `runner-state.json` fájlokat is ír a kötetbe.
+A Grafana és a runner ugyanazt a `KFGYR_CONFIG_VOLUME` változóval megadott külső kötetet használja. A konténeren belüli útvonal fixen `/var/lib/kfgyr-monitoring`, ezt a Compose mindkét szolgáltatás `KFGYR_CONFIG_DIR` változójában is megadja. A Coolify a mount célútvonalában nem fogad el változóhelyettesítést. A runner `status.json` és `runner-state.json` fájlokat is ír a kötetbe.
 
 A `KFGYR_AGENT_ALLOWED_HOSTS` és `KFGYR_AGENT_ALLOWED_NETWORKS` korlátozza az admin API-ból konfigurálható/lekérdezhető MTConnect címeket. A hostnevek pontos egyezéssel engedélyezettek; a privát címek csak engedélyezett CIDR-ből érhetők el. Loopback, link-local és redirect nem engedélyezett. Új hálózat felvétele fejlesztői telepítési beállítás; az engedélyezett hálózaton belüli agentek kezelése monitoring admin feladat.
 

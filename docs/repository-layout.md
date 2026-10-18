@@ -1,6 +1,6 @@
 # A repository tervezett szerkezete
 
-A monitoring rendszer egy Git-repositoryban marad. Az önállóan buildelhető és kiadható komponensek külön alkönyvtárat kapnak. A következő fa terv; jelenleg csak az alapdokumentáció és a példakonfiguráció létezik.
+A monitoring rendszer egy Git-repositoryban marad. Az önállóan buildelhető és kiadható komponensek külön alkönyvtárat kapnak. A plugin, a runner, a telepítési Compose és a kiadási workflow-k már megvalósultak; a következő fa a további könyvtárak tervezett helyét is jelzi.
 
 ```text
 kfgyr-monitoring/
@@ -13,8 +13,7 @@ kfgyr-monitoring/
       package-lock.json
       go.mod
       go.sum
-      Magefile.go
-      docker-compose.yaml  # A plugin helyi fejlesztői Grafanája
+      webpack.config.cjs
   services/
     relay-runner/          # Relay indítóprogram és saját relay image buildje
   deploy/
@@ -32,7 +31,7 @@ kfgyr-monitoring/
 
 ## Plugin mint külön fejlesztési egység
 
-A generált pluginprojekt teljes egészében a `plugins/kfgyr-monitoring-app/` könyvtárba kerül. A pluginon belül marad a frontend, a backend, a függőségek és a build konfigurációja. A fejlesztői parancsokat ebben a könyvtárban futtatjuk. A kimeneti `dist/` buildtermék, nem Gitben tárolt forrás.
+A pluginprojekt teljes egészében a `plugins/kfgyr-monitoring-app/` könyvtárban található. A pluginon belül marad a frontend, a backend, a függőségek és a build konfigurációja. A fejlesztői parancsokat ebben a könyvtárban futtatjuk. A kimeneti `dist/` buildtermék, nem Gitben tárolt forrás.
 
 A frontend és a Go backend együtt alkot egy plugint, ezért közös verzióval és egy ZIP-csomagban kerülnek kiadásra. A ZIP tartalmazza a pluginleírót, a frontend fájlokat és a támogatott célplatformok backend binárisait. A csomag pontos gyökérkönyvtárát a Grafana plugin csomagolási szabályai szerint kell kialakítani.
 
@@ -53,7 +52,7 @@ Pluginfrissítéshez a plugin buildje és kiadása, majd a telepítésben a plug
 
 ## Telepítés és futás közbeni beállítások
 
-A plugin saját fejlesztői Compose-a a helyi pluginfejlesztésre szolgál. A `deploy/compose.yaml` fogja össze az egész monitoring rendszert és a komponensek kapcsolatait.
+A `deploy/compose.yaml` fogja össze az egész monitoring rendszert és a komponensek kapcsolatait. A plugin saját helyi fejlesztői Compose-környezet később a plugin alkönyvtárába kerülhet.
 
 A gépek/agentek üzemi konfigurációja a tartós konfigurációs kötetben él. A monitoring admin ezt a Grafana plugin felületén módosítja; az agentlista változása nem forráskódkiadás. A repository csak publikálható példát tartalmaz.
 

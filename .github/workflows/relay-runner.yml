@@ -38,10 +38,19 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: services/relay-runner
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ghcr.io/${{ github.repository_owner }}/kfgyr-relay-runner:${{ steps.version.outputs.value }}
+          load: true
+          push: false
+          tags: kfgyr-relay-runner-check:local
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Check supervisor lifecycle in an isolated container
+        run: sudo python3 services/relay-runner/smoke_test.py kfgyr-relay-runner-check:local
+      - name: Publish verified image
+        if: github.event_name != 'pull_request'
+        run: |
+          IMAGE="ghcr.io/${{ github.repository_owner }}/kfgyr-relay-runner:${{ steps.version.outputs.value }}"
+          docker tag kfgyr-relay-runner-check:local "$IMAGE"
+          docker push "$IMAGE"

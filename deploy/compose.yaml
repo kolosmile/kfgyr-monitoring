@@ -20,7 +20,7 @@ services:
   relay:
     image: ${KFGYR_RELAY_RUNNER_IMAGE:-ghcr.io/kolosmile/kfgyr-relay-runner:0.1.1}
     environment:
-      KFGYR_CONFIG_DIR: ${KFGYR_CONFIG_DIR:-/var/lib/kfgyr-monitoring}
+      KFGYR_CONFIG_DIR: /var/lib/kfgyr-monitoring
       KFGYR_RELAY_STARTUP_SECONDS: "10"
       FETCH_INTERVAL: "2000"
       FETCH_COUNT: "1000"
@@ -30,7 +30,7 @@ services:
       PGUSER: ladder99
       PGPASSWORD: ${POSTGRES_PASSWORD:?}
     volumes:
-      - relay-config:${KFGYR_CONFIG_DIR:-/var/lib/kfgyr-monitoring}
+      - relay-config:/var/lib/kfgyr-monitoring
     depends_on:
       db: {condition: service_healthy}
     stop_grace_period: 25s
@@ -53,13 +53,13 @@ services:
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_PLUGINS_PREINSTALL_SYNC: ${KFGYR_PLUGIN_INSTALL:-kfgyr-monitoring-app@@https://github.com/kolosmile/kfgyr-monitoring/releases/download/plugin-v0.1.0/kfgyr-monitoring-app-0.1.0.zip}
       GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: kfgyr-monitoring-app
-      KFGYR_CONFIG_DIR: ${KFGYR_CONFIG_DIR:-/var/lib/kfgyr-monitoring}
+      KFGYR_CONFIG_DIR: /var/lib/kfgyr-monitoring
       KFGYR_ADMIN_ORG_ID: ${KFGYR_ADMIN_ORG_ID:-1}
       KFGYR_AGENT_ALLOWED_HOSTS: ${KFGYR_AGENT_ALLOWED_HOSTS:-demo.mtconnect.org}
       KFGYR_AGENT_ALLOWED_NETWORKS: ${KFGYR_AGENT_ALLOWED_NETWORKS:-192.168.88.0/24,100.64.0.0/10}
     volumes:
       - grafana-data:/var/lib/grafana
-      - relay-config:${KFGYR_CONFIG_DIR:-/var/lib/kfgyr-monitoring}
+      - relay-config:/var/lib/kfgyr-monitoring
     configs:
       - source: monitoring_app
         target: /etc/grafana/provisioning/plugins/kfgyr-monitoring.yaml

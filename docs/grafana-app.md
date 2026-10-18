@@ -1,6 +1,6 @@
 # Grafana app plugin: felépítés és tervezett megvalósítás
 
-Ez a dokumentum tervezési alap. A felsorolt saját komponensek még nincsenek implementálva.
+Az első megvalósítás a `plugins/kfgyr-monitoring-app/` és `services/relay-runner/` könyvtárakban található. A telepítés lépéseit a [telepítési leírás](../deploy/README.md) tartalmazza.
 
 ## Mi az app plugin?
 
