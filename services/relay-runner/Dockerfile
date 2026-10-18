@@ -1,9 +1,14 @@
-FROM ladder99/relay:0.11.7
+FROM ladder99/relay:0.11.7 AS upstream
+
+# The upstream OS is Debian 11 with retired package archives. Reuse the
+# unchanged application and dependencies in a supported Debian 12 runtime.
+FROM node:22-bookworm-slim
 
 USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+COPY --from=upstream /usr/app /usr/app
 COPY runner.py /opt/kfgyr/runner.py
 WORKDIR /usr/app
 ENV KFGYR_CONFIG_DIR=/var/lib/kfgyr-monitoring \

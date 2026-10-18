@@ -1,6 +1,6 @@
 # Relay runner
 
-A gyári `ladder99/relay:0.11.7` image-re épülő Python felügyelő. A relay forrását nem módosítja és nem másolja a repositoryba.
+A gyári `ladder99/relay:0.11.7` image alkalmazását használó Python felügyelő. A relay forrását nem módosítja és nem másolja a repositoryba. A Docker build az upstream image `/usr/app` könyvtárát függőségeivel együtt Debian 12 / Node.js 22 futtatókörnyezetbe emeli át, mert a gyári Debian 11 csomagarchívumainak egy része már nem elérhető.
 
 A `KFGYR_CONFIG_DIR` közös köteten olvassa a `desired.json` manifestet és a `revisions/<revision>.yaml` konfigurációt, ellenőrzi a SHA-256 értéket és a gyári YAML parserrel a szintaxist. A relay privát futásidejű mappából olvas; a megosztott kötetben nincs részlegesen írt aktív YAML.
 
