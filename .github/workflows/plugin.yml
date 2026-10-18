@@ -1,0 +1,70 @@
+name: Grafana plugin ZIP
+on:
+  push:
+    branches: [main]
+    paths: ['plugins/**', '.github/workflows/plugin.yml']
+    tags: ['plugin-v*']
+  pull_request:
+    paths: ['plugins/**', '.github/workflows/plugin.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/kfgyr-monitoring-app
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: plugins/kfgyr-monitoring-app/package-lock.json
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: plugins/kfgyr-monitoring-app/go.mod
+          cache-dependency-path: plugins/kfgyr-monitoring-app/go.sum
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck && npm run build
+      - run: go test ./pkg/...
+      - name: Build backend binaries
+        run: |
+          for arch in amd64 arm64; do
+            CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags='-s -w' -o dist/gpx_kfgyr_monitoring_linux_$arch ./pkg
+          done
+      - name: Package plugin
+        id: package
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF_NAME" != "plugin-v$VERSION" ]]; then
+            echo 'Tag must match package version'; exit 1
+          fi
+          mkdir -p release/kfgyr-monitoring-app
+          cp -a dist/. release/kfgyr-monitoring-app/
+          chmod 755 release/kfgyr-monitoring-app/gpx_*
+          cd release
+          zip -qr "kfgyr-monitoring-app-$VERSION.zip" kfgyr-monitoring-app
+          sha256sum "kfgyr-monitoring-app-$VERSION.zip" > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kfgyr-monitoring-plugin
+          path: |
+            plugins/kfgyr-monitoring-app/release/*.zip
+            plugins/kfgyr-monitoring-app/release/SHA256SUMS
+  release:
+    if: startsWith(github.ref, 'refs/tags/plugin-v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: kfgyr-monitoring-plugin
+          path: release
+      - name: Publish immutable versioned ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" release/* --repo "$GITHUB_REPOSITORY" --title "Grafana plugin ${GITHUB_REF_NAME#plugin-v}" --notes 'Grafana app plugin; linux/amd64 and linux/arm64 backend binaries. See deployment documentation for permissions and configuration.'

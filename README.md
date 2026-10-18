@@ -6,9 +6,9 @@ A tervezett bővítés célja, hogy a monitoring admin a Grafanából kezelhesse
 
 ## Állapot
 
-A repository a fejlesztés dokumentációs alapja. A Grafana plugin, a konfigurációkezelés és a relay indítóprogramja még nincs implementálva. A korábban telepített monitoring stack ettől a repositorytól függetlenül működik.
+A repository tartalmazza a Grafana app plugin forrását, a relay indítóprogramját, a telepítési Compose-t és a GitHub Actions kiadási workflow-kat. A plugin ZIP-ként, a runner GHCR image-ként adható ki.
 
-## Tervezett működés
+## Működés
 
 - Grafana app plugin: agentek és eszközök listázása, felvétele és módosítása.
 - Szerveroldali jogosultságellenőrzés: a konfigurációt a megfelelő Grafana organization Admin módosíthatja.
@@ -23,6 +23,7 @@ A konfiguráció alkalmazásával járó relay-újraindítás átmeneti adatgyű
 
 - [A Grafana app plugin felépítése és telepítése](docs/grafana-app.md)
 - [A repository tervezett szerkezete és a komponensek kiadása](docs/repository-layout.md)
+- [Telepítés és frissítés](deploy/README.md)
 - [Nyilvános MTConnect példa konfiguráció](examples/setup.example.yaml)
 
 ## Helyi és üzemi adatok

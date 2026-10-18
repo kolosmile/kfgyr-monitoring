@@ -27,6 +27,7 @@ backups/
 # Build outputs and dependencies
 node_modules/
 dist/
+release/
 coverage/
 bin/
 *.zip
