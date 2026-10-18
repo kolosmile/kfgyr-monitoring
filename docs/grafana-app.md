@@ -58,7 +58,11 @@ A webes plugin felület nem általános forráskód- vagy saját ZIP-feltöltő.
 
 A fejlesztési változat betölthető a konkrét pluginazonosítóra engedélyezett unsigned betöltéssel. Üzemi telepítéshez aláírt csomagot kell tervezni; a szervezeten belüli aláírás és a katalógusba publikált csomag eltérő kiadási út. A pontos aláírási lehetőségeket a kiadáskor ellenőrizni kell.
 
-Ehhez a projekthez a saját, verziózott Grafana image javasolt. A Coolify Compose egyszer beállítja az image-et és a konfigurációs kötetet. Utána a fejlesztő új image-verzióval frissíti a plugint, a monitoring admin pedig a Grafanában kezeli az agenteket.
+Az elfogadott telepítési mód a hivatalos Grafana image megtartása. A plugin önálló, verziózott GitHub Release ZIP-ként készül, és a `GF_PLUGINS_PREINSTALL_SYNC` beállítás a csomag rögzített URL-jére mutat. A Grafana induláskor megvárja a plugin telepítését. Saját Grafana image és külön plugintelepítő konténer ehhez nem szükséges. A konfigurációs kötet és az app szervezeti engedélyezése/provisioningje külön beállítás.
+
+A Grafana image-verziója és a plugin ZIP-verziója külön módosítható; kompatibilitásukat a frissítés előtt ellenőrizni kell. Pluginfrissítéskor a csomagverziót/URL-t módosítjuk, majd újratelepítjük a Grafana konténert. A monitoring admin a Grafanában kezeli az agenteket, ezekhez a műveletekhez nem kell pluginbuild vagy Compose-módosítás.
+
+A plugin a nagyobb repository `plugins/kfgyr-monitoring-app/` alkönyvtárába kerül, saját függőségekkel, builddel és verzióval. A [repository felépítése](repository-layout.md) a többi monitoring komponens helyét is meghatározza.
 
 ## Hivatalos források
 

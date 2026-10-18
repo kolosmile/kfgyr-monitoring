@@ -15,12 +15,14 @@ A repository a fejlesztés dokumentációs alapja. A Grafana plugin, a konfigur�
 - Tartós konfiguráció: verziózott `setup.yaml` külön kötetben, a Compose-ba ágyazott tartalom helyett.
 - Relay indítóprogram: a jóváhagyott konfiguráció alkalmazása a relay folyamatának újraindításával.
 - Megtekintés: Grafana Viewer szerep, igény szerint névtelen Viewer hozzáférés.
+- Plugin telepítése: a hivatalos Grafana image induláskor egy rögzített GitHub Release ZIP-ből telepít a `GF_PLUGINS_PREINSTALL_SYNC` beállítással. A Grafana és a plugin külön verziózható.
 
 A konfiguráció alkalmazásával járó relay-újraindítás átmeneti adatgyűjtési kiesést okozhat. A teljes eseménytörténet pótlását külön kell megoldani, ha az üzemi követelmény.
 
 ## Dokumentáció
 
 - [A Grafana app plugin felépítése és telepítése](docs/grafana-app.md)
+- [A repository tervezett szerkezete és a komponensek kiadása](docs/repository-layout.md)
 - [Nyilvános MTConnect példa konfiguráció](examples/setup.example.yaml)
 
 ## Helyi és üzemi adatok
