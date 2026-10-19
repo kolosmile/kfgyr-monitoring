@@ -11,12 +11,14 @@ A Grafana a hivatalos image marad. A `GF_PLUGINS_PREINSTALL_SYNC` a kiadott plug
 ## Első telepítés
 
 1. Töltsd ki a `.env.example` alapján a Coolify környezeti változóit. A jelszavak Coolifyban maradjanak.
-2. Készítsd el a `KFGYR_CONFIG_VOLUME` nevű külső Docker volume-ot. A konfiguráció könyvtárának tulajdonosa/csoportja és módja biztosítsa a runner 1000-es UID-jának írását; a hivatalos image 0-s csoportját használva a kötet könyvtára lehet `root:0`, `0770`, a fájlok `0660`.
-3. A meglévő relay `setup.yaml` fájlját mentsd ki, és a `seed-config.py` segítségével készítsd el a kötetben az első verziót. A script már létező konfigurációt nem ír felül.
-4. A Coolify Compose Service-ben alkalmazd a `compose.yaml` tartalmát. Meglévő telepítésnél őrizd meg a Grafana és TimescaleDB volume kulcsait, hogy a Coolify ugyanazokat a köteteket használja.
-5. Ellenőrizd a runner healthcheckjét, a plugin telepítését és az adatgyűjtést. Az adminoldal útvonala `/a/kfgyr-monitoring-app/agents`.
+2. Adj meg külön véletlen `POSTGRES_PASSWORD`, `GRAFANA_DB_PASSWORD`, `GF_SECURITY_ADMIN_PASSWORD` jelszavakat és legalább 32 karakteres `KFGYR_RUNNER_API_TOKEN` titkot.
+3. Alkalmazd a `compose.yaml` fájlt a Coolify Compose Service-ben. A három named volume-ot a Compose/Coolify létrehozza és kezeli. Meglévő telepítéskor a Grafana és TimescaleDB volume kulcsait őrizd meg.
+4. Üres adatbáziskötet esetén a PostgreSQL inicializálás létrehozza a `grafana_reader` szerepet és az olvasási jogokat. A Grafana provisioning létrehozza/frissíti a `timescaledb` UID-jú adatforrást ugyanazzal a `GRAFANA_DB_PASSWORD` jelszóval.
+5. Jelentkezz be Grafanába, nyisd meg az `/a/kfgyr-monitoring-app/agents` oldalt és konfiguráld az agenteket. Üres relay-config volume esetén nincs adatgyűjtés, amíg az első konfigurációt el nem mented. A jelenlegi runner ilyenkor nem teljesíti az adatgyűjtő healthcheckjét; az API és a beállító felület elérhető.
 
-Csak a runner csatolja a `KFGYR_CONFIG_VOLUME` külső kötetet. A konfiguráció útvonala `/var/lib/kfgyr-monitoring`; fájlműveleteket és verziózást kizárólag a runner végez. A Grafana a `KFGYR_RUNNER_URL` belső API-címen éri el. A `KFGYR_RUNNER_API_TOKEN` legalább 32 karakteres, véletlen titok legyen; a Compose a runner környezetébe és a Grafana plugin `secureJsonData` provisioningjébe adja. Ne tedd Gitbe. A Compose által provisionált plugin-kapcsolat a Grafana felületén olvasható és tesztelhető.
+Csak a runner csatolja a Compose által kezelt `relay-config` kötetet. A konfiguráció útvonala `/var/lib/kfgyr-monitoring`; fájlműveleteket és verziózást kizárólag a runner végez. Meglevő konfiguráció importálásához opcionálisan a `seed-config.py` használható.
+
+A Grafana a `KFGYR_RUNNER_URL` belső API-címen éri el a runnert. A Compose a `KFGYR_RUNNER_API_TOKEN` értékét a runner környezetébe és a Grafana plugin `secureJsonData` provisioningjébe adja. A token nem kerül a frontendbe. A kapcsolatot a telepítés kezeli; a plugin felületén ellenőrizhető.
 
 A host `/proc/1/net/route` fájlja csak olvashatóan kerül a runnerbe, így a valódi LAN automatikusan felismerhető. A `KFGYR_DISCOVERY_NETWORKS` további keresési tartományokat engedélyez. A `KFGYR_AGENT_ALLOWED_HOSTS` és `KFGYR_AGENT_ALLOWED_NETWORKS` a kézi MTConnect célokat korlátozza. Részletek: [Runner API](../docs/runner-api.md).
 
@@ -24,7 +26,9 @@ A host `/proc/1/net/route` fájlja csak olvashatóan kerül a runnerbe, így a v
 
 A Compose névtelen Viewer hozzáférést engedélyez a `KFGYR_VIEWER_ORG_NAME` szervezetben. A Grafana szervezeti beállításaiban válassz alapértelmezett dashboardot. A látogató az adott szervezet minden, számára olvasható dashboardját és adatforrását elérheti; mappajogosultságokkal szűkíthető a hozzáférés. Az agentkezelő plugin API-ja továbbra is csak Adminnak enged műveletet.
 
-A Grafana PostgreSQL adatforrása külön `grafana_reader` felhasználót használjon. A [grafana-reader.psql](grafana-reader.psql) script csak CONNECT, schema USAGE és SELECT jogot ad a `raw` séma tábláira, a jövőbeli táblák alapértelmezett jogosultságaival együtt. Futtatás előtt adj meg külön véletlen jelszót psql változóként; utána a meglévő Grafana adatforrás felhasználóját/jelszavát módosítsd a UID megőrzésével. A relay meglevő írói hozzáférése marad. Az adatforrás jelszava a Grafana adatbázisában titkosítva tárolódik, nem ez a Compose provisionálja.
+A PostgreSQL első inicializálásakor a Compose `grafana_db_init` konfigurációja fut le. A [grafana-reader.psql](grafana-reader.psql) ennek szerkeszthető forrása; a Compose-ba ágyazott SQL-lel együtt kell módosítani. A szerep CONNECT, a `raw` sémára USAGE és a táblákra SELECT jogot kap, a jövőbeli táblák alapértelmezett jogosultságaival együtt. A kezdeti relay-migráció a `public` sémában készíti, majd a `raw` sémába mozgatja a táblákat, ezért mindkét létrehozási sémára megadjuk az alapértelmezett SELECT jogot. A `raw` sémát előre létrehozzuk; a relay a saját tábláit és migrációit továbbra is maga kezeli.
+
+**Az init script csak üres adatbáziskötetnél fut.** Meglevő adatbázis esetén a script egyszeri kézi futtatása szükséges, ha a felhasználó még nem létezik. Későbbi jelszóváltoztatáskor az adatbázisban is át kell állítani a szerep jelszavát; egy környezeti változó átírása nem változtatja meg a meglévő PostgreSQL-szerepet. A Grafana adatforrása provisioning által kezelt; azonos UID-val megőrzi a dashboardhivatkozásokat.
 
 ## Migráció 0.2.0-ról
 
@@ -39,3 +43,7 @@ A plugin aktuális kiadása `0.3.0`. A telepítési érték formátuma `pluginaz
 A runtime konfigurációk `revisions/` alatt maradnak; a `desired.json` jelöli a kért verziót. A runner korai kilépéskor visszaállhat a korábbi verzióra, amit a felület külön jelez. Az admin a felületről visszaállíthatja a mentett konfigurációt a futó verzióra. A mentés és a futó állapot nem egyenlő a sikeres adatbeérkezéssel.
 
 Deploy előtt a Coolify Compose és a runtime kötet mentése szükséges. Az adatbázisköteteket rollbackkor sem kell törölni. A komponensfrissítés nem módosítja automatikusan az agentlistát vagy a dashboardokat.
+
+## Átállás external konfigurációs volume-ról
+
+A `relay-config: {}` deklaráció új, a stackhez tartozó volume-ot használ. Megőrzéshez másold át a régi külső kötet tartalmát; újrakonfigurálás teszteléséhez hagyd üresen. A régi external volume nem törlődik automatikusan. A friss adatgyűjtéshez őrizd meg az agent aliasát és az MTConnect device/dataitem ID-kat, mert az upstream adatbázis-azonosító `agentAlias/MTConnectID`. A dashboardútvonalakhoz az eszközaliasok is egyezzenek. A kieső időszak teljes mintasorának pótlása nem garantált.

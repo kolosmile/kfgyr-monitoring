@@ -5,8 +5,12 @@ services:
       POSTGRES_DB: ladder99
       POSTGRES_USER: ladder99
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:?}
     volumes:
       - timescaledb-data:/var/lib/postgresql/data
+    configs:
+      - source: grafana_db_init
+        target: /docker-entrypoint-initdb.d/090-grafana-reader.sql
     healthcheck:
       test: [CMD, pg_isready, -U, ladder99, -d, ladder99]
       interval: 10s
@@ -66,6 +70,8 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
     configs:
+      - source: grafana_datasource
+        target: /etc/grafana/provisioning/datasources/timescaledb.yaml
       - source: monitoring_app
         target: /etc/grafana/provisioning/plugins/kfgyr-monitoring.yaml
     depends_on:
@@ -77,11 +83,54 @@ services:
 volumes:
   timescaledb-data: {}
   grafana-data: {}
-  relay-config:
-    external: true
-    name: ${KFGYR_CONFIG_VOLUME:-kfgyr-monitoring-config}
+  relay-config: {}
 
 configs:
+  grafana_db_init:
+    content: |
+      -- Used by the PostgreSQL first-initialization hook. For an existing database,
+      -- run with psql as ladder99 and set reader_password or GRAFANA_DB_PASSWORD.
+      \set ON_ERROR_STOP on
+      \if :{?reader_password}
+      \else
+      \getenv reader_password GRAFANA_DB_PASSWORD
+      \endif
+      SELECT 'CREATE ROLE grafana_reader LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION'
+      WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'grafana_reader') \gexec
+      ALTER ROLE grafana_reader PASSWORD :'reader_password';
+      ALTER ROLE grafana_reader SET default_transaction_read_only = on;
+      ALTER ROLE grafana_reader SET statement_timeout = '30s';
+      ALTER ROLE grafana_reader SET lock_timeout = '5s';
+      GRANT CONNECT ON DATABASE ladder99 TO grafana_reader;
+      CREATE SCHEMA IF NOT EXISTS raw AUTHORIZATION ladder99;
+      GRANT USAGE ON SCHEMA raw TO grafana_reader;
+      GRANT SELECT ON ALL TABLES IN SCHEMA raw TO grafana_reader;
+      ALTER DEFAULT PRIVILEGES FOR ROLE ladder99 IN SCHEMA raw GRANT SELECT ON TABLES TO grafana_reader;
+      -- Upstream creates its initial tables in public, then moves them to raw.
+      ALTER DEFAULT PRIVILEGES FOR ROLE ladder99 IN SCHEMA public GRANT SELECT ON TABLES TO grafana_reader;
+  grafana_datasource:
+    content: |
+      apiVersion: 1
+      datasources:
+        - name: Ladder99 TimescaleDB
+          uid: timescaledb
+          type: grafana-postgresql-datasource
+          access: proxy
+          url: db:5432
+          user: grafana_reader
+          isDefault: true
+          editable: false
+          jsonData:
+            database: ladder99
+            sslmode: disable
+            postgresVersion: 1600
+            timescaledb: true
+            timeInterval: 10s
+            maxOpenConns: 5
+            maxIdleConns: 2
+            connMaxLifetime: 14400
+          secureJsonData:
+            password: ${GRAFANA_DB_PASSWORD:?}
   monitoring_app:
     content: |
       apiVersion: 1

@@ -1,6 +1,10 @@
--- Run as database owner/superuser on ladder99. Supply a generated secret with
--- a secure psql variable input: reader_password. Never commit the secret.
+-- Used by the PostgreSQL first-initialization hook. For an existing database,
+-- run with psql as ladder99 and set reader_password or GRAFANA_DB_PASSWORD.
 \set ON_ERROR_STOP on
+\if :{?reader_password}
+\else
+\getenv reader_password GRAFANA_DB_PASSWORD
+\endif
 SELECT 'CREATE ROLE grafana_reader LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION'
 WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'grafana_reader') \gexec
 ALTER ROLE grafana_reader PASSWORD :'reader_password';
@@ -8,6 +12,9 @@ ALTER ROLE grafana_reader SET default_transaction_read_only = on;
 ALTER ROLE grafana_reader SET statement_timeout = '30s';
 ALTER ROLE grafana_reader SET lock_timeout = '5s';
 GRANT CONNECT ON DATABASE ladder99 TO grafana_reader;
+CREATE SCHEMA IF NOT EXISTS raw AUTHORIZATION ladder99;
 GRANT USAGE ON SCHEMA raw TO grafana_reader;
 GRANT SELECT ON ALL TABLES IN SCHEMA raw TO grafana_reader;
 ALTER DEFAULT PRIVILEGES FOR ROLE ladder99 IN SCHEMA raw GRANT SELECT ON TABLES TO grafana_reader;
+-- Upstream creates its initial tables in public, then moves them to raw.
+ALTER DEFAULT PRIVILEGES FOR ROLE ladder99 IN SCHEMA public GRANT SELECT ON TABLES TO grafana_reader;
