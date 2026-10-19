@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 — 2026-10-19
 
 - Adopt the official `@grafana/create-plugin@7.13.0` scaffold generated with WSL2.
 - Retain the existing MTConnect UI, configuration backend, plugin ID, and backend executable name.
