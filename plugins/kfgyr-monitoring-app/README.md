@@ -2,7 +2,20 @@
 
 React/TypeScript adminoldal és Go backend MTConnect agentekhez. A plugin a megfelelő Grafana organization Admin szerepéhez kötött; a backend minden végponton ellenőrzi a szerepet és a szervezetet.
 
-Build: `npm ci`, `npm run typecheck`, `npm run build`, majd `go build -o dist/gpx_kfgyr_monitoring_linux_amd64 ./pkg` Linux/amd64 célplatformra (`GOOS=linux`, `GOARCH=amd64`, `CGO_ENABLED=0`). A kiadási workflow további célplatformot is készít és ZIP-be csomagol.
+Projektváz: a hivatalos `@grafana/create-plugin@7.13.0` generátorral, egyszer WSL-ből előállítva. A `.config/` a generátortól változatlanul átvett buildeszközöket tartalmazza; az alkalmazás saját kódja a `src/` és `pkg/` könyvtárakban található.
+
+Windows PowerShellből, Node.js 24 és Go 1.26.5 mellett:
+
+```powershell
+npm.cmd ci --no-audit --no-fund
+npm.cmd run typecheck
+npm.cmd run build
+go run github.com/magefile/mage -v build:linux build:linuxARM64
+```
+
+A `npm.cmd run dev` figyeli és újrafordítja a frontend módosításait. A fejlesztői Grafana indításához Docker engine szükséges; ehhez az `npm.cmd run server` használható. A Linux backend build célplatformjai Windowsról is előállíthatók; maga a plugin backend a Grafana Linux konténerében fut. A kiadási ZIP-et továbbra is a Linuxos GitHub Actions készíti.
+
+Részletes munkamenet és a generált/saját fájlok eredete: [Windowsos fejlesztés](../../docs/windows-development.md).
 
 Környezeti változók a Grafana konténerében:
 

@@ -1,0 +1,29 @@
+# Local development only. Production uses ../../deploy/compose.yaml.
+services:
+  grafana:
+    extends:
+      file: .config/docker-compose-base.yaml
+      service: grafana
+    build:
+      args:
+        grafana_image: ${GRAFANA_IMAGE:-grafana-oss}
+        grafana_version: ${GRAFANA_VERSION:-13.0.2}
+        anonymous_auth_enabled: "false"
+    environment:
+      KFGYR_CONFIG_DIR: /var/lib/kfgyr-monitoring
+      KFGYR_ADMIN_ORG_ID: "1"
+      KFGYR_AGENT_ALLOWED_HOSTS: demo.mtconnect.org
+    volumes:
+      - ./.dev-config:/var/lib/kfgyr-monitoring
+    configs:
+      - source: monitoring_app
+        target: /etc/grafana/provisioning/plugins/kfgyr-monitoring.yaml
+configs:
+  monitoring_app:
+    content: |
+      apiVersion: 1
+      apps:
+        - type: kfgyr-monitoring-app
+          org_id: 1
+          disabled: false
+          pinned: true

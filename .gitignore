@@ -28,6 +28,14 @@ backups/
 node_modules/
 dist/
 release/
+.dev-config/
+artifacts/
+test-results/
+playwright-report/
+blob-report/
+playwright/.auth/
+.eslintcache
+.magefile/
 coverage/
 bin/
 *.zip

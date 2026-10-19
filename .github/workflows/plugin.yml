@@ -10,6 +10,26 @@ on:
 permissions:
   contents: read
 jobs:
+  windows-frontend:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: plugins/kfgyr-monitoring-app
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: plugins/kfgyr-monitoring-app/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Verify frontend output
+        run: |
+          if (!(Test-Path dist/module.js)) { throw 'Missing frontend bundle' }
+          $plugin = Get-Content dist/plugin.json -Raw | ConvertFrom-Json
+          if ($plugin.id -ne 'kfgyr-monitoring-app') { throw 'Unexpected plugin ID' }
   build:
     runs-on: ubuntu-latest
     defaults:
@@ -31,9 +51,7 @@ jobs:
       - run: go test ./pkg/...
       - name: Build backend binaries
         run: |
-          for arch in amd64 arm64; do
-            CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags='-s -w' -o dist/gpx_kfgyr_monitoring_linux_$arch ./pkg
-          done
+          go run github.com/magefile/mage -v build:linux build:linuxARM64
       - name: Package plugin
         id: package
         run: |
@@ -55,7 +73,7 @@ jobs:
             plugins/kfgyr-monitoring-app/release/SHA256SUMS
   release:
     if: startsWith(github.ref, 'refs/tags/plugin-v')
-    needs: build
+    needs: [build, windows-frontend]
     runs-on: ubuntu-latest
     permissions:
       contents: write
