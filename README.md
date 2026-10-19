@@ -22,6 +22,7 @@ A konfiguráció alkalmazásával járó relay-újraindítás átmeneti adatgyű
 ## Dokumentáció
 
 - [A Grafana app plugin felépítése és telepítése](docs/grafana-app.md)
+- [Agentek és gépek kezelése a Grafana felületén](docs/agent-management-ui.md)
 - [Windowsos pluginfejlesztés és a hivatalos projektváz eredete](docs/windows-development.md)
 - [A repository tervezett szerkezete és a komponensek kiadása](docs/repository-layout.md)
 - [Telepítés és frissítés](deploy/README.md)

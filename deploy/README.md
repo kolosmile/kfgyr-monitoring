@@ -24,7 +24,7 @@ A `KFGYR_AGENT_ALLOWED_HOSTS` és `KFGYR_AGENT_ALLOWED_NETWORKS` korlátozza az 
 
 Pluginfrissítés: új pluginverzió és tag, sikeres ZIP Release, majd a `KFGYR_PLUGIN_INSTALL` módosítása és a Grafana újratelepítése. Runnerfrissítés: új image-verzió, `KFGYR_RELAY_RUNNER_IMAGE` módosítása és újratelepítés. A kiadási URL-ek és image-ek rögzített verzióra mutassanak.
 
-A plugin aktuális kiadása `0.1.1`. A telepítési érték formátuma `pluginazonosító@verzió@ZIP-URL`; a verziót és a ZIP címét együtt frissítsd. A Coolifyban mentett Compose és környezeti változó módosítása után a `POST /api/v1/services/{uuid}/applications/{app_uuid}/start?force=true` végponttal a Grafana külön újratelepíthető. Ez a megoldás a frissített környezetet alkalmazza a Grafanára, a Compose többi szolgáltatásának újraindítása nélkül.
+A plugin aktuális kiadása `0.2.0`. A telepítési érték formátuma `pluginazonosító@verzió@ZIP-URL`; a verziót és a ZIP címét együtt frissítsd. A Coolifyban mentett Compose és környezeti változó módosítása után a `POST /api/v1/services/{uuid}/applications/{app_uuid}/start?force=true` végponttal a Grafana külön újratelepíthető. Ez a megoldás a frissített környezetet alkalmazza a Grafanára, a Compose többi szolgáltatásának újraindítása nélkül.
 
 A runtime konfigurációk `revisions/` alatt maradnak; a `desired.json` jelöli a kért verziót. A runner korai kilépéskor visszaállhat a korábbi verzióra, amit a felület külön jelez. Az admin a felületről visszaállíthatja a mentett konfigurációt a futó verzióra. A mentés és a futó állapot nem egyenlő a sikeres adatbeérkezéssel.
 
