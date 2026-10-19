@@ -32,7 +32,7 @@ class ConfigurationProtocolTests(unittest.TestCase):
                 self.assertEqual(healthcheck(), 1)
                 atomic_write(target, json.dumps({"state": "running", "pid": os.getpid(), "updated_unix": 0}).encode())
                 self.assertEqual(healthcheck(), 1)
-                with patch("runner.time.time", return_value=20):
+                with patch("runner.time.time", return_value=20), patch("runner.os.kill"):
                     self.assertEqual(healthcheck(), 0)
             self.assertEqual(list(Path(directory).glob(".pending-*")), [])
 

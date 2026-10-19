@@ -6,14 +6,37 @@
   "backend": true,
   "executable": "gpx_kfgyr_monitoring",
   "autoEnabled": false,
-  "includes": [{ "type": "page", "name": "Agentek és gépek", "path": "/a/kfgyr-monitoring-app/agents", "addToNav": true, "defaultNav": true, "role": "Admin" }],
+  "includes": [
+    {
+      "type": "page",
+      "name": "Agentek és gépek",
+      "path": "/a/kfgyr-monitoring-app/agents",
+      "addToNav": true,
+      "defaultNav": true,
+      "role": "Admin"
+    }
+  ],
   "info": {
     "description": "MTConnect agent management for Ladder99 Relay",
-    "author": { "name": "KFGyR" },
+    "author": {
+      "name": "KFGyR"
+    },
     "keywords": ["mtconnect", "monitoring", "relay"],
-    "logos": { "small": "img/logo.svg", "large": "img/logo.svg" },
-    "links": [{ "name": "repository", "url": "https://github.com/kolosmile/kfgyr-monitoring" }],
-    "version": "0.2.0", "updated": "2026-10-19"
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [
+      {
+        "name": "repository",
+        "url": "https://github.com/kolosmile/kfgyr-monitoring"
+      }
+    ],
+    "version": "0.3.0",
+    "updated": "2026-10-19"
   },
-  "dependencies": { "grafanaDependency": ">=13.0.2", "plugins": [] }
+  "dependencies": {
+    "grafanaDependency": ">=13.0.2",
+    "plugins": []
+  }
 }

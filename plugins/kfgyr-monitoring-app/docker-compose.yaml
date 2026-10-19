@@ -10,11 +10,7 @@ services:
         grafana_version: ${GRAFANA_VERSION:-13.0.2}
         anonymous_auth_enabled: "false"
     environment:
-      KFGYR_CONFIG_DIR: /var/lib/kfgyr-monitoring
       KFGYR_ADMIN_ORG_ID: "1"
-      KFGYR_AGENT_ALLOWED_HOSTS: demo.mtconnect.org
-    volumes:
-      - ./.dev-config:/var/lib/kfgyr-monitoring
     configs:
       - source: monitoring_app
         target: /etc/grafana/provisioning/plugins/kfgyr-monitoring.yaml
@@ -27,3 +23,8 @@ configs:
           org_id: 1
           disabled: false
           pinned: true
+          jsonData:
+            runnerUrl: ${KFGYR_RUNNER_URL:-http://host.docker.internal:8091}
+            adminOrgId: 1
+          secureJsonData:
+            runnerToken: ${KFGYR_RUNNER_API_TOKEN:?Set the development runner token}

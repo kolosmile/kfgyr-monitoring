@@ -18,9 +18,14 @@ services:
       options: {max-size: 20m, max-file: "5"}
 
   relay:
-    image: ${KFGYR_RELAY_RUNNER_IMAGE:-ghcr.io/kolosmile/kfgyr-relay-runner:0.1.1}
+    image: ${KFGYR_RELAY_RUNNER_IMAGE:-ghcr.io/kolosmile/kfgyr-relay-runner:0.3.0}
     environment:
       KFGYR_CONFIG_DIR: /var/lib/kfgyr-monitoring
+      KFGYR_RUNNER_API_TOKEN: ${KFGYR_RUNNER_API_TOKEN:?}
+      KFGYR_HOST_ROUTES_FILE: /run/host-network/route
+      KFGYR_AGENT_ALLOWED_HOSTS: ${KFGYR_AGENT_ALLOWED_HOSTS:-demo.mtconnect.org}
+      KFGYR_AGENT_ALLOWED_NETWORKS: ${KFGYR_AGENT_ALLOWED_NETWORKS:-192.168.88.0/24,100.64.0.0/10}
+      KFGYR_DISCOVERY_NETWORKS: ${KFGYR_DISCOVERY_NETWORKS:-}
       KFGYR_RELAY_STARTUP_SECONDS: "10"
       FETCH_INTERVAL: "2000"
       FETCH_COUNT: "1000"
@@ -31,9 +36,11 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD:?}
     volumes:
       - relay-config:/var/lib/kfgyr-monitoring
+      - /proc/1/net/route:/run/host-network/route:ro
+    expose: ["8091"]
     depends_on:
       db: {condition: service_healthy}
-    stop_grace_period: 25s
+    stop_grace_period: 35s
     restart: unless-stopped
     logging:
       options: {max-size: 20m, max-file: "5"}
@@ -48,18 +55,16 @@ services:
       GF_SECURITY_COOKIE_SECURE: "false"
       GF_SECURITY_DISABLE_GRAVATAR: "true"
       GF_AUTH_BASIC_ENABLED: "true"
-      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_ANONYMOUS_ORG_NAME: ${KFGYR_VIEWER_ORG_NAME:-Main Org.}
       GF_USERS_DEFAULT_THEME: dark
       GF_ANALYTICS_REPORTING_ENABLED: "false"
-      GF_PLUGINS_PREINSTALL_SYNC: ${KFGYR_PLUGIN_INSTALL:-kfgyr-monitoring-app@0.2.0@https://github.com/kolosmile/kfgyr-monitoring/releases/download/plugin-v0.2.0/kfgyr-monitoring-app-0.2.0.zip}
+      GF_PLUGINS_PREINSTALL_SYNC: ${KFGYR_PLUGIN_INSTALL:-kfgyr-monitoring-app@0.3.0@https://github.com/kolosmile/kfgyr-monitoring/releases/download/plugin-v0.3.0/kfgyr-monitoring-app-0.3.0.zip}
       GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: kfgyr-monitoring-app
-      KFGYR_CONFIG_DIR: /var/lib/kfgyr-monitoring
       KFGYR_ADMIN_ORG_ID: ${KFGYR_ADMIN_ORG_ID:-1}
-      KFGYR_AGENT_ALLOWED_HOSTS: ${KFGYR_AGENT_ALLOWED_HOSTS:-demo.mtconnect.org}
-      KFGYR_AGENT_ALLOWED_NETWORKS: ${KFGYR_AGENT_ALLOWED_NETWORKS:-192.168.88.0/24,100.64.0.0/10}
     volumes:
       - grafana-data:/var/lib/grafana
-      - relay-config:/var/lib/kfgyr-monitoring
     configs:
       - source: monitoring_app
         target: /etc/grafana/provisioning/plugins/kfgyr-monitoring.yaml
@@ -85,3 +90,9 @@ configs:
           org_id: ${KFGYR_ADMIN_ORG_ID:-1}
           disabled: false
           pinned: true
+          jsonData:
+            runnerUrl: ${KFGYR_RUNNER_URL:-http://relay:8091}
+            adminOrgId: ${KFGYR_ADMIN_ORG_ID:-1}
+            managedByDeployment: true
+          secureJsonData:
+            runnerToken: ${KFGYR_RUNNER_API_TOKEN:?}

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — 2026-10-19
+
+- Move configuration, validation, revision storage and MTConnect probing to the authenticated relay-runner API.
+- Keep Admin authorization in the Grafana backend and store runner credentials in secureJsonData.
+- Add automatic runner LAN detection and bounded, asynchronous, cancellable MTConnect network discovery.
+- Add runner connection settings and preserve optimistic concurrency and startup-failure rollback.
+- Remove the Grafana configuration volume dependency; support remote runners.
+
 ## 0.2.0 â€” 2026-10-19
 
 - Replace the single-page form with searchable agent cards, status filters, and separate agent/settings dialogs.

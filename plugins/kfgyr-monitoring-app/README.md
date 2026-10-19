@@ -17,11 +17,10 @@ A `npm.cmd run dev` figyeli és újrafordítja a frontend módosításait. A fej
 
 Részletes munkamenet és a generált/saját fájlok eredete: [Windowsos fejlesztés](../../docs/windows-development.md).
 
-Környezeti változók a Grafana konténerében:
+## Runner kapcsolat
 
-- `KFGYR_CONFIG_DIR`: közös konfigurációs kötet helye, alapérték `/var/lib/kfgyr-monitoring`.
-- `KFGYR_ADMIN_ORG_ID`: engedélyezett Grafana szervezet, alapérték `1`.
-- `KFGYR_AGENT_ALLOWED_HOSTS`: engedélyezett hostnevek vesszővel, alapérték `demo.mtconnect.org`.
-- `KFGYR_AGENT_ALLOWED_NETWORKS`: engedélyezett IP-hálózatok CIDR formában, vesszővel. Csak a tényleges MTConnect hálózatokat add meg.
+A plugin Go backendje a runner HTTP API-ját hívja. A Grafana nem csatolja a relay konfigurációs kötetét. A cím `jsonData.runnerUrl`, a token `secureJsonData.runnerToken`, az engedélyezett szervezet `jsonData.adminOrgId` (alapérték 1). A token nem kerül a böngészőbe. A `KFGYR_ADMIN_ORG_ID` szerveroldali felülbírálásként használható.
+
+A plugin **Relay kapcsolat** beállítási lapján külön is megadható a kapcsolat. A termelési Compose provisionálja; `managedByDeployment: true` esetén a lap olvasható és kapcsolattesztet kínál. Fejlesztéshez adj meg egy külön runner címet és tokent a figyelmen kívül hagyott helyi `.env` fájlban. Az `npm.cmd run server` ezt használja. A runner külön fut, Linuxon vagy konténerben.
 
 A relay minden agent összes eszközét gyűjti. Az eszközlista aliasokat kezel, nem eszközszűrő. A mentés relay-újraindítást okoz. A processz futása nem bizonyítja az adatgyűjtés sikerét.

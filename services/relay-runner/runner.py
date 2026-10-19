@@ -1,4 +1,4 @@
-"""Supervise the unmodified Ladder99 relay; exchange versioned files with Grafana."""
+"""Supervise the unmodified Ladder99 relay using runner-owned configuration files."""
 import hashlib
 import json
 import os
@@ -18,16 +18,17 @@ def atomic_write(path, content):
     fd, name = tempfile.mkstemp(prefix=".pending-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as handle:
-            os.fchmod(handle.fileno(), 0o660)
+            os.chmod(name, 0o660)
             handle.write(content)
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(name, path)
-        directory = os.open(path.parent, os.O_RDONLY)
-        try:
-            os.fsync(directory)
-        finally:
-            os.close(directory)
+        if os.name == "posix":
+            directory = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
     finally:
         if os.path.exists(name):
             os.unlink(name)
@@ -118,6 +119,7 @@ class Runner:
         self.stop_child()
         atomic_write(self.runtime / "setup.yaml", content)
         environment = os.environ.copy()
+        environment.pop("KFGYR_RUNNER_API_TOKEN", None)
         environment["L99_SETUP_FOLDER"] = str(self.runtime)
         self.active = manifest
         self.child = subprocess.Popen(["node", "/usr/app/src/index.js"], env=environment, cwd="/usr/app", start_new_session=True)
@@ -138,11 +140,12 @@ class Runner:
             self.stop_child()
             self.status("failed", "A relay nem tudott elindulni. Javítsd a konfigurációt, majd ments új verziót.")
 
-    def run(self):
+    def run(self, install_signals=True):
         def shutdown(_signum, _frame):
             self.stopping = True
-        signal.signal(signal.SIGTERM, shutdown)
-        signal.signal(signal.SIGINT, shutdown)
+        if install_signals:
+            signal.signal(signal.SIGTERM, shutdown)
+            signal.signal(signal.SIGINT, shutdown)
         self.status("starting", "A relay-runner indul.")
         try:
             while not self.stopping:
@@ -167,7 +170,7 @@ class Runner:
                     if self.child and self.child.poll() is None and self.pending and time.monotonic() - self.started >= self.grace:
                         self.pending = False
                         self.good = self.active
-                        if self.failed == self.active["revision"]:
+                        if self.requested and self.active["revision"] == self.requested["revision"]:
                             self.failed = None
                         self.persist()
                         self.status("running", "A relay folyamat fut. Az adatbeérkezést a dashboardon ellenőrizd.")

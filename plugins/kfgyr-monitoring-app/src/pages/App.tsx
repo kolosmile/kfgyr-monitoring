@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getBackendSrv, PluginPage } from '@grafana/runtime';
+import { PluginPage } from '@grafana/runtime';
 import {
   Alert,
   Badge,
@@ -13,17 +13,13 @@ import {
   Spinner,
   useStyles2,
 } from '@grafana/ui';
-import { lastValueFrom } from 'rxjs';
+import { api } from '../api';
+import { NetworkDiscovery } from '../components/NetworkDiscovery';
 import { AgentEditor } from '../components/AgentEditor';
 import { getStyles } from '../components/styles';
 import { Agent, clone, errorText, FoundDevice, retentionLabel, RunnerStatus, Setup, Snapshot } from '../types';
 
-const root = '/api/plugins/kfgyr-monitoring-app/resources';
 const pageNav = { text: 'Agentek és gépek', description: 'MTConnect kapcsolatok és eszköznevek kezelése.' };
-async function api<T>(path: string, method = 'GET', data?: unknown): Promise<T> {
-  const result = await lastValueFrom(getBackendSrv().fetch<T>({ url: `${root}/${path}`, method, data }));
-  return result.data;
-}
 type Confirmation = 'save' | 'discard' | 'rollback' | { remove: number };
 const stateLabels: Record<string, string> = {
   starting: 'Indul',
@@ -48,6 +44,7 @@ export function App() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [confirmation, setConfirmation] = useState<Confirmation>();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [client, setClient] = useState<Setup['client']>();
@@ -371,6 +368,14 @@ export function App() {
               disabled={busy}
               onClick={() => (dirty ? setConfirmation('discard') : void reload())}
             />
+            <Button
+              variant="secondary"
+              icon="search"
+              disabled={busy || agents.length >= 100}
+              onClick={() => setDiscoveryOpen(true)}
+            >
+              Hálózati keresés
+            </Button>
             <Button icon="plus" disabled={busy || agents.length >= 100} onClick={() => edit(null)}>
               Agent hozzáadása
             </Button>
@@ -483,6 +488,17 @@ export function App() {
           <pre>{snapshot.yaml}</pre>
         </details>
 
+        {discoveryOpen && (
+          <NetworkDiscovery
+            agents={agents}
+            onClose={() => setDiscoveryOpen(false)}
+            onAdd={(agent) => {
+              setDiscoveryOpen(false);
+              setEditorDirty(false);
+              setEditor({ index: null, initial: agent });
+            }}
+          />
+        )}
         {editor && (
           <AgentEditor
             initial={editor.initial}

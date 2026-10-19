@@ -1,4 +1,4 @@
-# Grafana app plugin: felépítés és tervezett megvalósítás
+# Grafana app plugin: felépítés és megvalósítás
 
 Az első megvalósítás a `plugins/kfgyr-monitoring-app/` és `services/relay-runner/` könyvtárakban található. A telepítés lépéseit a [telepítési leírás](../deploy/README.md) tartalmazza.
 
@@ -17,26 +17,23 @@ A hivatalos `npx @grafana/create-plugin@latest` eszközben az `app` típust és 
 | `src/plugin.json` | Azonosító, típus, függőségek, menüpontok, backend végrehajtható fájlja | Saját adatok és oldalak megadása |
 | `src/module.ts` | A Grafana plugin belépési pontja | Az alkalmazás bekötése |
 | `src/components/`, `src/pages/` | React felület és útvonalak | Agentlista, űrlapok, állapotjelzés |
-| `pkg/` | Go backend, SDK és HTTP resource kezelők | Jogosultság, MTConnect probe, konfigurációkezelés |
+| `pkg/` | Go backend, SDK és HTTP resource kezelők | Jogosultságellenőrzés, hitelesített runner API proxy |
 | Build konfiguráció és Mage feladatok | TypeScript csomag és Go bináris előállítása | Célplatform, verziózás és kiadás beállítása |
 | Fejlesztői Compose és példakód | Helyi Grafana és demonstrációs oldalak | Projektigényekhez igazítás |
 
 A generátor működő keretet készít. Az MTConnect-kezelést és a relay-konfiguráció biztonságos alkalmazását nekünk kell megírni.
 
-## A tervezett saját működés
+## Saját működés a 0.3.0 verziótól
 
-1. A backend ellenőrzi a felhasználó hiteles, Grafanától kapott szervezeti azonosítóját és Admin szerepét minden adminisztrációs kérésnél. A menüpont elrejtése önmagában nem jogosultságvédelem.
-2. Az admin megad egy agent URL-t. A backend ellenőrzött hálózati célokra, időkorláttal lekéri és feldolgozza az MTConnect `/probe` választ.
-3. A felület felsorolja az eszközöket, és kezeli a kiválasztást, az aliasokat és a megőrzési időt.
-4. A backend sémával ellenőrzi a konfigurációt, majd verziózva, atomi fájlcserével menti. A meglévő azonosítók/aliasok módosítása külön kezelendő, mert adatbázisbeli azonosításra is hathat.
-5. Egy relay indítóprogram érzékeli az alkalmazandó verziót, és újraindítja a relay gyermekfolyamatát. A módosító felületnek nincs szüksége Docker socketre vagy Coolify admin tokenre.
-6. A rendszer külön jelzi a mentett, alkalmazott és hibás konfigurációkat; rögzíti a módosító felhasználót. Sikertelen alkalmazásnál visszaállítható az előző verzió.
+1. A Go backend ellenőrzi a Grafanától kapott szervezetet és Admin szerepet minden kérésnél.
+2. A frontend a Grafana resource API-t hívja, a Go backend pedig a runner hitelesített HTTP API-ját.
+3. A runner validálja és verziózza a konfigurációt, lekérdezi az MTConnect eszközleírásokat és felügyeli a relay folyamatát.
+4. A runner saját LAN-ján aszinkron, megszakítható keresés indítható, a találatokból agent szerkeszthető.
+5. A felület megkülönbözteti a kért, alkalmazott és hibás konfigurációt. A mentés optimista verzióellenőrzést és felhasználói auditot használ.
 
-A tartós konfiguráció teljes könyvtárát kell csatolni, hogy a fájlok atomi cseréje is látható maradjon. A Go backend írási, a relay indítóprogramja olvasási hozzáférést kap a konfigurációhoz. A visszajelzés és állapotcsere pontos módja implementációs döntés.
+Csak a runner csatolja a tartós konfigurációs kötetet. A Grafana külön gépen is lehet; a kapcsolat címe és titkos tokenje a plugin beállítása. A token `secureJsonData` mezőben marad, nem kerül a frontendbe. A részletes API és hálózati korlátok a [runner leírásában](runner-api.md) találhatók.
 
-A vizsgált nyilvános relay-forrás induláskor olvassa a konfigurációt. A ténylegesen használt image viselkedését a megvalósítás részeként ellenőrizni kell. Az első változat folyamatrestarttal számol: ez az összes agent gyűjtését megszakíthatja, és a kieső minták teljes pótlása nem garantált. Agentenkénti, futás közbeni újrakonfigurálás a relay további fejlesztését igényli.
-
-Külön Python/FastAPI konfigurációkezelő is használható. Ebben az esetben a Grafana plugin backendje belső API-n delegál; a szolgáltatások közötti hitelesítést, a hozzáférési korlátokat és az állapotkezelést is meg kell írni. A közvetlen Go backend kevesebb külön telepítendő komponenst igényel.
+A relay változatlan upstream alkalmazás. A konfiguráció alkalmazása folyamatrestarttal történik, ami átmeneti adatgyűjtési kiesést okozhat. Agentenkénti futás közbeni újrakonfigurálás további upstream fejlesztést igényel.
 
 ## Mi épül be Grafanába?
 
@@ -58,7 +55,7 @@ A webes plugin felület nem általános forráskód- vagy saját ZIP-feltöltő.
 
 A fejlesztési változat betölthető a konkrét pluginazonosítóra engedélyezett unsigned betöltéssel. Üzemi telepítéshez aláírt csomagot kell tervezni; a szervezeten belüli aláírás és a katalógusba publikált csomag eltérő kiadási út. A pontos aláírási lehetőségeket a kiadáskor ellenőrizni kell.
 
-Az elfogadott telepítési mód a hivatalos Grafana image megtartása. A plugin önálló, verziózott GitHub Release ZIP-ként készül, és a `GF_PLUGINS_PREINSTALL_SYNC` beállítás a csomag rögzített URL-jére mutat. A Grafana induláskor megvárja a plugin telepítését. Saját Grafana image és külön plugintelepítő konténer ehhez nem szükséges. A konfigurációs kötet és az app szervezeti engedélyezése/provisioningje külön beállítás.
+Az elfogadott telepítési mód a hivatalos Grafana image megtartása. A plugin önálló, verziózott GitHub Release ZIP-ként készül, és a `GF_PLUGINS_PREINSTALL_SYNC` beállítás a csomag rögzített URL-jére mutat. A Grafana induláskor megvárja a plugin telepítését. Saját Grafana image és külön plugintelepítő konténer ehhez nem szükséges. A runner API-kapcsolata és az app szervezeti engedélyezése/provisioningje külön beállítás.
 
 A Grafana image-verziója és a plugin ZIP-verziója külön módosítható; kompatibilitásukat a frissítés előtt ellenőrizni kell. Pluginfrissítéskor a csomagverziót/URL-t módosítjuk, majd újratelepítjük a Grafana konténert. A monitoring admin a Grafanában kezeli az agenteket, ezekhez a műveletekhez nem kell pluginbuild vagy Compose-módosítás.
 
