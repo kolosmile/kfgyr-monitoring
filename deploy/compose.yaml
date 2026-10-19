@@ -51,7 +51,7 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "false"
       GF_USERS_DEFAULT_THEME: dark
       GF_ANALYTICS_REPORTING_ENABLED: "false"
-      GF_PLUGINS_PREINSTALL_SYNC: ${KFGYR_PLUGIN_INSTALL:-kfgyr-monitoring-app@@https://github.com/kolosmile/kfgyr-monitoring/releases/download/plugin-v0.1.1/kfgyr-monitoring-app-0.1.1.zip}
+      GF_PLUGINS_PREINSTALL_SYNC: ${KFGYR_PLUGIN_INSTALL:-kfgyr-monitoring-app@0.1.1@https://github.com/kolosmile/kfgyr-monitoring/releases/download/plugin-v0.1.1/kfgyr-monitoring-app-0.1.1.zip}
       GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: kfgyr-monitoring-app
       KFGYR_CONFIG_DIR: /var/lib/kfgyr-monitoring
       KFGYR_ADMIN_ORG_ID: ${KFGYR_ADMIN_ORG_ID:-1}
