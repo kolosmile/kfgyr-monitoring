@@ -45,6 +45,7 @@ class Panel(BaseModel):
     view: Literal["value", "state", "chart", "gauge"]
     minimum: float | None = None
     maximum: float | None = None
+    color: Literal["blue", "green", "orange", "red", "purple", "yellow"] | None = None
 
     @model_validator(mode="after")
     def check_panel(self):

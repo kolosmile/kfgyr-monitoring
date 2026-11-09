@@ -6,7 +6,16 @@ import { getStyles } from '../components/styles';
 import { errorText } from '../types';
 
 type View = 'value' | 'state' | 'chart' | 'gauge';
-type Panel = { name: string; point: string; view: View; minimum?: number; maximum?: number };
+type ChartColor = 'blue' | 'green' | 'orange' | 'red' | 'purple' | 'yellow';
+const chartColors: Array<{ value: ChartColor; label: string }> = [
+  { value: 'blue', label: 'Kék' },
+  { value: 'green', label: 'Zöld' },
+  { value: 'orange', label: 'Narancs' },
+  { value: 'red', label: 'Piros' },
+  { value: 'purple', label: 'Lila' },
+  { value: 'yellow', label: 'Sárga' },
+];
+type Panel = { name: string; point: string; view: View; minimum?: number; maximum?: number; color?: ChartColor };
 type Option = { id: string; label: string };
 type Catalog = { presets: Array<{ label: string; panels: Panel[] }>; machines: Option[] };
 type Assignment = { panels: Panel[]; revision: number; options: Option[] };
@@ -26,6 +35,7 @@ export function ProfilesPage() {
   const [preset, setPreset] = useState<number>();
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [expanded, setExpanded] = useState<number>();
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -56,9 +66,12 @@ export function ProfilesPage() {
     setError('');
     setNotice('');
     const { panels, revision } = assignment;
-    if (panels.some((panel) => !panel.name.trim() || !panel.point || (panel.view === 'gauge' &&
-        (!Number.isFinite(panel.minimum) || !Number.isFinite(panel.maximum) || !(panel.minimum! < panel.maximum!))))) {
-      setError('Adj nevet és adatpontot minden panelnek. A műszernél a maximum legyen nagyobb a minimumnál.');
+    const invalidIndex = panels.findIndex((panel) => !panel.name.trim() || !panel.point ||
+      (panel.view === 'gauge' &&
+        (!Number.isFinite(panel.minimum) || !Number.isFinite(panel.maximum) || !(panel.minimum! < panel.maximum!))));
+    if (invalidIndex !== -1) {
+      setExpanded(invalidIndex);
+      setError('Adj nevet és adatpontot minden panelnek. A műszer maximuma pedig legyen nagyobb a minimumnál.');
       return;
     }
     setSaving(true);
@@ -89,6 +102,7 @@ export function ProfilesPage() {
                 onChange={({ value }) => {
                   if (value !== machine) {
                     setAssignment(undefined);
+                    setExpanded(undefined);
                     setPreset(undefined);
                     setError('');
                     setNotice('');
@@ -118,7 +132,10 @@ export function ProfilesPage() {
                     }
                   }}>Javasolt panelek hozzáadása</Button>
                   <Button type="button" icon="plus" disabled={saving}
-                    onClick={() => changePanels([...assignment.panels, { name: '', point: '', view: 'chart' }])}>
+                    onClick={() => {
+                      setExpanded(assignment.panels.length);
+                      changePanels([...assignment.panels, { name: '', point: '', view: 'chart' }]);
+                    }}>
                     Panel hozzáadása
                   </Button>
                 </div>
@@ -129,45 +146,62 @@ export function ProfilesPage() {
                   const next = [...panels];
                   next.splice(index, 1);
                   next.splice(index + offset, 0, panel);
+                  setExpanded(index + offset);
                   changePanels(next);
                 };
                 const unavailable = panel.point && !points.some((point) => point.value === panel.point);
                 return (
-                  <section key={index} className={styles.formCard}>
+                  <section key={index} className={styles.formCard} style={{ paddingBlock: 8 }}>
                     <div className={styles.formFooter}>
-                      <h3>{index + 1}. {panel.name || 'Új panel'}</h3>
+                      <Button type="button" variant="secondary" aria-expanded={expanded === index}
+                        onClick={() => setExpanded(expanded === index ? undefined : index)}>
+                        {index + 1}. {panel.name || 'Új panel'} · {views.find(({ value }) => value === panel.view)?.label}
+                        {!panel.point && ' · Nincs adatpont'}
+                      </Button>
                       <div className={styles.actions}>
                         <Button type="button" variant="secondary" disabled={saving || index === 0} onClick={() => move(-1)}>Fel</Button>
                         <Button type="button" variant="secondary" disabled={saving || index === panels.length - 1} onClick={() => move(1)}>Le</Button>
                         <Button type="button" variant="destructive" disabled={saving}
-                          onClick={() => changePanels(panels.filter((_, i) => i !== index))}>Eltávolítás</Button>
+                          onClick={() => {
+                            setExpanded(undefined);
+                            changePanels(panels.filter((_, i) => i !== index));
+                          }}>Eltávolítás</Button>
                       </div>
                     </div>
-                    <Field label="Megjelenített név" htmlFor={`panel-name-${index}`}>
-                      <Input id={`panel-name-${index}`} disabled={saving} maxLength={120} value={panel.name}
-                        onChange={(event) => update({ name: event.currentTarget.value })} />
-                    </Field>
-                    <div className={styles.grid}>
-                      <Field label="Adatpont" htmlFor={`panel-point-${index}`}>
-                        <Combobox id={`panel-point-${index}`} disabled={saving} value={panel.point || null}
-                          options={unavailable ? [{ value: panel.point, label: 'A mentett adatpont nem érhető el' }, ...points] : points}
-                          onChange={({ value, label }) => update({ point: value, name: panel.name || label || value })} />
+                    {expanded === index && <div style={{ paddingTop: 12 }}>
+                      <Field label="Megjelenített név" htmlFor={`panel-name-${index}`}>
+                        <Input id={`panel-name-${index}`} disabled={saving} maxLength={120} value={panel.name}
+                          onChange={(event) => update({ name: event.currentTarget.value })} />
                       </Field>
-                      <Field label="Nézet" htmlFor={`panel-view-${index}`}>
-                        <Combobox id={`panel-view-${index}`} disabled={saving} value={panel.view} options={views}
-                          onChange={({ value }) => update({ view: value })} />
-                      </Field>
-                    </div>
-                    {panel.view === 'gauge' && (
                       <div className={styles.grid}>
-                        {(['minimum', 'maximum'] as const).map((bound) => (
-                          <Field key={bound} label={bound === 'minimum' ? 'Minimum' : 'Maximum'} htmlFor={`panel-${bound}-${index}`}>
-                            <Input id={`panel-${bound}-${index}`} type="number" step="any" disabled={saving} value={panel[bound] ?? ''}
-                              onChange={(event) => update({ [bound]: event.currentTarget.value === '' ? undefined : event.currentTarget.valueAsNumber })} />
-                          </Field>
-                        ))}
+                        <Field label="Adatpont" htmlFor={`panel-point-${index}`}>
+                          <Combobox id={`panel-point-${index}`} disabled={saving} value={panel.point || null}
+                            options={unavailable ? [{ value: panel.point, label: 'A mentett adatpont nem érhető el' }, ...points] : points}
+                            onChange={({ value, label }) => update({ point: value, name: panel.name || label || value })} />
+                        </Field>
+                        <Field label="Nézet" htmlFor={`panel-view-${index}`}>
+                          <Combobox id={`panel-view-${index}`} disabled={saving} value={panel.view} options={views}
+                            onChange={({ value }) => update({ view: value })} />
+                        </Field>
                       </div>
-                    )}
+                      {panel.view === 'chart' && (
+                        <Field label="Vonalszín" htmlFor={`panel-color-${index}`}>
+                          <Combobox id={`panel-color-${index}`} disabled={saving}
+                            value={panel.color ?? null} options={chartColors} placeholder="Automatikus"
+                            isClearable onChange={(option) => update({ color: option?.value })} />
+                        </Field>
+                      )}
+                      {panel.view === 'gauge' && (
+                        <div className={styles.grid}>
+                          {(['minimum', 'maximum'] as const).map((bound) => (
+                            <Field key={bound} label={bound === 'minimum' ? 'Minimum' : 'Maximum'} htmlFor={`panel-${bound}-${index}`}>
+                              <Input id={`panel-${bound}-${index}`} type="number" step="any" disabled={saving} value={panel[bound] ?? ''}
+                                onChange={(event) => update({ [bound]: event.currentTarget.value === '' ? undefined : event.currentTarget.valueAsNumber })} />
+                            </Field>
+                          ))}
+                        </div>
+                      )}
+                    </div>}
                   </section>
                 );
               })}

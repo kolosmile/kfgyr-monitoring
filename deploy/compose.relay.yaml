@@ -23,7 +23,7 @@ services:
       options: {max-size: 20m, max-file: "5"}
 
   relay:
-    image: ${KFGYR_RELAY_RUNNER_IMAGE:-ghcr.io/kolosmile/kfgyr-relay-runner:0.4.2}
+    image: ${KFGYR_RELAY_RUNNER_IMAGE:-ghcr.io/kolosmile/kfgyr-relay-runner:0.4.3}
     environment:
       KFGYR_CONFIG_DIR: /var/lib/kfgyr-monitoring
       KFGYR_RUNNER_API_TOKEN: ${KFGYR_RUNNER_API_TOKEN:?}

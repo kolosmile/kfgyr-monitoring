@@ -60,17 +60,18 @@ def unit_label(units):
 MAPPED = f"""
 WITH machine AS ({MACHINE}), catalog(profile, slot, label) AS (VALUES {CATALOG})
 SELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,
- p.view, p.minimum, p.maximum, {unit_label("n.props->>'units'")} AS units
+ p.view, p.minimum, p.maximum, p.color, {unit_label("n.props->>'units'")} AS units
 FROM machine m
 CROSS JOIN LATERAL (
  SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,
         (item->>'minimum')::double precision AS minimum,
-        (item->>'maximum')::double precision AS maximum, ord AS position
+        (item->>'maximum')::double precision AS maximum,
+        item->>'color' AS color, ord AS position
  FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)
       WITH ORDINALITY AS items(item, ord)
  UNION ALL
  SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,
-        NULL, NULL, row_number() OVER (ORDER BY c.slot)
+        NULL, NULL, NULL, row_number() OVER (ORDER BY c.slot)
  FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'
 ) p
 JOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'
@@ -104,7 +105,7 @@ def signal_panel(id, view, kind):
     if view == "chart":
         query = f"""
 WITH mapped AS ({MAPPED})
-SELECT h.time, {NUMBER} AS "Érték"
+SELECT h.time, {NUMBER} AS value, coalesce('Érték · ' || m.color, 'Érték') AS metric
 FROM mapped m JOIN raw.history h ON h.node_id=m.device AND h.dataitem_id=m.signal
 WHERE {scope} AND $__timeFilter(h.time) ORDER BY 1
 """
@@ -113,6 +114,15 @@ WHERE {scope} AND $__timeFilter(h.time) ORDER BY 1
         query = f'WITH mapped AS ({MAPPED}) SELECT {value} AS "Érték" FROM mapped m {LATEST} WHERE {scope}'
     result = panel(id, f"${{{view}:text}}", kind, 0, 0, 12, 4, sql=query,
                    fmt="time_series" if view == "chart" else "table")
+    if view == "chart":
+        result["overrides"] = [
+            {"matcher": {"id": "byName", "options": f"Érték · {color}"},
+             "properties": [
+                 {"id": "color", "value": {"mode": "fixed", "fixedColor": color}},
+                 {"id": "displayName", "value": "Érték"},
+             ]}
+            for color in ("blue", "green", "orange", "red", "purple", "yellow")
+        ]
     if kind in ("stat", "gauge"):
         result["options"]["reduceOptions"] = {"calcs": ["lastNotNull"], "fields": "/^Érték$/", "values": False}
     if view == "state":
@@ -156,7 +166,7 @@ def panel_resource(source, defaults=None):
     return resource("Panel", id=source["id"], title=source["title"], description="", links=[],
                     data=resource("QueryGroup", queries=queries, transformations=transforms, queryOptions={}),
                     vizConfig={**resource("VizConfig", options=source["options"],
-                                         fieldConfig={"defaults": defaults or {}, "overrides": []}),
+                                         fieldConfig={"defaults": defaults or {}, "overrides": source.get("overrides", [])}),
                                "group": source["type"], "version": ""})
 
 
