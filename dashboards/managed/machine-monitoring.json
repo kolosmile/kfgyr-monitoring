@@ -453,7 +453,7 @@
           {
             "kind": "RowsLayoutRow",
             "spec": {
-              "title": "Állapot",
+              "title": "Áttekintés",
               "collapse": false,
               "hideHeader": false,
               "conditionalRendering": {
@@ -467,7 +467,7 @@
                       "spec": {
                         "variable": "configured_views",
                         "operator": "matches",
-                        "value": "(^|,)state(,|$)"
+                        "value": "(^|,)(state|value)(,|$)"
                       }
                     }
                   ]
@@ -476,10 +476,11 @@
               "layout": {
                 "kind": "AutoGridLayout",
                 "spec": {
-                  "maxColumnCount": 2,
-                  "columnWidthMode": "standard",
+                  "maxColumnCount": 6,
+                  "columnWidthMode": "custom",
+                  "columnWidth": 200,
                   "rowHeightMode": "custom",
-                  "rowHeight": 120,
+                  "rowHeight": 88,
                   "fillScreen": false,
                   "items": [
                     {
@@ -492,46 +493,26 @@
                         "repeat": {
                           "mode": "variable",
                           "value": "state"
+                        },
+                        "conditionalRendering": {
+                          "kind": "ConditionalRenderingGroup",
+                          "spec": {
+                            "visibility": "show",
+                            "condition": "and",
+                            "items": [
+                              {
+                                "kind": "ConditionalRenderingVariable",
+                                "spec": {
+                                  "variable": "configured_views",
+                                  "operator": "matches",
+                                  "value": "(^|,)(state)(,|$)"
+                                }
+                              }
+                            ]
+                          }
                         }
                       }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "kind": "RowsLayoutRow",
-            "spec": {
-              "title": "Aktuális érték",
-              "collapse": false,
-              "hideHeader": false,
-              "conditionalRendering": {
-                "kind": "ConditionalRenderingGroup",
-                "spec": {
-                  "visibility": "show",
-                  "condition": "and",
-                  "items": [
-                    {
-                      "kind": "ConditionalRenderingVariable",
-                      "spec": {
-                        "variable": "configured_views",
-                        "operator": "matches",
-                        "value": "(^|,)value(,|$)"
-                      }
-                    }
-                  ]
-                }
-              },
-              "layout": {
-                "kind": "AutoGridLayout",
-                "spec": {
-                  "maxColumnCount": 2,
-                  "columnWidthMode": "standard",
-                  "rowHeightMode": "custom",
-                  "rowHeight": 120,
-                  "fillScreen": false,
-                  "items": [
+                    },
                     {
                       "kind": "AutoGridLayoutItem",
                       "spec": {
@@ -542,6 +523,23 @@
                         "repeat": {
                           "mode": "variable",
                           "value": "value"
+                        },
+                        "conditionalRendering": {
+                          "kind": "ConditionalRenderingGroup",
+                          "spec": {
+                            "visibility": "show",
+                            "condition": "and",
+                            "items": [
+                              {
+                                "kind": "ConditionalRenderingVariable",
+                                "spec": {
+                                  "variable": "configured_views",
+                                  "operator": "matches",
+                                  "value": "(^|,)(value)(,|$)"
+                                }
+                              }
+                            ]
+                          }
                         }
                       }
                     }
@@ -567,7 +565,7 @@
                       "spec": {
                         "variable": "configured_views",
                         "operator": "matches",
-                        "value": "(^|,)gauge(,|$)"
+                        "value": "(^|,)(gauge)(,|$)"
                       }
                     }
                   ]
@@ -576,10 +574,11 @@
               "layout": {
                 "kind": "AutoGridLayout",
                 "spec": {
-                  "maxColumnCount": 2,
-                  "columnWidthMode": "standard",
+                  "maxColumnCount": 5,
+                  "columnWidthMode": "custom",
+                  "columnWidth": 220,
                   "rowHeightMode": "custom",
-                  "rowHeight": 185,
+                  "rowHeight": 155,
                   "fillScreen": false,
                   "items": [
                     {
@@ -592,6 +591,23 @@
                         "repeat": {
                           "mode": "variable",
                           "value": "gauge"
+                        },
+                        "conditionalRendering": {
+                          "kind": "ConditionalRenderingGroup",
+                          "spec": {
+                            "visibility": "show",
+                            "condition": "and",
+                            "items": [
+                              {
+                                "kind": "ConditionalRenderingVariable",
+                                "spec": {
+                                  "variable": "configured_views",
+                                  "operator": "matches",
+                                  "value": "(^|,)(gauge)(,|$)"
+                                }
+                              }
+                            ]
+                          }
                         }
                       }
                     }
@@ -617,7 +633,7 @@
                       "spec": {
                         "variable": "configured_views",
                         "operator": "matches",
-                        "value": "(^|,)chart(,|$)"
+                        "value": "(^|,)(chart)(,|$)"
                       }
                     }
                   ]
@@ -627,7 +643,8 @@
                 "kind": "AutoGridLayout",
                 "spec": {
                   "maxColumnCount": 2,
-                  "columnWidthMode": "standard",
+                  "columnWidthMode": "custom",
+                  "columnWidth": 420,
                   "rowHeightMode": "custom",
                   "rowHeight": 260,
                   "fillScreen": false,
@@ -642,6 +659,23 @@
                         "repeat": {
                           "mode": "variable",
                           "value": "chart"
+                        },
+                        "conditionalRendering": {
+                          "kind": "ConditionalRenderingGroup",
+                          "spec": {
+                            "visibility": "show",
+                            "condition": "and",
+                            "items": [
+                              {
+                                "kind": "ConditionalRenderingVariable",
+                                "spec": {
+                                  "variable": "configured_views",
+                                  "operator": "matches",
+                                  "value": "(^|,)(chart)(,|$)"
+                                }
+                              }
+                            ]
+                          }
                         }
                       }
                     }

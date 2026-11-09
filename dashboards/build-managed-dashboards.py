@@ -180,23 +180,27 @@ SELECT label AS __text, panel_key AS __value FROM (
 """, repeat=True)
 
 
-def view_row(id, view, title, height):
+def show_views(pattern):
+    return resource("ConditionalRenderingGroup", visibility="show", condition="and", items=[
+        resource("ConditionalRenderingVariable", variable="configured_views", operator="matches",
+                 value=f"(^|,)({pattern})(,|$)")
+    ])
+
+
+def view_row(title, height, columns, width, panels):
     return resource("RowsLayoutRow", title=title, collapse=False, hideHeader=False,
-                    conditionalRendering=resource("ConditionalRenderingGroup", visibility="show", condition="and", items=[
-                        resource("ConditionalRenderingVariable", variable="configured_views", operator="matches",
-                                 value=f"(^|,){view}(,|$)")
-                    ]),
-                    layout=resource("AutoGridLayout", maxColumnCount=2, columnWidthMode="standard",
-                                    rowHeightMode="custom", rowHeight=height, fillScreen=False, items=[
+                    conditionalRendering=show_views("|".join(view for _, view in panels)),
+                    layout=resource("AutoGridLayout", maxColumnCount=columns, columnWidthMode="custom",
+                                    columnWidth=width, rowHeightMode="custom", rowHeight=height,
+                                    fillScreen=False, items=[
                         resource("AutoGridLayoutItem", element={"kind": "ElementReference", "name": f"panel-{id}"},
-                                 repeat={"mode": "variable", "value": view})
+                                 repeat={"mode": "variable", "value": view},
+                                 conditionalRendering=show_views(view))
+                        for id, view in panels
                     ]))
 
 
-views = [
-    ("state", "stat", "Állapot", 120), ("value", "stat", "Aktuális érték", 120),
-    ("gauge", "gauge", "Műszerek", 185), ("chart", "timeseries", "Grafikonok", 260),
-]
+views = [("state", "stat"), ("value", "stat"), ("gauge", "gauge"), ("chart", "timeseries")]
 quick_points = panel(6, "Gyors adatpontnézegető", "table", 0, 0, 24, 10, sql=f"""
 WITH machine AS ({MACHINE})
 SELECT n.props->>'path' AS "Adatpont", latest.value #>> '{{}}' AS "Érték",
@@ -235,11 +239,13 @@ monitoring = {
         ],
         "elements": {
             **{f"panel-{id}": panel_resource(signal_panel(id, view, kind))
-               for id, (view, kind, _, _) in enumerate(views, 2)},
+               for id, (view, kind) in enumerate(views, 2)},
             "panel-6": panel_resource(quick_points, {"custom": {"filterable": True}}),
         },
         "layout": resource("RowsLayout", rows=[
-            *[view_row(id, view, title, height) for id, (view, _, title, height) in enumerate(views, 2)],
+            view_row("Áttekintés", 88, 6, 200, [(2, "state"), (3, "value")]),
+            view_row("Műszerek", 155, 5, 220, [(4, "gauge")]),
+            view_row("Grafikonok", 260, 2, 420, [(5, "chart")]),
             resource("RowsLayoutRow", hideHeader=True, layout=resource("GridLayout", items=[
                 resource("GridLayoutItem", x=0, y=0, width=24, height=10,
                          element={"kind": "ElementReference", "name": "panel-6"})
