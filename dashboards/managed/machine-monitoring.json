@@ -386,6 +386,64 @@
             "version": ""
           }
         }
+      },
+      "panel-6": {
+        "kind": "Panel",
+        "spec": {
+          "id": 6,
+          "title": "Gyors adatpontnézegető",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "spec": {
+                        "rawSql": "\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n)\nSELECT n.props->>'path' AS \"Adatpont\", latest.value #>> '{}' AS \"Érték\",\n       n.props->>'units' AS \"Egység\", latest.time AS \"Utolsó minta\"\nFROM machine m\nJOIN raw.nodes n ON n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias'\n AND n.props->>'deviceId'=m.props->>'deviceId'\nLEFT JOIN LATERAL (\n SELECT h.value, h.time FROM raw.history h\n WHERE h.node_id=m.node_id AND h.dataitem_id=n.node_id\n ORDER BY h.time DESC LIMIT 1\n) latest ON true\nORDER BY 1\n",
+                        "format": "table",
+                        "rawQuery": true,
+                        "editorMode": "code"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "timescaledb"
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "spec": {
+              "options": {
+                "showHeader": true,
+                "enablePagination": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "custom": {
+                    "filterable": true
+                  }
+                },
+                "overrides": []
+              }
+            },
+            "group": "table",
+            "version": ""
+          }
+        }
       }
     },
     "layout": {
@@ -584,6 +642,32 @@
                         "repeat": {
                           "mode": "variable",
                           "value": "chart"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "hideHeader": true,
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 24,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-6"
                         }
                       }
                     }

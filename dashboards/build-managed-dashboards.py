@@ -128,7 +128,7 @@ def data_query(**spec):
             "datasource": {"name": DS["uid"]}}
 
 
-def panel_resource(source):
+def panel_resource(source, defaults=None):
     queries = [
         resource("PanelQuery", refId=target["refId"], hidden=False,
                  query=data_query(**{key: target[key] for key in ("rawSql", "format", "rawQuery", "editorMode")}))
@@ -141,7 +141,7 @@ def panel_resource(source):
     return resource("Panel", id=source["id"], title=source["title"], description="", links=[],
                     data=resource("QueryGroup", queries=queries, transformations=transforms, queryOptions={}),
                     vizConfig={**resource("VizConfig", options=source["options"],
-                                         fieldConfig={"defaults": {}, "overrides": []}),
+                                         fieldConfig={"defaults": defaults or {}, "overrides": []}),
                                "group": source["type"], "version": ""})
 
 
@@ -197,6 +197,23 @@ views = [
     ("state", "stat", "Állapot", 120), ("value", "stat", "Aktuális érték", 120),
     ("gauge", "gauge", "Műszerek", 185), ("chart", "timeseries", "Grafikonok", 260),
 ]
+quick_points = panel(6, "Gyors adatpontnézegető", "table", 0, 0, 24, 10, sql=f"""
+WITH machine AS ({MACHINE})
+SELECT n.props->>'path' AS "Adatpont", latest.value #>> '{{}}' AS "Érték",
+       n.props->>'units' AS "Egység", latest.time AS "Utolsó minta"
+FROM machine m
+JOIN raw.nodes n ON n.props->>'node_type'='DataItem'
+ AND n.props->>'agentAlias'=m.props->>'agentAlias'
+ AND n.props->>'deviceId'=m.props->>'deviceId'
+LEFT JOIN LATERAL (
+ SELECT h.value, h.time FROM raw.history h
+ WHERE h.node_id=m.node_id AND h.dataitem_id=n.node_id
+ ORDER BY h.time DESC LIMIT 1
+) latest ON true
+ORDER BY 1
+""")
+quick_points["options"] = {"showHeader": True, "enablePagination": True}
+
 monitoring = {
     "apiVersion": "dashboard.grafana.app/v2",
     "kind": "Dashboard",
@@ -216,10 +233,18 @@ monitoring = {
                 ("Monitoring beállítása", f"{APP}/profiles", "cog"),
             ]
         ],
-        "elements": {f"panel-{id}": panel_resource(signal_panel(id, view, kind))
-                     for id, (view, kind, _, _) in enumerate(views, 2)},
-        "layout": resource("RowsLayout", rows=[view_row(id, view, title, height)
-                                               for id, (view, _, title, height) in enumerate(views, 2)]),
+        "elements": {
+            **{f"panel-{id}": panel_resource(signal_panel(id, view, kind))
+               for id, (view, kind, _, _) in enumerate(views, 2)},
+            "panel-6": panel_resource(quick_points, {"custom": {"filterable": True}}),
+        },
+        "layout": resource("RowsLayout", rows=[
+            *[view_row(id, view, title, height) for id, (view, _, title, height) in enumerate(views, 2)],
+            resource("RowsLayoutRow", hideHeader=True, layout=resource("GridLayout", items=[
+                resource("GridLayoutItem", x=0, y=0, width=24, height=10,
+                         element={"kind": "ElementReference", "name": "panel-6"})
+            ])),
+        ]),
         "variables": [
             query_variable("machine", "SELECT props->>'path' AS __text, node_id::text AS __value "
                            "FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 1", visible=True),
