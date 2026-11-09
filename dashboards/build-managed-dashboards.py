@@ -102,7 +102,7 @@ WHERE {scope} AND $__timeFilter(h.time) ORDER BY 1
         result["options"]["reduceOptions"] = {"calcs": ["lastNotNull"], "fields": "/^Érték$/", "values": False}
     if view == "state":
         result["options"].update(textMode="value", graphMode="none", colorMode="none")
-    else:
+    elif view in ("value", "gauge"):
         config_sql = f"""
 WITH mapped AS ({MAPPED})
 SELECT CASE WHEN nullif(m.units, '') IS NOT NULL THEN 'suffix:' || m.units END AS unit
@@ -155,11 +155,23 @@ def query_variable(name, sql, *, repeat=False, visible=False):
 
 
 def view_variable(view):
+    unit_label = """
+      CASE units
+        WHEN 'MILLIMETER' THEN 'mm'
+        WHEN 'MILLIMETER/SECOND' THEN 'mm/s'
+        WHEN 'REVOLUTION/MINUTE' THEN 'rpm'
+        WHEN 'DEGREE' THEN '°'
+        WHEN 'DEGREE/SECOND' THEN '°/s'
+        WHEN 'PERCENT' THEN '%'
+        ELSE nullif(units, '')
+      END
+    """
+    unit_suffix = f" || coalesce(' (' || ({unit_label}) || ')', '')" if view == "chart" else ""
     # An explicit option replaces the old selection even when the new machine has no panels of this type.
     return query_variable(view, f"""
 WITH mapped AS ({MAPPED}), selected AS (SELECT * FROM mapped WHERE view={quote(view)})
 SELECT label AS __text, panel_key AS __value FROM (
- SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS label,
+ SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END{unit_suffix} AS label,
         device::text || ':' || position::text AS panel_key, position
  FROM selected
  UNION ALL
