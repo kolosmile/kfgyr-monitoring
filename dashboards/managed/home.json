@@ -16,16 +16,16 @@
     {
       "id": 1,
       "type": "text",
-      "title": "KFGyR · MONITORING",
+      "title": "",
       "gridPos": {
         "x": 0,
         "y": 0,
         "w": 24,
-        "h": 3
+        "h": 4
       },
       "options": {
         "mode": "markdown",
-        "content": "## Gépmonitoring\nGépek élő állapota, mérési adatai és adatexportja egy helyen."
+        "content": "## Gépmonitoring központ\nKövesd a gépek élő állapotát, és nyisd meg a mérési adatokat."
       }
     },
     {
@@ -34,7 +34,7 @@
       "title": "GÉPMONITORING",
       "gridPos": {
         "x": 0,
-        "y": 3,
+        "y": 4,
         "w": 16,
         "h": 6
       },
@@ -49,7 +49,7 @@
       "title": "ADATEXPORT",
       "gridPos": {
         "x": 16,
-        "y": 3,
+        "y": 4,
         "w": 8,
         "h": 6
       },
@@ -61,31 +61,31 @@
     {
       "id": 4,
       "type": "text",
-      "title": "01 · GÉP BEKÖTÉSE",
+      "title": "",
       "gridPos": {
         "x": 0,
-        "y": 9,
+        "y": 10,
         "w": 12,
         "h": 4
       },
       "options": {
         "mode": "markdown",
-        "content": "### Agent és gép csatlakoztatása\nAdd meg az MTConnect-agent elérését, majd kapcsold be a gép adatgyűjtését.\n\n[Agentek és gépek megnyitása →](/a/kfgyr-monitoring-app/agents)"
+        "content": "### 01 · Gép bekötése\nKapcsold be az agentet és a gép adatgyűjtését. [**Beállítás →**](/a/kfgyr-monitoring-app/agents)"
       }
     },
     {
       "id": 5,
       "type": "text",
-      "title": "02 · PROFIL ÉS JELEK",
+      "title": "",
       "gridPos": {
         "x": 12,
-        "y": 9,
+        "y": 10,
         "w": 12,
         "h": 4
       },
       "options": {
         "mode": "markdown",
-        "content": "### Gépprofil beállítása\nAz első adatbeolvasás után válaszd ki a profilt és a megjelenítendő jeleket.\n\n[Gépprofilok megnyitása →](/a/kfgyr-monitoring-app/profiles)"
+        "content": "### 02 · Profil és jelek\nAz első beolvasás után válaszd ki a gépprofilt. [**Beállítás →**](/a/kfgyr-monitoring-app/profiles)"
       }
     }
   ],
