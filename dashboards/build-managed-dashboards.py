@@ -60,14 +60,20 @@ JOIN raw.nodes n ON n.node_id::text=m.signals->>c.slot AND n.props->>'node_type'
  AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'
 """
 home = dashboard("kfgyr-home", "KFGyR · Kezdőlap", [
-    panel(1, "KFGyR Monitoring", "text", 0, 0, 24, 4,
-          "## Gépmonitoring\nVálassz feladatot a folytatáshoz."),
-    panel(2, "Gépmonitoring", "text", 0, 4, 8, 6,
-          "### [Gépek megtekintése](/d/kfgyr-machine-monitoring)\nÉlő állapot és a kiválasztott gép hozzárendelt jelei."),
-    panel(3, "Adatexport", "text", 8, 4, 8, 6,
-          f"### [CSV export]({APP}/export)\nVálassz gépet, adatpontot és időszakot."),
-    panel(4, "Gépbeállítások · admin", "text", 16, 4, 8, 6,
-          f"### [Agentek és gépek]({APP}/agents)\nGépek bekötése.\n\n[Profil és jelek beállítása]({APP}/profiles)."),
+    panel(1, "KFGyR · MONITORING", "text", 0, 0, 24, 3,
+          "## Gépmonitoring\nGépek élő állapota, mérési adatai és adatexportja egy helyen."),
+    panel(2, "GÉPMONITORING", "text", 0, 3, 16, 6,
+          "### Gépek megtekintése\nVálassz gépet a legfrissebb állapot, a hozzárendelt jelek és azok idősorainak megtekintéséhez.\n\n"
+          "[**Gépmonitoring megnyitása →**](/d/kfgyr-machine-monitoring)"),
+    panel(3, "ADATEXPORT", "text", 16, 3, 8, 6,
+          f"### Mérési adatok letöltése\nÁllítsd össze az exportot gép, adatpont és időszak alapján.\n\n"
+          f"[**Export összeállítása →**]({APP}/export)"),
+    panel(4, "01 · GÉP BEKÖTÉSE", "text", 0, 9, 12, 4,
+          f"### Agent és gép csatlakoztatása\nAdd meg az MTConnect-agent elérését, majd kapcsold be a gép adatgyűjtését.\n\n"
+          f"[Agentek és gépek megnyitása →]({APP}/agents)"),
+    panel(5, "02 · PROFIL ÉS JELEK", "text", 12, 9, 12, 4,
+          f"### Gépprofil beállítása\nAz első adatbeolvasás után válaszd ki a profilt és a megjelenítendő jeleket.\n\n"
+          f"[Gépprofilok megnyitása →]({APP}/profiles)"),
 ])
 summary = panel(2, "Kiválasztott gép", "table", 0, 3, 24, 4, sql=f"""
 WITH machine AS ({MACHINE})

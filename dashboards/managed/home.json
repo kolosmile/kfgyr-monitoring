@@ -16,61 +16,76 @@
     {
       "id": 1,
       "type": "text",
-      "title": "KFGyR Monitoring",
+      "title": "KFGyR · MONITORING",
       "gridPos": {
         "x": 0,
         "y": 0,
         "w": 24,
-        "h": 4
+        "h": 3
       },
       "options": {
         "mode": "markdown",
-        "content": "## Gépmonitoring\nVálassz feladatot a folytatáshoz."
+        "content": "## Gépmonitoring\nGépek élő állapota, mérési adatai és adatexportja egy helyen."
       }
     },
     {
       "id": 2,
       "type": "text",
-      "title": "Gépmonitoring",
+      "title": "GÉPMONITORING",
       "gridPos": {
         "x": 0,
-        "y": 4,
-        "w": 8,
+        "y": 3,
+        "w": 16,
         "h": 6
       },
       "options": {
         "mode": "markdown",
-        "content": "### [Gépek megtekintése](/d/kfgyr-machine-monitoring)\nÉlő állapot és a kiválasztott gép hozzárendelt jelei."
+        "content": "### Gépek megtekintése\nVálassz gépet a legfrissebb állapot, a hozzárendelt jelek és azok idősorainak megtekintéséhez.\n\n[**Gépmonitoring megnyitása →**](/d/kfgyr-machine-monitoring)"
       }
     },
     {
       "id": 3,
       "type": "text",
-      "title": "Adatexport",
+      "title": "ADATEXPORT",
       "gridPos": {
-        "x": 8,
-        "y": 4,
+        "x": 16,
+        "y": 3,
         "w": 8,
         "h": 6
       },
       "options": {
         "mode": "markdown",
-        "content": "### [CSV export](/a/kfgyr-monitoring-app/export)\nVálassz gépet, adatpontot és időszakot."
+        "content": "### Mérési adatok letöltése\nÁllítsd össze az exportot gép, adatpont és időszak alapján.\n\n[**Export összeállítása →**](/a/kfgyr-monitoring-app/export)"
       }
     },
     {
       "id": 4,
       "type": "text",
-      "title": "Gépbeállítások · admin",
+      "title": "01 · GÉP BEKÖTÉSE",
       "gridPos": {
-        "x": 16,
-        "y": 4,
-        "w": 8,
-        "h": 6
+        "x": 0,
+        "y": 9,
+        "w": 12,
+        "h": 4
       },
       "options": {
         "mode": "markdown",
-        "content": "### [Agentek és gépek](/a/kfgyr-monitoring-app/agents)\nGépek bekötése.\n\n[Profil és jelek beállítása](/a/kfgyr-monitoring-app/profiles)."
+        "content": "### Agent és gép csatlakoztatása\nAdd meg az MTConnect-agent elérését, majd kapcsold be a gép adatgyűjtését.\n\n[Agentek és gépek megnyitása →](/a/kfgyr-monitoring-app/agents)"
+      }
+    },
+    {
+      "id": 5,
+      "type": "text",
+      "title": "02 · PROFIL ÉS JELEK",
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 12,
+        "h": 4
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Gépprofil beállítása\nAz első adatbeolvasás után válaszd ki a profilt és a megjelenítendő jeleket.\n\n[Gépprofilok megnyitása →](/a/kfgyr-monitoring-app/profiles)"
       }
     }
   ],
