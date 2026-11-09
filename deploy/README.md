@@ -25,3 +25,19 @@ Külön gépeken a Grafana hoston hozd létre a Grafana Compose által külsők�
 4. Ellenőrizd a runner aktív revízióját, a mérések folytonosságát, az adatforrást, a Kezdőlapot és a plugin menüpontokat. Visszaállításhoz állítsd le a két új projektet, és az elmentett régi konfigurációval indítsd el a korábbi szolgáltatást ugyanazokon a köteteken.
 
 A külön projektek leállításához használd a `stop` parancsot. A megosztott hálózatot az adatgyűjtési projekt hozza létre, és a Grafana is csatlakozik hozzá.
+
+
+### Helyi plugin csomag, ha a release URL nem érhető el a szerverről
+
+A GitHub release ZIP a GitHub asset API-ján keresztül is letölthető. Ellenőrizd a kiadott SHA-256 értéket, bontsd ki a csomagot, és tedd futtathatóvá a `gpx_*` backend binárisokat. A Grafana Compose-hoz adj helyi override fájlt. A példában a kibontott könyvtár a `deploy` mappa melletti `plugin-dist` alatt van.
+
+```yaml
+services:
+  grafana:
+    environment:
+      GF_PLUGINS_PREINSTALL_SYNC: ''
+    volumes:
+      - ../plugin-dist/kfgyr-monitoring-app:/var/lib/grafana/plugins/kfgyr-monitoring-app:ro
+```
+
+Mindig add meg ugyanazokat az override fájlokat a Compose indításakor és újralétrehozásakor. Meglévő kötet átvételéhez az override-ban a megfelelő kötetekhez megadható az `external: true` beállítás. A régi Compose projektet csak visszaállításkor indítsd újra, miután a két új projekt leállt.
