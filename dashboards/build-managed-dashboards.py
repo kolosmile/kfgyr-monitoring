@@ -42,10 +42,25 @@ CATALOG = ", ".join(
     f"({quote(profile)}, {quote(slot)}, {quote(label)})"
     for profile, info in PROFILES.items() for slot, label in info["signals"].items()
 )
+def unit_label(units):
+    return f"""
+      CASE {units}
+        WHEN 'MILLIMETER' THEN 'mm'
+        WHEN 'MILLIMETER/SECOND' THEN 'mm/s'
+        WHEN 'REVOLUTION/MINUTE' THEN 'rpm'
+        WHEN 'DEGREE' THEN '°'
+        WHEN 'DEGREE/SECOND' THEN '°/s'
+        WHEN 'CELSIUS' THEN '°C'
+        WHEN 'PERCENT' THEN '%'
+        ELSE nullif({units}, '')
+      END
+    """
+
+
 MAPPED = f"""
 WITH machine AS ({MACHINE}), catalog(profile, slot, label) AS (VALUES {CATALOG})
 SELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,
- p.view, p.minimum, p.maximum, n.props->>'units' AS units
+ p.view, p.minimum, p.maximum, {unit_label("n.props->>'units'")} AS units
 FROM machine m
 CROSS JOIN LATERAL (
  SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,
@@ -155,18 +170,7 @@ def query_variable(name, sql, *, repeat=False, visible=False):
 
 
 def view_variable(view):
-    unit_label = """
-      CASE units
-        WHEN 'MILLIMETER' THEN 'mm'
-        WHEN 'MILLIMETER/SECOND' THEN 'mm/s'
-        WHEN 'REVOLUTION/MINUTE' THEN 'rpm'
-        WHEN 'DEGREE' THEN '°'
-        WHEN 'DEGREE/SECOND' THEN '°/s'
-        WHEN 'PERCENT' THEN '%'
-        ELSE nullif(units, '')
-      END
-    """
-    unit_suffix = f" || coalesce(' (' || ({unit_label}) || ')', '')" if view == "chart" else ""
+    unit_suffix = " || coalesce(' (' || units || ')', '')" if view == "chart" else ""
     # An explicit option replaces the old selection even when the new machine has no panels of this type.
     return query_variable(view, f"""
 WITH mapped AS ({MAPPED}), selected AS (SELECT * FROM mapped WHERE view={quote(view)})
@@ -204,7 +208,7 @@ views = [("state", "stat"), ("value", "stat"), ("gauge", "gauge"), ("chart", "ti
 quick_points = panel(6, "Gyors adatpontnézegető", "table", 0, 0, 24, 10, sql=f"""
 WITH machine AS ({MACHINE})
 SELECT n.props->>'path' AS "Adatpont", latest.value #>> '{{}}' AS "Érték",
-       n.props->>'units' AS "Egység", latest.time AS "Utolsó minta"
+       {unit_label("n.props->>'units'")} AS "Egység", latest.time AS "Utolsó minta"
 FROM machine m
 JOIN raw.nodes n ON n.props->>'node_type'='DataItem'
  AND n.props->>'agentAlias'=m.props->>'agentAlias'
