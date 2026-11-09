@@ -1,0 +1,80 @@
+{
+  "uid": "kfgyr-home",
+  "title": "KFGyR · Kezdőlap",
+  "schemaVersion": 41,
+  "editable": false,
+  "tags": [
+    "KFGyR"
+  ],
+  "timezone": "Europe/Budapest",
+  "refresh": "",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "KFGyR Monitoring",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 4
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "## Gépmonitoring\nVálassz feladatot a folytatáshoz."
+      }
+    },
+    {
+      "id": 2,
+      "type": "text",
+      "title": "Gépmonitoring",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 8,
+        "h": 6
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### [Gépek megtekintése](/d/kfgyr-machine-monitoring)\nÉlő állapot és a kiválasztott gép hozzárendelt jelei."
+      }
+    },
+    {
+      "id": 3,
+      "type": "text",
+      "title": "Adatexport",
+      "gridPos": {
+        "x": 8,
+        "y": 4,
+        "w": 8,
+        "h": 6
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### [CSV export](/a/kfgyr-monitoring-app/export)\nVálassz gépet, adatpontot és időszakot."
+      }
+    },
+    {
+      "id": 4,
+      "type": "text",
+      "title": "Gépbeállítások · admin",
+      "gridPos": {
+        "x": 16,
+        "y": 4,
+        "w": 8,
+        "h": 6
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### [Agentek és gépek](/a/kfgyr-monitoring-app/agents)\nGépek bekötése.\n\n[Profil és jelek beállítása](/a/kfgyr-monitoring-app/profiles)."
+      }
+    }
+  ],
+  "templating": {
+    "list": []
+  }
+}

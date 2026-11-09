@@ -3,3 +3,4 @@ uvicorn==0.54.0
 pydantic==2.14.1
 PyYAML==6.0.3
 defusedxml==0.7.1
+psycopg[binary]==3.2.13

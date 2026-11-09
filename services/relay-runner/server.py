@@ -19,9 +19,10 @@ import uvicorn
 
 from configuration import MAX_BODY, Problem, RollbackRequest, SaveRequest, Store
 from discovery import Discovery, Policy, probe
+import monitoring
 from runner import Runner, healthcheck, read_json
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 logger = logging.getLogger("kfgyr.runner")
 
 
@@ -82,6 +83,8 @@ def create_app(directory=None, token=None, policy=None, supervise=True):
         nonlocal runner, thread
         watcher = None
         if supervise:
+            if os.getenv("KFGYR_MONITORING_DB_ENABLED") == "1":
+                await asyncio.to_thread(monitoring.migrate)
             runner = Runner()
             thread = threading.Thread(target=runner.run, kwargs={"install_signals": False}, daemon=True)
             thread.start()
@@ -127,6 +130,18 @@ def create_app(directory=None, token=None, policy=None, supervise=True):
     def health():
         alive = not supervise or (thread is not None and thread.is_alive())
         return JSONResponse({"status": "ok" if alive else "failed", "version": VERSION}, status_code=200 if alive else 503)
+
+    @app.get("/v1/machines")
+    def machines():
+        return monitoring.list_machines()
+
+    @app.get("/v1/machine-monitoring/{machine}")
+    def machine_monitoring(machine: str):
+        return monitoring.get_assignment(machine)
+
+    @app.put("/v1/machine-monitoring")
+    def put_machine_monitoring(body: monitoring.Assignment, user=Depends(actor)):
+        return monitoring.save_assignment(body, user)
 
     @app.get("/v1/config")
     def get_config():

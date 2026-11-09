@@ -70,3 +70,10 @@ A plugin a nagyobb repository `plugins/kfgyr-monitoring-app/` alkönyvtárába k
 - [Grafana Docker környezet](https://grafana.com/docs/grafana/latest/setup-grafana/configure-docker/)
 - [Plugin aláírás](https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin)
 - [Relay indulási kód](https://github.com/Ladder99/ladder99/blob/main/services/relay/src/index.js)
+
+
+## Felületek a 0.4.0 kiadásban
+
+A plugin az **Agentek és gépek**, **Gépprofilok** és **Adatexport** oldalakat adja. Az első kettő admin műveleteit a Go backend a runner API-ra továbbítja. Az export a Grafana olvasási adatforrását használja, és közvetlen CSV-letöltést ad. A **Kezdőlap** és a **Gépmonitoring** külön gyári dashboard. A Grafana Compose provisionálja őket a repóban tárolt fájlokból.
+
+A profilkatalógus és a gyári kártyák közös forrását, valamint az alkalmazott határokat a [döntési dokumentum](monitoring-decisions.md) írja le.

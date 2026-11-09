@@ -37,3 +37,12 @@ A kézi probe és konfiguráció kizárólag engedélyezett hostneveket/CIDR-eke
 Csak a runner csatolja a konfiguráció volume-ját. A `revisions/*.yaml` és auditfájlok változatok, a `desired.json` a kért verzió, a `runner-state.json` az utolsó stabil és az elutasított verzió. A `status.json` technikai állapot. A manifest és a YAML SHA-256 ellenőrzése megelőzi a használatot. A relay a saját privát aktív YAML-ját olvassa.
 
 A sikeres mentés nem azonos a sikeres adatgyűjtéssel. A runner az indulási időszak túlélését ellenőrzi; az agentkapcsolat és a beérkező adatok a dashboardon ellenőrzendők. Hibás induláskor a korábbi stabil verzió fut, miközben a felület jelzi a kért verzió hibáját.
+
+
+## Gépmonitoring konfiguráció
+
+- `GET /v1/machines` felsorolja az adatbázisban ismert gépeket és a beépített profilkatalógust.
+- `GET /v1/machine-monitoring/{machine}` visszaadja a gép profilját, a mentett jel-hozzárendeléseket, a revíziót és a kiválasztható adatpontokat.
+- `PUT /v1/machine-monitoring` mezői `machine`, `profile`, `signals` és `revision`. Új beállításnál a revízió nulla. Párhuzamos módosításnál a régi revízió 409 választ kap. A runner csak a kiválasztott géphez tartozó adatpontot fogad el.
+
+Ezek a műveletek a runner hitelesített API-ján futnak. A mentés a normál PostgreSQL konfigurációs táblát módosítja. A relay adatgyűjtési konfigurációját és alkalmazott revízióját külön kezeli.

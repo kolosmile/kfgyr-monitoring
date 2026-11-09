@@ -1,0 +1,98 @@
+name: kfgyr-grafana
+services:
+  grafana:
+    image: grafana/grafana-oss:13.0.2
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?}
+      GF_SECURITY_COOKIE_SECURE: "false"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_AUTH_BASIC_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_ANONYMOUS_ORG_NAME: ${KFGYR_VIEWER_ORG_NAME:-Main Org.}
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/kfgyr-dashboards/home.json
+      GF_USERS_DEFAULT_THEME: dark
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_PLUGINS_PREINSTALL_SYNC: ${KFGYR_PLUGIN_INSTALL:-kfgyr-monitoring-app@0.4.0@https://github.com/kolosmile/kfgyr-monitoring/releases/download/plugin-v0.4.0/kfgyr-monitoring-app-0.4.0.zip}
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: kfgyr-monitoring-app
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:?}
+      KFGYR_RUNNER_API_TOKEN: ${KFGYR_RUNNER_API_TOKEN:?}
+      KFGYR_ADMIN_ORG_ID: ${KFGYR_ADMIN_ORG_ID:-1}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../dashboards/managed:/var/lib/kfgyr-dashboards:ro
+    configs:
+      - source: managed_dashboards
+        target: /etc/grafana/provisioning/dashboards/kfgyr.yaml
+      - source: grafana_datasource
+        target: /etc/grafana/provisioning/datasources/timescaledb.yaml
+      - source: monitoring_app
+        target: /etc/grafana/provisioning/plugins/kfgyr-monitoring.yaml
+    restart: unless-stopped
+    logging:
+      options: {max-size: 20m, max-file: "5"}
+
+networks:
+  default:
+    name: ${KFGYR_DATA_NETWORK:-kfgyr-data}
+    external: true
+
+volumes:
+  grafana-data:
+    name: ${KFGYR_GRAFANA_VOLUME:-kfgyr-grafana-data}
+
+configs:
+  managed_dashboards:
+    content: |
+      apiVersion: 1
+      providers:
+        - name: KFGyR
+          orgId: ${KFGYR_ADMIN_ORG_ID:-1}
+          folder: KFGyR
+          folderUid: kfgyr-managed
+          type: file
+          disableDeletion: true
+          allowUiUpdates: false
+          options:
+            path: /var/lib/kfgyr-dashboards
+  grafana_datasource:
+    content: |
+      apiVersion: 1
+      datasources:
+        - name: Ladder99 TimescaleDB
+          uid: timescaledb
+          type: grafana-postgresql-datasource
+          orgId: ${KFGYR_ADMIN_ORG_ID:-1}
+          access: proxy
+          url: ${KFGYR_DB_ADDRESS:-db:5432}
+          user: grafana_reader
+          isDefault: true
+          editable: false
+          jsonData:
+            database: ladder99
+            sslmode: ${KFGYR_DB_SSLMODE:-disable}
+            postgresVersion: 1600
+            timescaledb: true
+            timeInterval: 10s
+            maxOpenConns: 5
+            maxIdleConns: 2
+            connMaxLifetime: 14400
+          secureJsonData:
+            password: $$GRAFANA_DB_PASSWORD
+  monitoring_app:
+    content: |
+      apiVersion: 1
+      apps:
+        - type: kfgyr-monitoring-app
+          org_id: ${KFGYR_ADMIN_ORG_ID:-1}
+          disabled: false
+          pinned: true
+          jsonData:
+            runnerUrl: ${KFGYR_RUNNER_URL:-http://relay:8091}
+            adminOrgId: ${KFGYR_ADMIN_ORG_ID:-1}
+            managedByDeployment: true
+          secureJsonData:
+            runnerToken: $$KFGYR_RUNNER_API_TOKEN

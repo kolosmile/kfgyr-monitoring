@@ -1,0 +1,171 @@
+{
+  "uid": "kfgyr-machine-monitoring",
+  "title": "KFGyR · Gépmonitoring",
+  "schemaVersion": 41,
+  "editable": false,
+  "tags": [
+    "KFGyR"
+  ],
+  "timezone": "Europe/Budapest",
+  "refresh": "",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "[Kezdőlap](/d/kfgyr-home) · [Adatexport](/a/kfgyr-monitoring-app/export) · [Gépprofilok](/a/kfgyr-monitoring-app/profiles)\n\nA grafikonok a géphez hozzárendelt számértékű jelekhez jelennek meg. A szöveges jelek a táblában olvashatók."
+      }
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Kiválasztott gép",
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 24,
+        "h": 4
+      },
+      "options": {},
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n)\nSELECT m.props->>'path' AS \"Gép\", CASE m.profile WHEN 'generic' THEN 'Általános' WHEN 'mill' THEN 'Marógép' WHEN 'lathe' THEN 'Eszterga' ELSE coalesce(m.profile, 'Általános') END AS \"Profil\",\n (SELECT h.time FROM raw.history h WHERE h.node_id=m.node_id ORDER BY h.time DESC LIMIT 1)\n AS \"Utolsó minta\"\nFROM machine m\n",
+          "editorMode": "code",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Hozzárendelt jelek",
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 24,
+        "h": 7
+      },
+      "options": {},
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, c.slot, c.label, n.props->>'units' AS units\nFROM machine m JOIN catalog c ON c.profile=coalesce(m.profile,'generic')\nJOIN raw.nodes n ON n.node_id::text=m.signals->>c.slot AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n)\nSELECT m.label AS \"Jel\", h.value #>> '{}' AS \"Érték\", m.units AS \"Mértékegység\",\n h.time AS \"Időpont\"\nFROM mapped m LEFT JOIN LATERAL (\n SELECT time, value FROM raw.history WHERE node_id=m.device AND dataitem_id=m.signal\n ORDER BY time DESC LIMIT 1\n) h ON true ORDER BY 1\n",
+          "editorMode": "code",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "${slot:text}",
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 12,
+        "h": 8
+      },
+      "options": {},
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, c.slot, c.label, n.props->>'units' AS units\nFROM machine m JOIN catalog c ON c.profile=coalesce(m.profile,'generic')\nJOIN raw.nodes n ON n.node_id::text=m.signals->>c.slot AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n)\nSELECT h.time, CASE WHEN (h.value #>> '{}') ~ '^[+-]?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$'\n THEN (h.value #>> '{}')::double precision END AS value\nFROM mapped m JOIN raw.history h ON h.node_id=m.device AND h.dataitem_id=m.signal\nWHERE m.slot IN (${slot:sqlstring}) AND $__timeFilter(h.time) ORDER BY 1\n",
+          "editorMode": "code",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          }
+        }
+      ],
+      "repeat": "slot",
+      "repeatDirection": "h",
+      "maxPerRow": 2
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "machine",
+        "label": "Gép",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "timescaledb"
+        },
+        "query": "SELECT props->>'path' AS __text, node_id::text AS __value FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 1",
+        "definition": "SELECT props->>'path' AS __text, node_id::text AS __value FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 1",
+        "refresh": 1,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "hide": 0,
+        "skipUrlSync": false,
+        "current": {},
+        "options": []
+      },
+      {
+        "name": "slot",
+        "label": "Jel",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "timescaledb"
+        },
+        "query": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, c.slot, c.label, n.props->>'units' AS units\nFROM machine m JOIN catalog c ON c.profile=coalesce(m.profile,'generic')\nJOIN raw.nodes n ON n.node_id::text=m.signals->>c.slot AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT label AS __text, slot AS __value FROM mapped WHERE slot NOT IN ('execution') ORDER BY 1",
+        "definition": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, c.slot, c.label, n.props->>'units' AS units\nFROM machine m JOIN catalog c ON c.profile=coalesce(m.profile,'generic')\nJOIN raw.nodes n ON n.node_id::text=m.signals->>c.slot AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT label AS __text, slot AS __value FROM mapped WHERE slot NOT IN ('execution') ORDER BY 1",
+        "refresh": 1,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "hide": 2,
+        "skipUrlSync": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "options": []
+      }
+    ]
+  }
+}

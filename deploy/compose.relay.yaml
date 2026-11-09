@@ -1,0 +1,66 @@
+name: kfgyr-relay
+services:
+  db:
+    image: timescale/timescaledb:2.30.1-pg16
+    environment:
+      POSTGRES_DB: ladder99
+      POSTGRES_USER: ladder99
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:?}
+    volumes:
+      - timescaledb-data:/var/lib/postgresql/data
+    configs:
+      - source: grafana_db_init
+        target: /docker-entrypoint-initdb.d/090-grafana-reader.sql
+    healthcheck:
+      test: [CMD, pg_isready, -U, ladder99, -d, ladder99]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+    logging:
+      options: {max-size: 20m, max-file: "5"}
+
+  relay:
+    image: ${KFGYR_RELAY_RUNNER_IMAGE:-ghcr.io/kolosmile/kfgyr-relay-runner:0.4.0}
+    environment:
+      KFGYR_CONFIG_DIR: /var/lib/kfgyr-monitoring
+      KFGYR_RUNNER_API_TOKEN: ${KFGYR_RUNNER_API_TOKEN:?}
+      KFGYR_HOST_ROUTES_FILE: /run/host-network/route
+      KFGYR_AGENT_ALLOWED_HOSTS: ${KFGYR_AGENT_ALLOWED_HOSTS:-demo.mtconnect.org}
+      KFGYR_AGENT_ALLOWED_NETWORKS: ${KFGYR_AGENT_ALLOWED_NETWORKS:-192.168.88.0/24,100.64.0.0/10}
+      KFGYR_DISCOVERY_NETWORKS: ${KFGYR_DISCOVERY_NETWORKS:-}
+      KFGYR_RELAY_STARTUP_SECONDS: "10"
+      KFGYR_MONITORING_DB_ENABLED: "1"
+      FETCH_INTERVAL: "2000"
+      FETCH_COUNT: "1000"
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: ladder99
+      PGUSER: ladder99
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - relay-config:/var/lib/kfgyr-monitoring
+      - /proc/1/net/route:/run/host-network/route:ro
+    expose: ["8091"]
+    depends_on:
+      db: {condition: service_healthy}
+    stop_grace_period: 35s
+    restart: unless-stopped
+    logging:
+      options: {max-size: 20m, max-file: "5"}
+
+networks:
+  default:
+    name: ${KFGYR_DATA_NETWORK:-kfgyr-data}
+
+volumes:
+  timescaledb-data:
+    name: ${KFGYR_DB_VOLUME:-kfgyr-timescaledb-data}
+  relay-config:
+    name: ${KFGYR_RELAY_VOLUME:-kfgyr-relay-config}
+
+configs:
+  grafana_db_init:
+    file: ./grafana-reader.psql

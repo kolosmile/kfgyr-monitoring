@@ -15,7 +15,7 @@ RUN python3 -m venv /opt/kfgyr/venv \
     && mkdir -p /run/kfgyr-relay /var/lib/kfgyr-monitoring \
     && chown 1000:0 /run/kfgyr-relay /var/lib/kfgyr-monitoring \
     && chmod 2770 /run/kfgyr-relay /var/lib/kfgyr-monitoring
-COPY runner.py server.py configuration.py discovery.py /opt/kfgyr/
+COPY runner.py server.py configuration.py discovery.py monitoring.py profiles.json /opt/kfgyr/
 WORKDIR /usr/app
 ENV KFGYR_CONFIG_DIR=/var/lib/kfgyr-monitoring \
     KFGYR_RELAY_RUNTIME_DIR=/run/kfgyr-relay \

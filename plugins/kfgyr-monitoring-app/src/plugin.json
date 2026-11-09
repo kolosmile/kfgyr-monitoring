@@ -14,6 +14,20 @@
       "addToNav": true,
       "defaultNav": true,
       "role": "Admin"
+    },
+    {
+      "type": "page",
+      "name": "Gépprofilok",
+      "path": "/a/kfgyr-monitoring-app/profiles",
+      "addToNav": true,
+      "role": "Admin"
+    },
+    {
+      "type": "page",
+      "name": "Adatexport",
+      "path": "/a/kfgyr-monitoring-app/export",
+      "addToNav": true,
+      "role": "Viewer"
     }
   ],
   "info": {
@@ -21,7 +35,11 @@
     "author": {
       "name": "KFGyR"
     },
-    "keywords": ["mtconnect", "monitoring", "relay"],
+    "keywords": [
+      "mtconnect",
+      "monitoring",
+      "relay"
+    ],
     "logos": {
       "small": "img/logo.svg",
       "large": "img/logo.svg"
@@ -32,7 +50,7 @@
         "url": "https://github.com/kolosmile/kfgyr-monitoring"
       }
     ],
-    "version": "0.3.0",
+    "version": "0.4.0",
     "updated": "2026-10-19"
   },
   "dependencies": {

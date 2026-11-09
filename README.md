@@ -21,8 +21,12 @@ A repository tartalmazza a Grafana app plugin forrását, a relay indítóprogra
 
 A konfiguráció alkalmazásával járó relay-újraindítás átmeneti adatgyűjtési kiesést okozhat. A teljes eseménytörténet pótlását külön kell megoldani, ha az üzemi követelmény.
 
+A kiadott telepítés két Compose projektből áll. A relay projekt futtatja az adatgyűjtőt és a TimescaleDB-t. A Grafana projekt betölti a plugint, a csak olvasó adatforrást és a kezelt dashboardokat. A gépprofilokat és jel-hozzárendeléseket az admin a pluginban állítja be, a runner API menti őket.
+
 ## Dokumentáció
 
+- [Gépadatok CSV-exportja a Grafana appból](docs/data-export.md)
+- [A dashboardok, profilok és telepítés architekturális döntései](docs/monitoring-decisions.md)
 - [A Grafana app plugin felépítése és telepítése](docs/grafana-app.md)
 - [Agentek és gépek kezelése a Grafana felületén](docs/agent-management-ui.md)
 - [Windowsos pluginfejlesztés és a hivatalos projektváz eredete](docs/windows-development.md)

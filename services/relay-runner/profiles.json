@@ -1,0 +1,28 @@
+{
+  "generic": {
+    "label": "Általános",
+    "signals": {
+      "feedrate": "Előtolás",
+      "execution": "Végrehajtási állapot"
+    }
+  },
+  "mill": {
+    "label": "Marógép",
+    "signals": {
+      "spindle": "Orsófordulat",
+      "feedrate": "Előtolás",
+      "x": "X pozíció",
+      "y": "Y pozíció",
+      "z": "Z pozíció"
+    }
+  },
+  "lathe": {
+    "label": "Eszterga",
+    "signals": {
+      "spindle": "Orsófordulat",
+      "x": "X pozíció",
+      "z": "Z pozíció",
+      "turret": "Revolverpozíció"
+    }
+  }
+}

@@ -20,6 +20,8 @@ import (
 
 const maxBody = 1024 * 1024
 
+var machinePath = regexp.MustCompile(`^machine-monitoring/[a-zA-Z0-9_-]{1,128}$`)
+
 var jobPath = regexp.MustCompile(`^discovery/[a-f0-9]{24}$`)
 
 type Settings struct {
@@ -68,14 +70,16 @@ func allowed(path, method string) bool {
 	switch path {
 	case "config":
 		return method == "GET" || method == "PUT"
-	case "status", "networks":
+	case "machine-monitoring":
+		return method == "PUT"
+	case "status", "networks", "machines":
 		return method == "GET"
 	case "probe", "rollback":
 		return method == "POST"
 	case "discovery":
 		return method == "POST" || method == "GET"
 	}
-	return jobPath.MatchString(path) && (method == "GET" || method == "DELETE")
+	return (machinePath.MatchString(path) && method == "GET") || jobPath.MatchString(path) && (method == "GET" || method == "DELETE")
 }
 
 func (a *App) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
