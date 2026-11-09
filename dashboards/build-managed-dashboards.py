@@ -207,7 +207,7 @@ JOIN raw.nodes n ON n.props->>'node_type'='DataItem'
  AND n.props->>'deviceId'=m.props->>'deviceId'
 LEFT JOIN LATERAL (
  SELECT h.value, h.time FROM raw.history h
- WHERE h.node_id=m.node_id AND h.dataitem_id=n.node_id
+ WHERE h.node_id=m.node_id AND h.dataitem_id=n.node_id AND $__timeFilter(h.time)
  ORDER BY h.time DESC LIMIT 1
 ) latest ON true
 ORDER BY 1
