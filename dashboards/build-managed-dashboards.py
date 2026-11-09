@@ -60,21 +60,16 @@ JOIN raw.nodes n ON n.node_id::text=m.signals->>c.slot AND n.props->>'node_type'
  AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'
 """
 home = dashboard("kfgyr-home", "KFGyR · Kezdőlap", [
-    panel(1, "", "text", 0, 0, 24, 4,
-          "## Gépmonitoring központ\nKövesd a gépek élő állapotát, és nyisd meg a mérési adatokat."),
-    panel(2, "GÉPMONITORING", "text", 0, 4, 16, 6,
-          "### Gépek megtekintése\nVálassz gépet a legfrissebb állapot, a hozzárendelt jelek és azok idősorainak megtekintéséhez.\n\n"
-          "[**Gépmonitoring megnyitása →**](/d/kfgyr-machine-monitoring)"),
-    panel(3, "ADATEXPORT", "text", 16, 4, 8, 6,
-          f"### Mérési adatok letöltése\nÁllítsd össze az exportot gép, adatpont és időszak alapján.\n\n"
-          f"[**Export összeállítása →**]({APP}/export)"),
-    panel(4, "", "text", 0, 10, 12, 4,
-          f"### 01 · Gép bekötése\nKapcsold be az agentet és a gép adatgyűjtését. "
-          f"[**Beállítás →**]({APP}/agents)"),
-    panel(5, "", "text", 12, 10, 12, 4,
-          f"### 02 · Profil és jelek\nAz első beolvasás után válaszd ki a gépprofilt. "
-          f"[**Beállítás →**]({APP}/profiles)"),
+    panel(1, "", "text", 0, 0, 12, 4,
+          "# [📈 Gépmonitoring](/d/kfgyr-machine-monitoring)"),
+    panel(2, "", "text", 12, 0, 12, 4,
+          f"# [📥 Adatexport]({APP}/export)"),
+    panel(3, "", "text", 0, 4, 12, 4,
+          f"# [🔌 Agentek és gépek]({APP}/agents)"),
+    panel(4, "", "text", 12, 4, 12, 4,
+          f"# [⚙️ Gépprofilok]({APP}/profiles)"),
 ])
+home["timepicker"] = {"hidden": True}
 summary = panel(2, "Kiválasztott gép", "table", 0, 3, 24, 4, sql=f"""
 WITH machine AS ({MACHINE})
 SELECT m.props->>'path' AS "Gép", {PROFILE_LABELS} AS "Profil",

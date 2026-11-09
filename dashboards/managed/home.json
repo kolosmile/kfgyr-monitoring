@@ -20,42 +20,42 @@
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 24,
+        "w": 12,
         "h": 4
       },
       "options": {
         "mode": "markdown",
-        "content": "## Gépmonitoring központ\nKövesd a gépek élő állapotát, és nyisd meg a mérési adatokat."
+        "content": "# [📈 Gépmonitoring](/d/kfgyr-machine-monitoring)"
       }
     },
     {
       "id": 2,
       "type": "text",
-      "title": "GÉPMONITORING",
+      "title": "",
       "gridPos": {
-        "x": 0,
-        "y": 4,
-        "w": 16,
-        "h": 6
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 4
       },
       "options": {
         "mode": "markdown",
-        "content": "### Gépek megtekintése\nVálassz gépet a legfrissebb állapot, a hozzárendelt jelek és azok idősorainak megtekintéséhez.\n\n[**Gépmonitoring megnyitása →**](/d/kfgyr-machine-monitoring)"
+        "content": "# [📥 Adatexport](/a/kfgyr-monitoring-app/export)"
       }
     },
     {
       "id": 3,
       "type": "text",
-      "title": "ADATEXPORT",
+      "title": "",
       "gridPos": {
-        "x": 16,
+        "x": 0,
         "y": 4,
-        "w": 8,
-        "h": 6
+        "w": 12,
+        "h": 4
       },
       "options": {
         "mode": "markdown",
-        "content": "### Mérési adatok letöltése\nÁllítsd össze az exportot gép, adatpont és időszak alapján.\n\n[**Export összeállítása →**](/a/kfgyr-monitoring-app/export)"
+        "content": "# [🔌 Agentek és gépek](/a/kfgyr-monitoring-app/agents)"
       }
     },
     {
@@ -63,33 +63,21 @@
       "type": "text",
       "title": "",
       "gridPos": {
-        "x": 0,
-        "y": 10,
-        "w": 12,
-        "h": 4
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "### 01 · Gép bekötése\nKapcsold be az agentet és a gép adatgyűjtését. [**Beállítás →**](/a/kfgyr-monitoring-app/agents)"
-      }
-    },
-    {
-      "id": 5,
-      "type": "text",
-      "title": "",
-      "gridPos": {
         "x": 12,
-        "y": 10,
+        "y": 4,
         "w": 12,
         "h": 4
       },
       "options": {
         "mode": "markdown",
-        "content": "### 02 · Profil és jelek\nAz első beolvasás után válaszd ki a gépprofilt. [**Beállítás →**](/a/kfgyr-monitoring-app/profiles)"
+        "content": "# [⚙️ Gépprofilok](/a/kfgyr-monitoring-app/profiles)"
       }
     }
   ],
   "templating": {
     "list": []
+  },
+  "timepicker": {
+    "hidden": true
   }
 }
