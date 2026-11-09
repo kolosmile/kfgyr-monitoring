@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { config, getBackendSrv, PluginPage } from '@grafana/runtime';
-import { Alert, Button, Field, Input } from '@grafana/ui';
+import { Alert, Badge, Button, Combobox, Field, Input, MultiCombobox, useStyles2 } from '@grafana/ui';
 import { lastValueFrom } from 'rxjs';
+import { getStyles } from '../components/styles';
 import { errorText } from '../types';
 
 type Option = { id: string; label: string };
@@ -10,7 +11,6 @@ type Frame = { schema: { fields: Array<{ name: string }> }; data: { values: Cell
 const datasource = { uid: 'timescaledb', type: 'grafana-postgresql-datasource' };
 const devices = "SELECT node_id::text, props->>'path' FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 2";
 const literal = (value: string) => "'" + value.replace(/'/g, "''") + "'";
-const selected = (element: HTMLSelectElement) => Array.from(element.selectedOptions, (item) => item.value);
 const ids = (values: string[]) => values.map(literal).join(', ');
 
 async function query(sql: string) {
@@ -47,6 +47,8 @@ function csvCell(value: Cell, delimiter: string) {
 }
 
 export function ExportPage() {
+  const styles = useStyles2(getStyles);
+  const [loadingMachines, setLoadingMachines] = useState(true);
   const [machines, setMachines] = useState<Option[]>([]);
   const [machine, setMachine] = useState<string[]>([]);
   const [signals, setSignals] = useState<Option[]>([]);
@@ -61,7 +63,12 @@ export function ExportPage() {
   const [loadingSignals, setLoadingSignals] = useState(false);
 
   useEffect(() => {
-    options(devices).then(setMachines).catch((err) => setError(errorText(err)));
+    let active = true;
+    options(devices)
+      .then((items) => active && setMachines(items))
+      .catch((err) => active && setError(errorText(err)))
+      .finally(() => active && setLoadingMachines(false));
+    return () => { active = false; };
   }, []);
   useEffect(() => {
     if (!machine.length) {
@@ -73,7 +80,13 @@ export function ExportPage() {
       FROM raw.nodes n JOIN raw.nodes d ON d.props->>'node_type'='Device'
       AND d.props->>'agentAlias'=n.props->>'agentAlias' AND d.props->>'deviceId'=n.props->>'deviceId'
       WHERE n.props->>'node_type'='DataItem' AND d.node_id::text IN (${ids(machine)}) ORDER BY 2`)
-      .then((items) => active && setSignals(items))
+      .then((items) => {
+        if (active) {
+          setSignals(items);
+          const available = new Set(items.map(({ id }) => id));
+          setSignal((previous) => previous.filter((id) => available.has(id)));
+        }
+      })
       .catch((err) => active && setError(errorText(err)))
       .finally(() => active && setLoadingSignals(false));
     return () => { active = false; };
@@ -133,54 +146,103 @@ export function ExportPage() {
     }
   }
 
+  const signalDisabled = busy || loadingSignals || !signals.length;
+  const ready = machine.length > 0 && signal.length > 0 && !signalDisabled;
   return (
     <PluginPage pageNav={{ text: 'Adatexport' }}>
-      <p>Válaszd ki a gépeket, az adatpontokat és a helyi idő szerint megadott időszakot. A fájl UTC-időbélyegeket tartalmaz.</p>
-      {error && <Alert title={error} severity="error" />}
-      {status && <Alert title={status} severity={status.startsWith('Részleges') ? 'warning' : 'info'} />}
-      <form onSubmit={download} style={{ maxWidth: 860 }}>
-        <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0 }}>
-          <Field label="Gépek" htmlFor="export-machines">
-            <select id="export-machines" multiple value={machine} onChange={(event) => {
-              setMachine(selected(event.target));
-              setSignal([]);
-              setSignals([]);
-              setLoadingSignals(false);
-            }}>
-              {machines.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-            </select>
-          </Field>
-          <Field label={loadingSignals ? 'Adatpontok betöltése…' : 'Adatpontok'} htmlFor="export-signals">
-            <select id="export-signals" multiple value={signal} onChange={(event) => setSignal(selected(event.target))}>
-              {signals.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-            </select>
-          </Field>
-          <Button type="button" variant="secondary" disabled={!signals.length} onClick={() => setSignal(signals.map((item) => item.id))}>
-            Összes adatpont kiválasztása
-          </Button>
-          <Field label="Kezdőidő" htmlFor="export-from">
-            <Input id="export-from" type="datetime-local" value={from} onChange={(event) => setFrom(event.currentTarget.value)} required />
-          </Field>
-          <Field label="Végidő" htmlFor="export-to">
-            <Input id="export-to" type="datetime-local" value={to} onChange={(event) => setTo(event.currentTarget.value)} required />
-          </Field>
-          <Field label="Sorkorlát" htmlFor="export-limit">
-            <select id="export-limit" value={limit} onChange={(event) => setLimit(Number(event.target.value))}>
-              {[1000, 10000, 50000, 100000].map((value) => <option key={value}>{value}</option>)}
-            </select>
-          </Field>
-          <Field label="Formátum" htmlFor="export-format">
-            <select id="export-format" value={format} onChange={(event) => setFormat(event.target.value)}>
-              <option value="csv">CSV (vesszővel)</option>
-              <option value="excel">Excelhez formázott CSV (pontosvesszővel)</option>
-            </select>
-          </Field>
-          <Button type="submit" disabled={!machine.length || !signal.length || busy}>
-            {busy ? 'Export készül…' : 'CSV letöltése'}
-          </Button>
-          <p><a href={config.appSubUrl + '/d/kfgyr-home'}>Vissza a kezdőlapra</a></p>
-        </fieldset>
-      </form>
+      <div className={styles.page}>
+        <form onSubmit={download} className={styles.form}>
+          {error && <Alert title="Az adatexport művelete sikertelen" severity="error">{error}</Alert>}
+          <section className={styles.formCard} aria-labelledby="export-source-heading">
+            <div className={styles.formFooter}>
+              <h3 id="export-source-heading">Gépek és adatpontok</h3>
+              <Badge text={`${machine.length} gép · ${signal.length} adatpont`} color="blue" />
+            </div>
+            <p className={styles.note}>Több gépet és adatpontot is kiválaszthatsz. A listákban név szerint kereshetsz.</p>
+            <Field label="Gépek" htmlFor="export-machines">
+              <MultiCombobox
+                id="export-machines"
+                value={machine}
+                options={machines.map(({ id, label }) => ({ value: id, label }))}
+                placeholder="Keress vagy válassz gépeket…"
+                noOptionsMessage="Nincs választható gép"
+                loading={loadingMachines}
+                disabled={busy || loadingMachines}
+                onChange={(items) => {
+                  const next = items.map(({ value }) => value);
+                  setMachine(next);
+                  setSignals([]);
+                  setLoadingSignals(next.length > 0);
+                  if (!next.length) {
+                    setSignal([]);
+                  }
+                  setError('');
+                  setStatus('');
+                }}
+              />
+            </Field>
+            <Field label="Adatpontok" htmlFor="export-signals">
+              <MultiCombobox
+                id="export-signals"
+                value={loadingSignals ? [] : signal}
+                options={signals.map(({ id, label }) => ({ value: id, label }))}
+                placeholder={!machine.length ? 'Válassz először gépet' : loadingSignals ? 'Adatpontok betöltése…' : 'Keress adatpontot…'}
+                noOptionsMessage="Nincs találat"
+                loading={loadingSignals}
+                disabled={signalDisabled}
+                onChange={(items) => {
+                  setSignal(items.map(({ value }) => value));
+                  setStatus('');
+                }}
+              />
+            </Field>
+            {machine.length > 0 && !loadingSignals && !signals.length && !error && (
+              <Alert title="A kiválasztott gépekhez még nincs adatpont." severity="info" />
+            )}
+            <div className={styles.actions}>
+              <Button type="button" variant="secondary" disabled={signalDisabled || signal.length === signals.length}
+                onClick={() => { setSignal(signals.map(({ id }) => id)); setStatus(''); }}>
+                Összes adatpont kijelölése
+              </Button>
+              <Button type="button" variant="secondary" disabled={signalDisabled || !signal.length}
+                onClick={() => { setSignal([]); setStatus(''); }}>
+                Kijelölés törlése
+              </Button>
+            </div>
+          </section>
+          <section className={styles.formCard} aria-labelledby="export-options-heading">
+            <h3 id="export-options-heading">Időszak és fájlformátum</h3>
+            <p className={styles.note}>Az időszakot helyi időben add meg. A CSV UTC-időbélyegeket tartalmaz.</p>
+            <div className={styles.grid}>
+              <Field label="Kezdőidő" htmlFor="export-from">
+                <Input id="export-from" type="datetime-local" value={from} disabled={busy} required
+                  onChange={(event) => { setFrom(event.currentTarget.value); setStatus(''); }} />
+              </Field>
+              <Field label="Végidő" htmlFor="export-to">
+                <Input id="export-to" type="datetime-local" value={to} disabled={busy} required
+                  onChange={(event) => { setTo(event.currentTarget.value); setStatus(''); }} />
+              </Field>
+              <Field label="Sorkorlát" htmlFor="export-limit">
+                <Combobox id="export-limit" value={limit} disabled={busy}
+                  options={[1000, 10000, 50000, 100000].map((value) => ({ value, label: value.toLocaleString('hu-HU') }))}
+                  onChange={({ value }) => { setLimit(value); setStatus(''); }} />
+              </Field>
+              <Field label="Formátum" htmlFor="export-format">
+                <Combobox id="export-format" value={format} disabled={busy}
+                  options={[{ value: 'csv', label: 'CSV (vesszővel)' }, { value: 'excel', label: 'Excelhez formázott CSV (pontosvesszővel)' }]}
+                  onChange={({ value }) => { setFormat(value); setStatus(''); }} />
+              </Field>
+            </div>
+            {status && <Alert title={status} severity={status.startsWith('Részleges') ? 'warning' : 'info'} />}
+            <div className={styles.footer}>
+              <Button type="submit" icon={busy ? 'spinner' : 'download-alt'} disabled={!ready}>
+                {busy ? 'Export készül…' : 'CSV letöltése'}
+              </Button>
+            </div>
+          </section>
+          <a href={config.appSubUrl + '/d/kfgyr-home'}>Vissza a kezdőlapra</a>
+        </form>
+      </div>
     </PluginPage>
   );
 }

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { PluginPage } from '@grafana/runtime';
-import { Alert, Button, Field, Spinner } from '@grafana/ui';
+import { Alert, Badge, Button, Combobox, Field, Spinner, useStyles2 } from '@grafana/ui';
 import { api } from '../api';
+import { getStyles } from '../components/styles';
 import { errorText } from '../types';
 
 type Option = { id: string; label: string };
@@ -9,6 +10,7 @@ type Catalog = { profiles: Record<string, { label: string; signals: Record<strin
 type Assignment = { profile: string; signals: Record<string, string>; revision: number; options: Option[] };
 
 export function ProfilesPage() {
+  const styles = useStyles2(getStyles);
   const [catalog, setCatalog] = useState<Catalog>();
   const [machine, setMachine] = useState('');
   const [assignment, setAssignment] = useState<Assignment>();
@@ -52,53 +54,113 @@ export function ProfilesPage() {
   }
 
   const profile = assignment && catalog?.profiles[assignment.profile];
+  const signalOptions = assignment?.options.map(({ id, label }) => ({ value: id, label })) ?? [];
+  const slots = Object.entries(profile?.signals ?? {});
+  const assignedCount = slots.filter(([slot]) => signalOptions.some(({ value }) => value === assignment?.signals[slot])).length;
   return (
     <PluginPage pageNav={{ text: 'Gépprofilok' }}>
-      <p>Az Agentek és gépek oldalon kösd be a gépet. A gép az első beolvasás után választható itt.</p>
-      {error && <Alert severity="error" title={error} />}
-      {notice && <Alert severity="success" title={notice} />}
-      {!catalog && !error && <Spinner />}
-      <form onSubmit={save} style={{ maxWidth: 760 }}>
-        <fieldset disabled={saving} style={{ border: 0, padding: 0, margin: 0 }}>
-          <Field label="Gép" htmlFor="profile-machine">
-            <select id="profile-machine" value={machine} onChange={(event) => {
-              setAssignment(undefined);
-              setError('');
-              setNotice('');
-              setMachine(event.target.value);
-            }}>
-              <option value="">Válassz gépet</option>
-              {catalog?.machines.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-            </select>
-          </Field>
-          {machine && !assignment && !error && <Spinner />}
-          {assignment && <>
-            <Field label="Profil" htmlFor="machine-profile">
-              <select id="machine-profile" value={assignment.profile} onChange={(event) =>
-                setAssignment({ ...assignment, profile: event.target.value, signals: {} })}>
-                {!profile && <option value={assignment.profile}>Ismeretlen profil</option>}
-                {Object.entries(catalog?.profiles ?? {}).map(([id, item]) => <option key={id} value={id}>{item.label}</option>)}
-              </select>
-            </Field>
-            {Object.entries(profile?.signals ?? {}).map(([slot, label]) =>
-              <Field key={slot} label={label} htmlFor={`signal-${slot}`}>
-                <select id={`signal-${slot}`} value={assignment.signals[slot] ?? ''} onChange={(event) => {
-                  const signals = { ...assignment.signals };
-                  if (event.target.value) {
-                    signals[slot] = event.target.value;
-                  } else {
-                    delete signals[slot];
-                  }
-                  setAssignment({ ...assignment, signals });
-                }}>
-                  <option value="">Nincs hozzárendelve</option>
-                  {assignment.options.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-                </select>
-              </Field>)}
-            <Button type="submit" disabled={!profile}>Profil mentése</Button>
-          </>}
-        </fieldset>
-      </form>
+      <div className={styles.page}>
+        <form onSubmit={save} className={styles.form}>
+          {error && <Alert severity="error" title="A gépprofil művelete sikertelen">{error}</Alert>}
+          {notice && <Alert severity="success" title={notice} />}
+          <section className={styles.formCard} aria-labelledby="profile-heading">
+            <h3 id="profile-heading">Gép és profil</h3>
+            <p className={styles.note}>Az első beolvasás után választható ki az Agentek és gépek oldalon felvett gép.</p>
+            <div className={styles.grid}>
+              <Field label="Gép" htmlFor="profile-machine">
+                <Combobox
+                  id="profile-machine"
+                  value={machine || null}
+                  options={catalog?.machines.map(({ id, label }) => ({ value: id, label })) ?? []}
+                  placeholder="Keress gépnév alapján…"
+                  noOptionsMessage="Nincs választható gép"
+                  loading={!catalog && !error}
+                  disabled={saving}
+                  onChange={({ value }) => {
+                    if (value === machine) {
+                      return;
+                    }
+                    setAssignment(undefined);
+                    setError('');
+                    setNotice('');
+                    setMachine(value);
+                  }}
+                />
+              </Field>
+              <Field label="Profil" htmlFor="machine-profile">
+                <Combobox
+                  id="machine-profile"
+                  value={assignment?.profile ?? null}
+                  options={[
+                    ...Object.entries(catalog?.profiles ?? {}).map(([value, item]) => ({ value, label: item.label })),
+                    ...(assignment && !profile ? [{ value: assignment.profile, label: 'Ismeretlen profil' }] : []),
+                  ]}
+                  placeholder="Válassz először gépet"
+                  loading={!!machine && !assignment && !error}
+                  disabled={!assignment || saving}
+                  onChange={({ value }) => {
+                    if (assignment && value !== assignment.profile) {
+                      setNotice('');
+                      setAssignment({ ...assignment, profile: value, signals: {} });
+                    }
+                  }}
+                />
+              </Field>
+            </div>
+          </section>
+          {machine && !assignment && !error && <div role="status"><Spinner /> Gépprofil betöltése…</div>}
+          {!machine && catalog && (
+            <div className={styles.empty}>
+              <h3>{catalog.machines.length ? 'Válassz egy gépet' : 'Még nincs beolvasott gép'}</h3>
+              <p>A kiválasztott gép profilját és jel-hozzárendeléseit itt szerkesztheted.</p>
+            </div>
+          )}
+          {assignment && profile && (
+            <section className={styles.formCard} aria-labelledby="profile-signals-heading">
+              <div className={styles.formFooter}>
+                <h3 id="profile-signals-heading">Jel-hozzárendelések</h3>
+                <Badge text={`${assignedCount} / ${slots.length} hozzárendelve`} color="blue" />
+              </div>
+              <p className={styles.note}>A kiválasztott adatpontok jelennek meg a gépmonitoring nézetben.</p>
+              {!signalOptions.length && <Alert title="Ehhez a géphez még nincs adatpont." severity="info" />}
+              <div className={styles.grid}>
+                {slots.map(([slot, label]) => {
+                  const saved = assignment.signals[slot];
+                  const unavailable = saved && !signalOptions.some(({ value }) => value === saved);
+                  return (
+                    <Field key={slot} label={label} htmlFor={`signal-${slot}`}>
+                      <Combobox
+                        id={`signal-${slot}`}
+                        value={saved ?? null}
+                        options={unavailable ? [{ value: saved, label: 'A mentett adatpont nem érhető el' }, ...signalOptions] : signalOptions}
+                        placeholder="Nincs hozzárendelve"
+                        noOptionsMessage="Nincs találat"
+                        isClearable
+                        disabled={saving}
+                        onChange={(option) => {
+                          const signals = { ...assignment.signals };
+                          if (option) {
+                            signals[slot] = option.value;
+                          } else {
+                            delete signals[slot];
+                          }
+                          setNotice('');
+                          setAssignment({ ...assignment, signals });
+                        }}
+                      />
+                    </Field>
+                  );
+                })}
+              </div>
+              <div className={styles.footer}>
+                <Button type="submit" icon={saving ? 'spinner' : 'save'} disabled={saving}>
+                  {saving ? 'Mentés…' : 'Profil mentése'}
+                </Button>
+              </div>
+            </section>
+          )}
+        </form>
+      </div>
     </PluginPage>
   );
 }

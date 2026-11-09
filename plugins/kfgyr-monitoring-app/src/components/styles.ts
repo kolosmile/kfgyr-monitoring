@@ -3,6 +3,22 @@ import { GrafanaTheme2 } from '@grafana/data';
 
 export const getStyles = (t: GrafanaTheme2) => ({
   page: css({ maxWidth: 1180, margin: '0 auto', paddingBottom: 32, color: t.colors.text.primary }),
+  form: css({ display: 'grid', gap: 16, maxWidth: 960 }),
+  formCard: css({
+    border: `1px solid ${t.colors.border.weak}`,
+    borderRadius: 8,
+    background: t.colors.background.primary,
+    padding: 20,
+    minWidth: 0,
+    h3: { fontSize: 16, fontWeight: 600, margin: '0 0 6px' },
+  }),
+  formFooter: css({
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
+  }),
   muted: css({ color: t.colors.text.secondary, fontSize: 13 }),
   status: css({
     display: 'flex',
