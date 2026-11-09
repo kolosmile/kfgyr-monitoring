@@ -49,14 +49,23 @@ CATALOG = ", ".join(
     f"({quote(profile)}, {quote(slot)}, {quote(label)})"
     for profile, info in PROFILES.items() for slot, label in info["signals"].items()
 )
-PROFILE_LABELS = "CASE m.profile " + " ".join(
-    f"WHEN {quote(key)} THEN {quote(info['label'])}" for key, info in PROFILES.items()
-) + " ELSE coalesce(m.profile, 'Általános') END"
 MAPPED = f"""
 WITH machine AS ({MACHINE}), catalog(profile, slot, label) AS (VALUES {CATALOG})
-SELECT m.node_id AS device, n.node_id AS signal, c.slot, c.label, n.props->>'units' AS units
-FROM machine m JOIN catalog c ON c.profile=coalesce(m.profile,'generic')
-JOIN raw.nodes n ON n.node_id::text=m.signals->>c.slot AND n.props->>'node_type'='DataItem'
+SELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,
+ p.view, p.minimum, p.maximum, n.props->>'units' AS units
+FROM machine m
+CROSS JOIN LATERAL (
+ SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,
+        (item->>'minimum')::double precision AS minimum,
+        (item->>'maximum')::double precision AS maximum, ord AS position
+ FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)
+      WITH ORDINALITY AS items(item, ord)
+ UNION ALL
+ SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,
+        NULL, NULL, row_number() OVER (ORDER BY c.slot)
+ FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'
+) p
+JOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'
  AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'
 """
 home = dashboard("kfgyr-home", "KFGyR · Kezdőlap", [
@@ -67,41 +76,71 @@ home = dashboard("kfgyr-home", "KFGyR · Kezdőlap", [
     panel(3, "", "text", 0, 4, 12, 4,
           f"# [🔌 Agentek és gépek]({APP}/agents)"),
     panel(4, "", "text", 12, 4, 12, 4,
-          f"# [⚙️ Gépprofilok]({APP}/profiles)"),
+          f"# [⚙️ Monitoring beállítása]({APP}/profiles)"),
 ])
 home["timepicker"] = {"hidden": True}
-summary = panel(2, "Kiválasztott gép", "table", 0, 3, 24, 4, sql=f"""
-WITH machine AS ({MACHINE})
-SELECT m.props->>'path' AS "Gép", {PROFILE_LABELS} AS "Profil",
- (SELECT h.time FROM raw.history h WHERE h.node_id=m.node_id ORDER BY h.time DESC LIMIT 1)
- AS "Utolsó minta"
-FROM machine m
-""")
-latest = panel(3, "Hozzárendelt jelek", "table", 0, 7, 24, 7, sql=f"""
-WITH mapped AS ({MAPPED})
-SELECT m.label AS "Jel", h.value #>> '{{}}' AS "Érték", m.units AS "Mértékegység",
- h.time AS "Időpont"
-FROM mapped m LEFT JOIN LATERAL (
+NUMBER = """
+CASE WHEN (h.value #>> '{}') ~ '^[+-]?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$'
+     THEN (h.value #>> '{}')::double precision END
+"""
+LATEST = """
+LEFT JOIN LATERAL (
  SELECT time, value FROM raw.history WHERE node_id=m.device AND dataitem_id=m.signal
  ORDER BY time DESC LIMIT 1
-) h ON true ORDER BY 1
-""")
-chart = panel(4, "${slot:text}", "timeseries", 0, 14, 12, 8, sql=f"""
+) h ON true
+"""
+
+
+def signal_panel(id, view, kind, y, height):
+    scope = f"m.view={quote(view)} AND m.position::text IN (${{{view}:sqlstring}})"
+    if view == "chart":
+        query = f"""
 WITH mapped AS ({MAPPED})
-SELECT h.time, CASE WHEN (h.value #>> '{{}}') ~ '^[+-]?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$'
- THEN (h.value #>> '{{}}')::double precision END AS value
+SELECT h.time, {NUMBER} AS "Érték"
 FROM mapped m JOIN raw.history h ON h.node_id=m.device AND h.dataitem_id=m.signal
-WHERE m.slot IN (${{slot:sqlstring}}) AND $__timeFilter(h.time) ORDER BY 1
-""", fmt="time_series")
-chart.update(repeat="slot", repeatDirection="h", maxPerRow=2)
+WHERE {scope} AND $__timeFilter(h.time) ORDER BY 1
+"""
+    else:
+        value = {"value": NUMBER, "gauge": NUMBER, "state": "h.value #>> '{}'"}[view]
+        query = f'WITH mapped AS ({MAPPED}) SELECT {value} AS "Érték" FROM mapped m {LATEST} WHERE {scope}'
+    result = panel(id, f"${{{view}:text}}", kind, 0, y, 12, height, sql=query,
+                   fmt="time_series" if view == "chart" else "table")
+    result.update(repeat=view, repeatDirection="h", maxPerRow=2)
+    if kind in ("stat", "gauge"):
+        result["options"]["reduceOptions"] = {"calcs": ["lastNotNull"], "fields": "/^Érték$/", "values": False}
+    if view == "state":
+        result["options"].update(textMode="value", graphMode="none", colorMode="none")
+    else:
+        config_sql = f"""
+WITH mapped AS ({MAPPED})
+SELECT CASE WHEN nullif(m.units, '') IS NOT NULL THEN 'suffix:' || m.units END AS unit
+       {', m.minimum, m.maximum' if view == 'gauge' else ''}
+FROM mapped m WHERE {scope}
+"""
+        result["targets"].append({**result["targets"][0], "refId": "B", "format": "table", "rawSql": config_sql})
+        mappings = [{"fieldName": "unit", "handlerKey": "unit"}]
+        if view == "gauge":
+            mappings.extend([{"fieldName": "minimum", "handlerKey": "min"}, {"fieldName": "maximum", "handlerKey": "max"}])
+        result["transformations"] = [{"id": "configFromData", "options": {
+            "configRefId": "B", "applyTo": {"id": "byType", "options": "number"}, "mappings": mappings,
+        }}]
+    return result
+
+
+views = [
+    ("state", "stat", 3, 4), ("value", "stat", 7, 4),
+    ("gauge", "gauge", 11, 6), ("chart", "timeseries", 17, 8),
+]
 monitoring = dashboard("kfgyr-machine-monitoring", "KFGyR · Gépmonitoring", [
     panel(1, "", "text", 0, 0, 24, 3,
-          f"[Kezdőlap](/d/kfgyr-home) · [Adatexport]({APP}/export) · [Gépprofilok]({APP}/profiles)\n\n"
-          "A grafikonok a géphez hozzárendelt számértékű jelekhez jelennek meg. A szöveges jelek a táblában olvashatók."),
-    summary, latest, chart,
+          f"[Kezdőlap](/d/kfgyr-home) · [Adatexport]({APP}/export) · [Monitoring beállítása]({APP}/profiles)"),
+    *[signal_panel(id, *view) for id, view in enumerate(views, 2)],
 ], [
     variable("machine", "Gép", "SELECT props->>'path' AS __text, node_id::text AS __value FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 1"),
-    variable("slot", "Jel", f"WITH mapped AS ({MAPPED}) SELECT label AS __text, slot AS __value FROM mapped WHERE slot NOT IN ('execution') ORDER BY 1", multi=True, hide=2),
+    *[variable(view, view,
+               f"WITH mapped AS ({MAPPED}) SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS __text, position::text AS __value "
+               f"FROM mapped WHERE view={quote(view)} ORDER BY position", multi=True, hide=2) | {"sort": 0}
+      for view, *_ in views],
 ])
 
 if __name__ == "__main__":

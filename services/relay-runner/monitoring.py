@@ -1,10 +1,11 @@
 """Runner-owned monitoring configuration stored separately from relay revisions."""
 import json
 from pathlib import Path
+from typing import Literal
 
 import psycopg
 from psycopg.types.json import Jsonb
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from configuration import Problem
 
@@ -21,11 +22,46 @@ ORDER BY 2
 """
 
 
+def default_view(slot):
+    return "state" if slot == "execution" else "chart"
+
+
+PRESETS = [
+    {"label": label, "panels": [
+        {"name": name, "point": "", "view": default_view(slot)}
+        for slot, name in slots.items()
+    ]}
+    for label, slots in [
+        ("CNC eszterga", {"execution": "Üzemállapot", "feedrate": "Előtolás", **PROFILES["lathe"]["signals"]}),
+        ("CNC megmunkálóközpont", {"execution": "Üzemállapot", **PROFILES["mill"]["signals"]}),
+    ]
+]
+
+
+class Panel(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    name: str = Field(min_length=1, max_length=120)
+    point: str = Field(min_length=1, max_length=128)
+    view: Literal["value", "state", "chart", "gauge"]
+    minimum: float | None = None
+    maximum: float | None = None
+
+    @model_validator(mode="after")
+    def check_panel(self):
+        self.name = self.name.strip()
+        if not self.name:
+            raise ValueError("Adj nevet a panelnek.")
+        if self.view == "gauge" and (
+            self.minimum is None or self.maximum is None or self.minimum >= self.maximum
+        ):
+            raise ValueError("A műszer maximuma legyen nagyobb a minimumnál.")
+        return self
+
+
 class Assignment(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     machine: str = Field(min_length=1, max_length=128)
-    profile: str = Field(min_length=1, max_length=32)
-    signals: dict[str, str]
+    panels: list[Panel]
     revision: int = Field(ge=0)
 
 
@@ -51,14 +87,14 @@ def migrate():
 def list_machines():
     with psycopg.connect(connect_timeout=5) as db:
         if not db.execute("SELECT to_regclass('raw.nodes')").fetchone()[0]:
-            return {"profiles": PROFILES, "machines": []}
+            return {"presets": PRESETS, "machines": []}
         rows = db.execute("""
             SELECT node_id::text, props->>'path' FROM raw.nodes
             WHERE props->>'node_type' = 'Device'
               AND coalesce(props->>'agentAlias', '') <> '' AND coalesce(props->>'deviceId', '') <> ''
             ORDER BY 2
         """)
-        return {"profiles": PROFILES, "machines": [{"id": row[0], "label": row[1]} for row in rows]}
+        return {"presets": PRESETS, "machines": [{"id": row[0], "label": row[1]} for row in rows]}
 
 
 def machine_key(db, machine):
@@ -76,20 +112,22 @@ def get_assignment(machine):
             WHERE agent_alias = %s AND device_id = %s
         """, key).fetchone() or ("generic", {}, 0)
         options = db.execute(SIGNALS, key)
-        return {"profile": current[0], "signals": current[1], "revision": current[2],
+        profile, signals, revision = current
+        panels = signals if isinstance(signals, list) else [
+            {"name": name, "point": signals[slot], "view": default_view(slot)}
+            for slot, name in PROFILES.get(profile, {}).get("signals", {}).items() if slot in signals
+        ]
+        return {"panels": panels, "revision": revision,
                 "options": [{"id": row[0], "label": row[1]} for row in options]}
 
 
 def save_assignment(body, actor):
-    profile = PROFILES.get(body.profile)
-    if not profile or body.signals.keys() - profile["signals"].keys():
-        raise Problem(422, "Ismeretlen profil vagy jel.")
     with psycopg.connect(connect_timeout=5) as db:
         key = machine_key(db, body.machine)
         valid = {row[0] for row in db.execute(SIGNALS, key)}
-        if set(body.signals.values()) - valid:
+        if {panel.point for panel in body.panels} - valid:
             raise Problem(422, "A kiválasztott adatpont nem ehhez a géphez tartozik.")
-        values = (body.profile, Jsonb(body.signals), actor)
+        values = ("generic", Jsonb([panel.model_dump(exclude_none=True) for panel in body.panels]), actor)
         if body.revision == 0:
             result = db.execute("""
                 INSERT INTO kfgyr.machine_monitoring (agent_alias, device_id, profile, signals, updated_by)
