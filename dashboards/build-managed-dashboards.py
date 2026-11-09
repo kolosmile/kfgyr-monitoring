@@ -28,13 +28,6 @@ def dashboard(uid, title, panels, variables=()):
             "templating": {"list": list(variables)}}
 
 
-def variable(name, label, sql, multi=False, hide=0):
-    return {"name": name, "label": label, "type": "query", "datasource": DS,
-            "query": sql, "definition": sql, "refresh": 1, "sort": 1,
-            "multi": multi, "includeAll": multi, "hide": hide, "skipUrlSync": bool(hide),
-            "current": {"text": ["All"], "value": ["$__all"]} if multi else {}, "options": []}
-
-
 def quote(value):
     return "'" + value.replace("'", "''") + "'"
 
@@ -91,8 +84,8 @@ LEFT JOIN LATERAL (
 """
 
 
-def signal_panel(id, view, kind, y, height):
-    scope = f"m.view={quote(view)} AND m.position::text IN (${{{view}:sqlstring}})"
+def signal_panel(id, view, kind):
+    scope = f"m.view={quote(view)} AND (m.device::text || ':' || m.position::text) IN (${{{view}:sqlstring}})"
     if view == "chart":
         query = f"""
 WITH mapped AS ({MAPPED})
@@ -103,9 +96,8 @@ WHERE {scope} AND $__timeFilter(h.time) ORDER BY 1
     else:
         value = {"value": NUMBER, "gauge": NUMBER, "state": "h.value #>> '{}'"}[view]
         query = f'WITH mapped AS ({MAPPED}) SELECT {value} AS "Érték" FROM mapped m {LATEST} WHERE {scope}'
-    result = panel(id, f"${{{view}:text}}", kind, 0, y, 12, height, sql=query,
+    result = panel(id, f"${{{view}:text}}", kind, 0, 0, 12, 4, sql=query,
                    fmt="time_series" if view == "chart" else "table")
-    result.update(repeat=view, repeatDirection="h", maxPerRow=2)
     if kind in ("stat", "gauge"):
         result["options"]["reduceOptions"] = {"calcs": ["lastNotNull"], "fields": "/^Érték$/", "values": False}
     if view == "state":
@@ -127,21 +119,104 @@ FROM mapped m WHERE {scope}
     return result
 
 
+def resource(kind, **spec):
+    return {"kind": kind, "spec": spec}
+
+
+def data_query(**spec):
+    return {**resource("DataQuery", **spec), "group": DS["type"], "version": "v0",
+            "datasource": {"name": DS["uid"]}}
+
+
+def panel_resource(source):
+    queries = [
+        resource("PanelQuery", refId=target["refId"], hidden=False,
+                 query=data_query(**{key: target[key] for key in ("rawSql", "format", "rawQuery", "editorMode")}))
+        for target in source["targets"]
+    ]
+    transforms = [
+        {**resource("Transformation", options=item["options"]), "group": item["id"]}
+        for item in source.get("transformations", [])
+    ]
+    return resource("Panel", id=source["id"], title=source["title"], description="", links=[],
+                    data=resource("QueryGroup", queries=queries, transformations=transforms, queryOptions={}),
+                    vizConfig={**resource("VizConfig", options=source["options"],
+                                         fieldConfig={"defaults": {}, "overrides": []}),
+                               "group": source["type"], "version": ""})
+
+
+def query_variable(name, sql, *, repeat=False, visible=False):
+    return resource("QueryVariable", name=name, label="Gép" if visible else name,
+                    query=data_query(__legacyStringValue=sql), definition=sql,
+                    current={"text": ["All"], "value": ["$__all"]} if repeat else {"text": "", "value": ""},
+                    options=[], regex="", sort="disabled", refresh="onDashboardLoad",
+                    hide="dontHide" if visible else "hideVariable", skipUrlSync=not visible,
+                    multi=repeat, includeAll=repeat, allowCustomValue=False)
+
+
+def view_variable(view):
+    # An explicit option replaces the old selection even when the new machine has no panels of this type.
+    return query_variable(view, f"""
+WITH mapped AS ({MAPPED}), selected AS (SELECT * FROM mapped WHERE view={quote(view)})
+SELECT label AS __text, panel_key AS __value FROM (
+ SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS label,
+        device::text || ':' || position::text AS panel_key, position
+ FROM selected
+ UNION ALL
+ SELECT '', '__none__', 0 WHERE NOT EXISTS (SELECT 1 FROM selected)
+) options ORDER BY position
+""", repeat=True)
+
+
+def view_row(id, view, title, height):
+    return resource("RowsLayoutRow", title=title, collapse=False, hideHeader=False,
+                    conditionalRendering=resource("ConditionalRenderingGroup", visibility="show", condition="and", items=[
+                        resource("ConditionalRenderingVariable", variable="configured_views", operator="matches",
+                                 value=f"(^|,){view}(,|$)")
+                    ]),
+                    layout=resource("AutoGridLayout", maxColumnCount=2, columnWidthMode="standard",
+                                    rowHeightMode="custom", rowHeight=height, fillScreen=False, items=[
+                        resource("AutoGridLayoutItem", element={"kind": "ElementReference", "name": f"panel-{id}"},
+                                 repeat={"mode": "variable", "value": view})
+                    ]))
+
+
 views = [
-    ("state", "stat", 3, 4), ("value", "stat", 7, 4),
-    ("gauge", "gauge", 11, 6), ("chart", "timeseries", 17, 8),
+    ("state", "stat", "Állapot", 120), ("value", "stat", "Aktuális érték", 120),
+    ("gauge", "gauge", "Műszerek", 185), ("chart", "timeseries", "Grafikonok", 260),
 ]
-monitoring = dashboard("kfgyr-machine-monitoring", "KFGyR · Gépmonitoring", [
-    panel(1, "", "text", 0, 0, 24, 3,
-          f"[Kezdőlap](/d/kfgyr-home) · [Adatexport]({APP}/export) · [Monitoring beállítása]({APP}/profiles)"),
-    *[signal_panel(id, *view) for id, view in enumerate(views, 2)],
-], [
-    variable("machine", "Gép", "SELECT props->>'path' AS __text, node_id::text AS __value FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 1"),
-    *[variable(view, view,
-               f"WITH mapped AS ({MAPPED}) SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS __text, position::text AS __value "
-               f"FROM mapped WHERE view={quote(view)} ORDER BY position", multi=True, hide=2) | {"sort": 0}
-      for view, *_ in views],
-])
+monitoring = {
+    "apiVersion": "dashboard.grafana.app/v2",
+    "kind": "Dashboard",
+    "metadata": {"name": "kfgyr-machine-monitoring"},
+    "spec": {
+        "title": "KFGyR · Gépmonitoring", "editable": False, "tags": ["KFGyR"],
+        "annotations": [], "cursorSync": "Off",
+        "timeSettings": {"timezone": "Europe/Budapest", "from": "now-15m", "to": "now",
+                         "autoRefresh": "", "autoRefreshIntervals": ["5s", "10s", "30s", "1m", "5m"],
+                         "hideTimepicker": False, "fiscalYearStartMonth": 0},
+        "links": [
+            {"title": title, "url": url, "type": "link", "icon": icon, "tooltip": "",
+             "tags": [], "asDropdown": False, "targetBlank": False, "includeVars": False, "keepTime": False}
+            for title, url, icon in [
+                ("Kezdőlap", "/d/kfgyr-home", "home-alt"),
+                ("Adatexport", f"{APP}/export", "download-alt"),
+                ("Monitoring beállítása", f"{APP}/profiles", "cog"),
+            ]
+        ],
+        "elements": {f"panel-{id}": panel_resource(signal_panel(id, view, kind))
+                     for id, (view, kind, _, _) in enumerate(views, 2)},
+        "layout": resource("RowsLayout", rows=[view_row(id, view, title, height)
+                                               for id, (view, _, title, height) in enumerate(views, 2)]),
+        "variables": [
+            query_variable("machine", "SELECT props->>'path' AS __text, node_id::text AS __value "
+                           "FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 1", visible=True),
+            query_variable("configured_views", f"WITH mapped AS ({MAPPED}) "
+                           "SELECT coalesce(string_agg(DISTINCT view, ','), '__none__') FROM mapped"),
+            *[view_variable(view) for view, *_ in views],
+        ],
+    },
+}
 
 if __name__ == "__main__":
     OUTPUT.mkdir(exist_ok=True)

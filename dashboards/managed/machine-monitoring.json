@@ -1,408 +1,849 @@
 {
-  "uid": "kfgyr-machine-monitoring",
-  "title": "KFGyR · Gépmonitoring",
-  "schemaVersion": 41,
-  "editable": false,
-  "tags": [
-    "KFGyR"
-  ],
-  "timezone": "Europe/Budapest",
-  "refresh": "",
-  "time": {
-    "from": "now-15m",
-    "to": "now"
+  "apiVersion": "dashboard.grafana.app/v2",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "kfgyr-machine-monitoring"
   },
-  "panels": [
-    {
-      "id": 1,
-      "type": "text",
-      "title": "",
-      "gridPos": {
-        "x": 0,
-        "y": 0,
-        "w": 24,
-        "h": 3
+  "spec": {
+    "title": "KFGyR · Gépmonitoring",
+    "editable": false,
+    "tags": [
+      "KFGyR"
+    ],
+    "annotations": [],
+    "cursorSync": "Off",
+    "timeSettings": {
+      "timezone": "Europe/Budapest",
+      "from": "now-15m",
+      "to": "now",
+      "autoRefresh": "",
+      "autoRefreshIntervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m"
+      ],
+      "hideTimepicker": false,
+      "fiscalYearStartMonth": 0
+    },
+    "links": [
+      {
+        "title": "Kezdőlap",
+        "url": "/d/kfgyr-home",
+        "type": "link",
+        "icon": "home-alt",
+        "tooltip": "",
+        "tags": [],
+        "asDropdown": false,
+        "targetBlank": false,
+        "includeVars": false,
+        "keepTime": false
       },
-      "options": {
-        "mode": "markdown",
-        "content": "[Kezdőlap](/d/kfgyr-home) · [Adatexport](/a/kfgyr-monitoring-app/export) · [Monitoring beállítása](/a/kfgyr-monitoring-app/profiles)"
+      {
+        "title": "Adatexport",
+        "url": "/a/kfgyr-monitoring-app/export",
+        "type": "link",
+        "icon": "download-alt",
+        "tooltip": "",
+        "tags": [],
+        "asDropdown": false,
+        "targetBlank": false,
+        "includeVars": false,
+        "keepTime": false
+      },
+      {
+        "title": "Monitoring beállítása",
+        "url": "/a/kfgyr-monitoring-app/profiles",
+        "type": "link",
+        "icon": "cog",
+        "tooltip": "",
+        "tags": [],
+        "asDropdown": false,
+        "targetBlank": false,
+        "includeVars": false,
+        "keepTime": false
+      }
+    ],
+    "elements": {
+      "panel-2": {
+        "kind": "Panel",
+        "spec": {
+          "id": 2,
+          "title": "${state:text}",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "spec": {
+                        "rawSql": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT h.value #>> '{}' AS \"Érték\" FROM mapped m \nLEFT JOIN LATERAL (\n SELECT time, value FROM raw.history WHERE node_id=m.device AND dataitem_id=m.signal\n ORDER BY time DESC LIMIT 1\n) h ON true\n WHERE m.view='state' AND (m.device::text || ':' || m.position::text) IN (${state:sqlstring})",
+                        "format": "table",
+                        "rawQuery": true,
+                        "editorMode": "code"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "timescaledb"
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "spec": {
+              "options": {
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "/^Érték$/",
+                  "values": false
+                },
+                "textMode": "value",
+                "graphMode": "none",
+                "colorMode": "none"
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            },
+            "group": "stat",
+            "version": ""
+          }
+        }
+      },
+      "panel-3": {
+        "kind": "Panel",
+        "spec": {
+          "id": 3,
+          "title": "${value:text}",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "spec": {
+                        "rawSql": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT \nCASE WHEN (h.value #>> '{}') ~ '^[+-]?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$'\n     THEN (h.value #>> '{}')::double precision END\n AS \"Érték\" FROM mapped m \nLEFT JOIN LATERAL (\n SELECT time, value FROM raw.history WHERE node_id=m.device AND dataitem_id=m.signal\n ORDER BY time DESC LIMIT 1\n) h ON true\n WHERE m.view='value' AND (m.device::text || ':' || m.position::text) IN (${value:sqlstring})",
+                        "format": "table",
+                        "rawQuery": true,
+                        "editorMode": "code"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "timescaledb"
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "B",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "spec": {
+                        "rawSql": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n)\nSELECT CASE WHEN nullif(m.units, '') IS NOT NULL THEN 'suffix:' || m.units END AS unit\n       \nFROM mapped m WHERE m.view='value' AND (m.device::text || ':' || m.position::text) IN (${value:sqlstring})\n",
+                        "format": "table",
+                        "rawQuery": true,
+                        "editorMode": "code"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "timescaledb"
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [
+                {
+                  "kind": "Transformation",
+                  "spec": {
+                    "options": {
+                      "configRefId": "B",
+                      "applyTo": {
+                        "id": "byType",
+                        "options": "number"
+                      },
+                      "mappings": [
+                        {
+                          "fieldName": "unit",
+                          "handlerKey": "unit"
+                        }
+                      ]
+                    }
+                  },
+                  "group": "configFromData"
+                }
+              ],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "spec": {
+              "options": {
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "/^Érték$/",
+                  "values": false
+                }
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            },
+            "group": "stat",
+            "version": ""
+          }
+        }
+      },
+      "panel-4": {
+        "kind": "Panel",
+        "spec": {
+          "id": 4,
+          "title": "${gauge:text}",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "spec": {
+                        "rawSql": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT \nCASE WHEN (h.value #>> '{}') ~ '^[+-]?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$'\n     THEN (h.value #>> '{}')::double precision END\n AS \"Érték\" FROM mapped m \nLEFT JOIN LATERAL (\n SELECT time, value FROM raw.history WHERE node_id=m.device AND dataitem_id=m.signal\n ORDER BY time DESC LIMIT 1\n) h ON true\n WHERE m.view='gauge' AND (m.device::text || ':' || m.position::text) IN (${gauge:sqlstring})",
+                        "format": "table",
+                        "rawQuery": true,
+                        "editorMode": "code"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "timescaledb"
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "B",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "spec": {
+                        "rawSql": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n)\nSELECT CASE WHEN nullif(m.units, '') IS NOT NULL THEN 'suffix:' || m.units END AS unit\n       , m.minimum, m.maximum\nFROM mapped m WHERE m.view='gauge' AND (m.device::text || ':' || m.position::text) IN (${gauge:sqlstring})\n",
+                        "format": "table",
+                        "rawQuery": true,
+                        "editorMode": "code"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "timescaledb"
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [
+                {
+                  "kind": "Transformation",
+                  "spec": {
+                    "options": {
+                      "configRefId": "B",
+                      "applyTo": {
+                        "id": "byType",
+                        "options": "number"
+                      },
+                      "mappings": [
+                        {
+                          "fieldName": "unit",
+                          "handlerKey": "unit"
+                        },
+                        {
+                          "fieldName": "minimum",
+                          "handlerKey": "min"
+                        },
+                        {
+                          "fieldName": "maximum",
+                          "handlerKey": "max"
+                        }
+                      ]
+                    }
+                  },
+                  "group": "configFromData"
+                }
+              ],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "spec": {
+              "options": {
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "/^Érték$/",
+                  "values": false
+                }
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            },
+            "group": "gauge",
+            "version": ""
+          }
+        }
+      },
+      "panel-5": {
+        "kind": "Panel",
+        "spec": {
+          "id": 5,
+          "title": "${chart:text}",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "spec": {
+                        "rawSql": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n)\nSELECT h.time, \nCASE WHEN (h.value #>> '{}') ~ '^[+-]?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$'\n     THEN (h.value #>> '{}')::double precision END\n AS \"Érték\"\nFROM mapped m JOIN raw.history h ON h.node_id=m.device AND h.dataitem_id=m.signal\nWHERE m.view='chart' AND (m.device::text || ':' || m.position::text) IN (${chart:sqlstring}) AND $__timeFilter(h.time) ORDER BY 1\n",
+                        "format": "time_series",
+                        "rawQuery": true,
+                        "editorMode": "code"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "timescaledb"
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "B",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "spec": {
+                        "rawSql": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n)\nSELECT CASE WHEN nullif(m.units, '') IS NOT NULL THEN 'suffix:' || m.units END AS unit\n       \nFROM mapped m WHERE m.view='chart' AND (m.device::text || ':' || m.position::text) IN (${chart:sqlstring})\n",
+                        "format": "table",
+                        "rawQuery": true,
+                        "editorMode": "code"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "timescaledb"
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [
+                {
+                  "kind": "Transformation",
+                  "spec": {
+                    "options": {
+                      "configRefId": "B",
+                      "applyTo": {
+                        "id": "byType",
+                        "options": "number"
+                      },
+                      "mappings": [
+                        {
+                          "fieldName": "unit",
+                          "handlerKey": "unit"
+                        }
+                      ]
+                    }
+                  },
+                  "group": "configFromData"
+                }
+              ],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "spec": {
+              "options": {},
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            },
+            "group": "timeseries",
+            "version": ""
+          }
+        }
       }
     },
-    {
-      "id": 2,
-      "type": "stat",
-      "title": "${state:text}",
-      "gridPos": {
-        "x": 0,
-        "y": 3,
-        "w": 12,
-        "h": 4
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "/^Érték$/",
-          "values": false
-        },
-        "textMode": "value",
-        "graphMode": "none",
-        "colorMode": "none"
-      },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "timescaledb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT h.value #>> '{}' AS \"Érték\" FROM mapped m \nLEFT JOIN LATERAL (\n SELECT time, value FROM raw.history WHERE node_id=m.device AND dataitem_id=m.signal\n ORDER BY time DESC LIMIT 1\n) h ON true\n WHERE m.view='state' AND m.position::text IN (${state:sqlstring})",
-          "editorMode": "code",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "timescaledb"
-          }
-        }
-      ],
-      "repeat": "state",
-      "repeatDirection": "h",
-      "maxPerRow": 2
-    },
-    {
-      "id": 3,
-      "type": "stat",
-      "title": "${value:text}",
-      "gridPos": {
-        "x": 0,
-        "y": 7,
-        "w": 12,
-        "h": 4
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "/^Érték$/",
-          "values": false
-        }
-      },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "timescaledb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT \nCASE WHEN (h.value #>> '{}') ~ '^[+-]?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$'\n     THEN (h.value #>> '{}')::double precision END\n AS \"Érték\" FROM mapped m \nLEFT JOIN LATERAL (\n SELECT time, value FROM raw.history WHERE node_id=m.device AND dataitem_id=m.signal\n ORDER BY time DESC LIMIT 1\n) h ON true\n WHERE m.view='value' AND m.position::text IN (${value:sqlstring})",
-          "editorMode": "code",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "timescaledb"
-          }
-        },
-        {
-          "refId": "B",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n)\nSELECT CASE WHEN nullif(m.units, '') IS NOT NULL THEN 'suffix:' || m.units END AS unit\n       \nFROM mapped m WHERE m.view='value' AND m.position::text IN (${value:sqlstring})\n",
-          "editorMode": "code",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "timescaledb"
-          }
-        }
-      ],
-      "repeat": "value",
-      "repeatDirection": "h",
-      "maxPerRow": 2,
-      "transformations": [
-        {
-          "id": "configFromData",
-          "options": {
-            "configRefId": "B",
-            "applyTo": {
-              "id": "byType",
-              "options": "number"
-            },
-            "mappings": [
-              {
-                "fieldName": "unit",
-                "handlerKey": "unit"
-              }
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "id": 4,
-      "type": "gauge",
-      "title": "${gauge:text}",
-      "gridPos": {
-        "x": 0,
-        "y": 11,
-        "w": 12,
-        "h": 6
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "/^Érték$/",
-          "values": false
-        }
-      },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "timescaledb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT \nCASE WHEN (h.value #>> '{}') ~ '^[+-]?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$'\n     THEN (h.value #>> '{}')::double precision END\n AS \"Érték\" FROM mapped m \nLEFT JOIN LATERAL (\n SELECT time, value FROM raw.history WHERE node_id=m.device AND dataitem_id=m.signal\n ORDER BY time DESC LIMIT 1\n) h ON true\n WHERE m.view='gauge' AND m.position::text IN (${gauge:sqlstring})",
-          "editorMode": "code",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "timescaledb"
-          }
-        },
-        {
-          "refId": "B",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n)\nSELECT CASE WHEN nullif(m.units, '') IS NOT NULL THEN 'suffix:' || m.units END AS unit\n       , m.minimum, m.maximum\nFROM mapped m WHERE m.view='gauge' AND m.position::text IN (${gauge:sqlstring})\n",
-          "editorMode": "code",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "timescaledb"
-          }
-        }
-      ],
-      "repeat": "gauge",
-      "repeatDirection": "h",
-      "maxPerRow": 2,
-      "transformations": [
-        {
-          "id": "configFromData",
-          "options": {
-            "configRefId": "B",
-            "applyTo": {
-              "id": "byType",
-              "options": "number"
-            },
-            "mappings": [
-              {
-                "fieldName": "unit",
-                "handlerKey": "unit"
+    "layout": {
+      "kind": "RowsLayout",
+      "spec": {
+        "rows": [
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "title": "Állapot",
+              "collapse": false,
+              "hideHeader": false,
+              "conditionalRendering": {
+                "kind": "ConditionalRenderingGroup",
+                "spec": {
+                  "visibility": "show",
+                  "condition": "and",
+                  "items": [
+                    {
+                      "kind": "ConditionalRenderingVariable",
+                      "spec": {
+                        "variable": "configured_views",
+                        "operator": "matches",
+                        "value": "(^|,)state(,|$)"
+                      }
+                    }
+                  ]
+                }
               },
-              {
-                "fieldName": "minimum",
-                "handlerKey": "min"
+              "layout": {
+                "kind": "AutoGridLayout",
+                "spec": {
+                  "maxColumnCount": 2,
+                  "columnWidthMode": "standard",
+                  "rowHeightMode": "custom",
+                  "rowHeight": 120,
+                  "fillScreen": false,
+                  "items": [
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-2"
+                        },
+                        "repeat": {
+                          "mode": "variable",
+                          "value": "state"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "title": "Aktuális érték",
+              "collapse": false,
+              "hideHeader": false,
+              "conditionalRendering": {
+                "kind": "ConditionalRenderingGroup",
+                "spec": {
+                  "visibility": "show",
+                  "condition": "and",
+                  "items": [
+                    {
+                      "kind": "ConditionalRenderingVariable",
+                      "spec": {
+                        "variable": "configured_views",
+                        "operator": "matches",
+                        "value": "(^|,)value(,|$)"
+                      }
+                    }
+                  ]
+                }
               },
-              {
-                "fieldName": "maximum",
-                "handlerKey": "max"
+              "layout": {
+                "kind": "AutoGridLayout",
+                "spec": {
+                  "maxColumnCount": 2,
+                  "columnWidthMode": "standard",
+                  "rowHeightMode": "custom",
+                  "rowHeight": 120,
+                  "fillScreen": false,
+                  "items": [
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-3"
+                        },
+                        "repeat": {
+                          "mode": "variable",
+                          "value": "value"
+                        }
+                      }
+                    }
+                  ]
+                }
               }
-            ]
+            }
+          },
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "title": "Műszerek",
+              "collapse": false,
+              "hideHeader": false,
+              "conditionalRendering": {
+                "kind": "ConditionalRenderingGroup",
+                "spec": {
+                  "visibility": "show",
+                  "condition": "and",
+                  "items": [
+                    {
+                      "kind": "ConditionalRenderingVariable",
+                      "spec": {
+                        "variable": "configured_views",
+                        "operator": "matches",
+                        "value": "(^|,)gauge(,|$)"
+                      }
+                    }
+                  ]
+                }
+              },
+              "layout": {
+                "kind": "AutoGridLayout",
+                "spec": {
+                  "maxColumnCount": 2,
+                  "columnWidthMode": "standard",
+                  "rowHeightMode": "custom",
+                  "rowHeight": 185,
+                  "fillScreen": false,
+                  "items": [
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-4"
+                        },
+                        "repeat": {
+                          "mode": "variable",
+                          "value": "gauge"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "title": "Grafikonok",
+              "collapse": false,
+              "hideHeader": false,
+              "conditionalRendering": {
+                "kind": "ConditionalRenderingGroup",
+                "spec": {
+                  "visibility": "show",
+                  "condition": "and",
+                  "items": [
+                    {
+                      "kind": "ConditionalRenderingVariable",
+                      "spec": {
+                        "variable": "configured_views",
+                        "operator": "matches",
+                        "value": "(^|,)chart(,|$)"
+                      }
+                    }
+                  ]
+                }
+              },
+              "layout": {
+                "kind": "AutoGridLayout",
+                "spec": {
+                  "maxColumnCount": 2,
+                  "columnWidthMode": "standard",
+                  "rowHeightMode": "custom",
+                  "rowHeight": 260,
+                  "fillScreen": false,
+                  "items": [
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-5"
+                        },
+                        "repeat": {
+                          "mode": "variable",
+                          "value": "chart"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
           }
-        }
-      ]
+        ]
+      }
     },
-    {
-      "id": 5,
-      "type": "timeseries",
-      "title": "${chart:text}",
-      "gridPos": {
-        "x": 0,
-        "y": 17,
-        "w": 12,
-        "h": 8
-      },
-      "options": {},
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "timescaledb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "format": "time_series",
-          "rawQuery": true,
-          "rawSql": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n)\nSELECT h.time, \nCASE WHEN (h.value #>> '{}') ~ '^[+-]?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$'\n     THEN (h.value #>> '{}')::double precision END\n AS \"Érték\"\nFROM mapped m JOIN raw.history h ON h.node_id=m.device AND h.dataitem_id=m.signal\nWHERE m.view='chart' AND m.position::text IN (${chart:sqlstring}) AND $__timeFilter(h.time) ORDER BY 1\n",
-          "editorMode": "code",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "timescaledb"
-          }
-        },
-        {
-          "refId": "B",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n)\nSELECT CASE WHEN nullif(m.units, '') IS NOT NULL THEN 'suffix:' || m.units END AS unit\n       \nFROM mapped m WHERE m.view='chart' AND m.position::text IN (${chart:sqlstring})\n",
-          "editorMode": "code",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "timescaledb"
-          }
-        }
-      ],
-      "repeat": "chart",
-      "repeatDirection": "h",
-      "maxPerRow": 2,
-      "transformations": [
-        {
-          "id": "configFromData",
-          "options": {
-            "configRefId": "B",
-            "applyTo": {
-              "id": "byType",
-              "options": "number"
+    "variables": [
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "machine",
+          "label": "Gép",
+          "query": {
+            "kind": "DataQuery",
+            "spec": {
+              "__legacyStringValue": "SELECT props->>'path' AS __text, node_id::text AS __value FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 1"
             },
-            "mappings": [
-              {
-                "fieldName": "unit",
-                "handlerKey": "unit"
-              }
-            ]
-          }
+            "group": "grafana-postgresql-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "timescaledb"
+            }
+          },
+          "definition": "SELECT props->>'path' AS __text, node_id::text AS __value FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 1",
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "options": [],
+          "regex": "",
+          "sort": "disabled",
+          "refresh": "onDashboardLoad",
+          "hide": "dontHide",
+          "skipUrlSync": false,
+          "multi": false,
+          "includeAll": false,
+          "allowCustomValue": false
         }
-      ]
-    }
-  ],
-  "templating": {
-    "list": [
-      {
-        "name": "machine",
-        "label": "Gép",
-        "type": "query",
-        "datasource": {
-          "type": "grafana-postgresql-datasource",
-          "uid": "timescaledb"
-        },
-        "query": "SELECT props->>'path' AS __text, node_id::text AS __value FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 1",
-        "definition": "SELECT props->>'path' AS __text, node_id::text AS __value FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 1",
-        "refresh": 1,
-        "sort": 1,
-        "multi": false,
-        "includeAll": false,
-        "hide": 0,
-        "skipUrlSync": false,
-        "current": {},
-        "options": []
       },
       {
-        "name": "state",
-        "label": "state",
-        "type": "query",
-        "datasource": {
-          "type": "grafana-postgresql-datasource",
-          "uid": "timescaledb"
-        },
-        "query": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS __text, position::text AS __value FROM mapped WHERE view='state' ORDER BY position",
-        "definition": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS __text, position::text AS __value FROM mapped WHERE view='state' ORDER BY position",
-        "refresh": 1,
-        "sort": 0,
-        "multi": true,
-        "includeAll": true,
-        "hide": 2,
-        "skipUrlSync": true,
-        "current": {
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
-        "options": []
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "configured_views",
+          "label": "configured_views",
+          "query": {
+            "kind": "DataQuery",
+            "spec": {
+              "__legacyStringValue": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT coalesce(string_agg(DISTINCT view, ','), '__none__') FROM mapped"
+            },
+            "group": "grafana-postgresql-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "timescaledb"
+            }
+          },
+          "definition": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT coalesce(string_agg(DISTINCT view, ','), '__none__') FROM mapped",
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "options": [],
+          "regex": "",
+          "sort": "disabled",
+          "refresh": "onDashboardLoad",
+          "hide": "hideVariable",
+          "skipUrlSync": true,
+          "multi": false,
+          "includeAll": false,
+          "allowCustomValue": false
+        }
       },
       {
-        "name": "value",
-        "label": "value",
-        "type": "query",
-        "datasource": {
-          "type": "grafana-postgresql-datasource",
-          "uid": "timescaledb"
-        },
-        "query": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS __text, position::text AS __value FROM mapped WHERE view='value' ORDER BY position",
-        "definition": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS __text, position::text AS __value FROM mapped WHERE view='value' ORDER BY position",
-        "refresh": 1,
-        "sort": 0,
-        "multi": true,
-        "includeAll": true,
-        "hide": 2,
-        "skipUrlSync": true,
-        "current": {
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
-        "options": []
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "state",
+          "label": "state",
+          "query": {
+            "kind": "DataQuery",
+            "spec": {
+              "__legacyStringValue": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n), selected AS (SELECT * FROM mapped WHERE view='state')\nSELECT label AS __text, panel_key AS __value FROM (\n SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS label,\n        device::text || ':' || position::text AS panel_key, position\n FROM selected\n UNION ALL\n SELECT '', '__none__', 0 WHERE NOT EXISTS (SELECT 1 FROM selected)\n) options ORDER BY position\n"
+            },
+            "group": "grafana-postgresql-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "timescaledb"
+            }
+          },
+          "definition": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n), selected AS (SELECT * FROM mapped WHERE view='state')\nSELECT label AS __text, panel_key AS __value FROM (\n SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS label,\n        device::text || ':' || position::text AS panel_key, position\n FROM selected\n UNION ALL\n SELECT '', '__none__', 0 WHERE NOT EXISTS (SELECT 1 FROM selected)\n) options ORDER BY position\n",
+          "current": {
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "options": [],
+          "regex": "",
+          "sort": "disabled",
+          "refresh": "onDashboardLoad",
+          "hide": "hideVariable",
+          "skipUrlSync": true,
+          "multi": true,
+          "includeAll": true,
+          "allowCustomValue": false
+        }
       },
       {
-        "name": "gauge",
-        "label": "gauge",
-        "type": "query",
-        "datasource": {
-          "type": "grafana-postgresql-datasource",
-          "uid": "timescaledb"
-        },
-        "query": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS __text, position::text AS __value FROM mapped WHERE view='gauge' ORDER BY position",
-        "definition": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS __text, position::text AS __value FROM mapped WHERE view='gauge' ORDER BY position",
-        "refresh": 1,
-        "sort": 0,
-        "multi": true,
-        "includeAll": true,
-        "hide": 2,
-        "skipUrlSync": true,
-        "current": {
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
-        "options": []
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "value",
+          "label": "value",
+          "query": {
+            "kind": "DataQuery",
+            "spec": {
+              "__legacyStringValue": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n), selected AS (SELECT * FROM mapped WHERE view='value')\nSELECT label AS __text, panel_key AS __value FROM (\n SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS label,\n        device::text || ':' || position::text AS panel_key, position\n FROM selected\n UNION ALL\n SELECT '', '__none__', 0 WHERE NOT EXISTS (SELECT 1 FROM selected)\n) options ORDER BY position\n"
+            },
+            "group": "grafana-postgresql-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "timescaledb"
+            }
+          },
+          "definition": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n), selected AS (SELECT * FROM mapped WHERE view='value')\nSELECT label AS __text, panel_key AS __value FROM (\n SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS label,\n        device::text || ':' || position::text AS panel_key, position\n FROM selected\n UNION ALL\n SELECT '', '__none__', 0 WHERE NOT EXISTS (SELECT 1 FROM selected)\n) options ORDER BY position\n",
+          "current": {
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "options": [],
+          "regex": "",
+          "sort": "disabled",
+          "refresh": "onDashboardLoad",
+          "hide": "hideVariable",
+          "skipUrlSync": true,
+          "multi": true,
+          "includeAll": true,
+          "allowCustomValue": false
+        }
       },
       {
-        "name": "chart",
-        "label": "chart",
-        "type": "query",
-        "datasource": {
-          "type": "grafana-postgresql-datasource",
-          "uid": "timescaledb"
-        },
-        "query": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS __text, position::text AS __value FROM mapped WHERE view='chart' ORDER BY position",
-        "definition": "WITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n) SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS __text, position::text AS __value FROM mapped WHERE view='chart' ORDER BY position",
-        "refresh": 1,
-        "sort": 0,
-        "multi": true,
-        "includeAll": true,
-        "hide": 2,
-        "skipUrlSync": true,
-        "current": {
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
-        "options": []
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "gauge",
+          "label": "gauge",
+          "query": {
+            "kind": "DataQuery",
+            "spec": {
+              "__legacyStringValue": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n), selected AS (SELECT * FROM mapped WHERE view='gauge')\nSELECT label AS __text, panel_key AS __value FROM (\n SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS label,\n        device::text || ':' || position::text AS panel_key, position\n FROM selected\n UNION ALL\n SELECT '', '__none__', 0 WHERE NOT EXISTS (SELECT 1 FROM selected)\n) options ORDER BY position\n"
+            },
+            "group": "grafana-postgresql-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "timescaledb"
+            }
+          },
+          "definition": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n), selected AS (SELECT * FROM mapped WHERE view='gauge')\nSELECT label AS __text, panel_key AS __value FROM (\n SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS label,\n        device::text || ':' || position::text AS panel_key, position\n FROM selected\n UNION ALL\n SELECT '', '__none__', 0 WHERE NOT EXISTS (SELECT 1 FROM selected)\n) options ORDER BY position\n",
+          "current": {
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "options": [],
+          "regex": "",
+          "sort": "disabled",
+          "refresh": "onDashboardLoad",
+          "hide": "hideVariable",
+          "skipUrlSync": true,
+          "multi": true,
+          "includeAll": true,
+          "allowCustomValue": false
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "chart",
+          "label": "chart",
+          "query": {
+            "kind": "DataQuery",
+            "spec": {
+              "__legacyStringValue": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n), selected AS (SELECT * FROM mapped WHERE view='chart')\nSELECT label AS __text, panel_key AS __value FROM (\n SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS label,\n        device::text || ':' || position::text AS panel_key, position\n FROM selected\n UNION ALL\n SELECT '', '__none__', 0 WHERE NOT EXISTS (SELECT 1 FROM selected)\n) options ORDER BY position\n"
+            },
+            "group": "grafana-postgresql-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "timescaledb"
+            }
+          },
+          "definition": "\nWITH mapped AS (\nWITH machine AS (\nSELECT d.node_id, d.props, m.profile, m.signals\nFROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}\n), catalog(profile, slot, label) AS (VALUES ('generic', 'feedrate', 'Előtolás'), ('generic', 'execution', 'Végrehajtási állapot'), ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'), ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'), ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'), ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció'))\nSELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,\n p.view, p.minimum, p.maximum, n.props->>'units' AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nJOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n), selected AS (SELECT * FROM mapped WHERE view='chart')\nSELECT label AS __text, panel_key AS __value FROM (\n SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END AS label,\n        device::text || ':' || position::text AS panel_key, position\n FROM selected\n UNION ALL\n SELECT '', '__none__', 0 WHERE NOT EXISTS (SELECT 1 FROM selected)\n) options ORDER BY position\n",
+          "current": {
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "options": [],
+          "regex": "",
+          "sort": "disabled",
+          "refresh": "onDashboardLoad",
+          "hide": "hideVariable",
+          "skipUrlSync": true,
+          "multi": true,
+          "includeAll": true,
+          "allowCustomValue": false
+        }
       }
     ]
   }
