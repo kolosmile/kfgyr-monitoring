@@ -16,8 +16,8 @@ services:
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/kfgyr-dashboards/home.json
       GF_USERS_DEFAULT_THEME: dark
       GF_ANALYTICS_REPORTING_ENABLED: "false"
-      GF_PLUGINS_PREINSTALL_SYNC: ${KFGYR_PLUGIN_INSTALL:-kfgyr-monitoring-app@0.4.3@https://github.com/kolosmile/kfgyr-monitoring/releases/download/plugin-v0.4.3/kfgyr-monitoring-app-0.4.3.zip}
-      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: kfgyr-monitoring-app
+      GF_PLUGINS_PREINSTALL_SYNC: ${KFGYR_PLUGIN_INSTALL:-kfgyr-monitoring-app@0.4.4@https://github.com/kolosmile/kfgyr-monitoring/releases/download/plugin-v0.4.4/kfgyr-monitoring-app-0.4.4.zip}
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: kfgyr-monitoring-app,kfgyr-navigation-panel
       GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:?}
       KFGYR_RUNNER_API_TOKEN: ${KFGYR_RUNNER_API_TOKEN:?}
       KFGYR_ADMIN_ORG_ID: ${KFGYR_ADMIN_ORG_ID:-1}

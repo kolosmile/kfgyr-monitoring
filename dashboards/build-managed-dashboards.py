@@ -78,10 +78,7 @@ JOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'
  AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'
 """
 home = dashboard("kfgyr-home", "KFGyR · Kezdőlap", [
-    panel(1, "", "text", 0, 0, 12, 4,
-          "# [📈 Gépmonitoring](/d/kfgyr-machine-monitoring)"),
-    panel(2, "", "text", 12, 0, 12, 4,
-          f"# [📥 Adatexport]({APP}/export)"),
+    {**panel(1, "", "kfgyr-navigation-panel", 0, 0, 24, 16), "transparent": True},
 ])
 home["timepicker"] = {"hidden": True}
 NUMBER = """

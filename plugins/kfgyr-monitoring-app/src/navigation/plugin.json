@@ -1,0 +1,14 @@
+{
+  "type": "panel",
+  "name": "KFGyR navigáció",
+  "id": "kfgyr-navigation-panel",
+  "info": {
+    "description": "Szerepkörhöz igazodó KFGyR kezdőmenü",
+    "author": { "name": "KFGyR" },
+    "version": "0.4.4"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=13.0.2",
+    "plugins": []
+  }
+}

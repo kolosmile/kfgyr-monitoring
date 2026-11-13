@@ -15,33 +15,16 @@
   "panels": [
     {
       "id": 1,
-      "type": "text",
+      "type": "kfgyr-navigation-panel",
       "title": "",
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 12,
-        "h": 4
+        "w": 24,
+        "h": 16
       },
-      "options": {
-        "mode": "markdown",
-        "content": "# [📈 Gépmonitoring](/d/kfgyr-machine-monitoring)"
-      }
-    },
-    {
-      "id": 2,
-      "type": "text",
-      "title": "",
-      "gridPos": {
-        "x": 12,
-        "y": 0,
-        "w": 12,
-        "h": 4
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "# [📥 Adatexport](/a/kfgyr-monitoring-app/export)"
-      }
+      "options": {},
+      "transparent": true
     }
   ],
   "templating": {
