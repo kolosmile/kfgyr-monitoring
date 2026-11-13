@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { HomeLink } from '../components/HomeLink';
 import { PluginPage } from '@grafana/runtime';
 import {
   Alert,
@@ -191,7 +192,7 @@ export function App() {
 
   if (!setup || !snapshot) {
     return (
-      <PluginPage pageNav={pageNav}>
+      <PluginPage pageNav={pageNav} actions={<HomeLink />}>
         <div className={s.page}>
           {error ? (
             <Alert title="Nem sikerült betölteni a konfigurációt" severity="error">
@@ -264,19 +265,22 @@ export function App() {
     <PluginPage
       pageNav={pageNav}
       actions={
-        <Button
-          variant="secondary"
-          icon="cog"
-          disabled={busy}
-          onClick={() => {
-            setClient(clone(setup.client));
-            setSettingsSubmitted(false);
-            setSettingsClosing(false);
-            setSettingsOpen(true);
-          }}
-        >
-          Monitoring beállításai
-        </Button>
+        <div className={s.actions}>
+          <HomeLink />
+          <Button
+            variant="secondary"
+            icon="cog"
+            disabled={busy}
+            onClick={() => {
+              setClient(clone(setup.client));
+              setSettingsSubmitted(false);
+              setSettingsClosing(false);
+              setSettingsOpen(true);
+            }}
+          >
+            Monitoring beállításai
+          </Button>
+        </div>
       }
     >
       <div className={s.page}>

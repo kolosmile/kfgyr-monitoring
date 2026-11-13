@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { config, getBackendSrv, PluginPage } from '@grafana/runtime';
+import { HomeLink } from '../components/HomeLink';
+import { getBackendSrv, PluginPage } from '@grafana/runtime';
 import { Alert, Badge, Button, Combobox, Field, Input, MultiCombobox, useStyles2 } from '@grafana/ui';
 import { lastValueFrom } from 'rxjs';
 import { getStyles } from '../components/styles';
@@ -149,7 +150,7 @@ export function ExportPage() {
   const signalDisabled = busy || loadingSignals || !signals.length;
   const ready = machine.length > 0 && signal.length > 0 && !signalDisabled;
   return (
-    <PluginPage pageNav={{ text: 'Adatexport' }}>
+    <PluginPage pageNav={{ text: 'Adatexport' }} actions={<HomeLink />}>
       <div className={styles.page}>
         <form onSubmit={download} className={styles.form}>
           {error && <Alert title="Az adatexport művelete sikertelen" severity="error">{error}</Alert>}
@@ -240,7 +241,6 @@ export function ExportPage() {
               </Button>
             </div>
           </section>
-          <a href={config.appSubUrl + '/d/kfgyr-home'}>Vissza a kezdőlapra</a>
         </form>
       </div>
     </PluginPage>

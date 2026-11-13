@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { HomeLink } from '../components/HomeLink';
 import { PluginPage, config } from '@grafana/runtime';
 import { Alert, Button, Combobox, Field, Input, Spinner, useStyles2 } from '@grafana/ui';
 import { api } from '../api';
@@ -88,7 +89,7 @@ export function ProfilesPage() {
 
   const points = assignment?.options.map(({ id, label }) => ({ value: id, label })) ?? [];
   return (
-    <PluginPage pageNav={{ text: 'Monitoring beállítása' }}>
+    <PluginPage pageNav={{ text: 'Monitoring beállítása' }} actions={<HomeLink />}>
       <div className={styles.page}>
         <form onSubmit={save} className={styles.form}>
           {error && <Alert severity="error" title="A művelet sikertelen">{error}</Alert>}

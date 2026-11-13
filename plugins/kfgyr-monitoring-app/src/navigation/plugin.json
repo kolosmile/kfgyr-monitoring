@@ -5,7 +5,7 @@
   "info": {
     "description": "Szerepkörhöz igazodó KFGyR kezdőmenü",
     "author": { "name": "KFGyR" },
-    "version": "0.4.4"
+    "version": "0.4.5"
   },
   "dependencies": {
     "grafanaDependency": ">=13.0.2",
