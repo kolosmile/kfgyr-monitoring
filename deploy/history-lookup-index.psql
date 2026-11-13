@@ -1,0 +1,18 @@
+\set ON_ERROR_STOP on
+-- Run with psql against the active ladder99 database, outside a transaction.
+SET lock_timeout = '5s';
+
+CREATE INDEX IF NOT EXISTS history_node_dataitem_time_idx
+    ON raw.history (node_id, dataitem_id, time DESC)
+    WITH (timescaledb.transaction_per_chunk);
+
+SELECT i.indisvalid AS history_index_valid
+FROM pg_index AS i
+WHERE i.indexrelid = 'raw.history_node_dataitem_time_idx'::regclass
+\gset
+\if :history_index_valid
+    \echo History lookup index is valid.
+\else
+    \echo History lookup index is invalid. Drop and rebuild it as described in deploy/README.md.
+    DO $$ BEGIN RAISE EXCEPTION 'History lookup index is invalid'; END $$;
+\endif

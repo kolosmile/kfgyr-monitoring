@@ -41,3 +41,23 @@ services:
 ```
 
 Mindig add meg ugyanazokat az override fájlokat a Compose indításakor és újralétrehozásakor. Meglévő kötet átvételéhez az override-ban a megfelelő kötetekhez megadható az `external: true` beállítás. A régi Compose projektet csak visszaállításkor indítsd újra, miután a két új projekt leállt.
+
+### Az utolsó minta lekérdezésének gyorsítása
+
+A Gépmonitoring állapotkártyái és műszerei a kiválasztott gép és adatpont utolsó ismert mintáját keresik. Egy ritkán változó állapot mintája a dashboard időablakán kívül is lehet. A `raw.history` külön gép-, adatpont- és időindexei mellé ezért egy összetett B-tree index kerül. A `(node_id, dataitem_id, time DESC)` sorrend a két azonosítóra szűrés után a legújabb minta keresését segíti.
+
+A `raw.history` létrejötte után futtasd a repó gyökeréből, az aktív backend TimescaleDB-jén, a tábla tulajdonosaként. A `db` az aktív relay Compose projekt adatbázis-szolgáltatása.
+
+```sh
+docker compose -f deploy/compose.relay.yaml exec -T db psql -X -U ladder99 -d ladder99 < deploy/history-lookup-index.psql
+```
+
+A TimescaleDB időszegmensenként építi az indexet. Az érintett szegmens írásai közben várhatnak, ezért kisebb terhelésnél futtasd. A fájl öt másodperces zárolási időkorlátot állít be, és ellenőrzi az index érvényességét. Futtasd önállóan, tranzakciós csomagolás nélkül. A Grafana és a relay újraindítása nem szükséges. [TimescaleDB indexelés időszegmensenként](https://www.tigerdata.com/docs/reference/timescaledb/hypertables/create_index)
+
+Az ellenőrzéshez hasonlítsd össze ugyanannak az Elérhetőség panelnek az adatforrás-lekérdezését előtte és utána. Ha az indexépítés félbeszakad, az index érvénytelen maradhat, és a megismételt parancs az azonos név miatt átugorhatja. Ilyenkor, illetve visszaállításhoz, a tulajdonosi kapcsolaton futtasd a következőt. Újraépítéshez utána futtasd ismét a fenti fájlt.
+
+```sql
+DROP INDEX IF EXISTS raw.history_node_dataitem_time_idx;
+```
+
+Az éles Coolify telepítésben az index 2026. november 13-án az aktív backend `db` konténerében épült fel, egyszeri psql futtatással. Az adatbázis érvényesnek jelölte az indexet. A Mazak Elérhetőség lekérdezése a Grafana API-n egy-egy mérésben 2,37 s-ról 0,05 s-ra csökkent, és mindkét alkalommal `AVAILABLE` értéket adott.
