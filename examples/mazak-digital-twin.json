@@ -1,0 +1,20 @@
+{
+  "uid": "kfgyr-mazak-digital-twin",
+  "title": "Mazak · Élő 3D demó",
+  "schemaVersion": 41,
+  "editable": false,
+  "tags": ["KFGyR", "demó"],
+  "timepicker": { "hidden": true },
+  "panels": [
+    {
+      "id": 1,
+      "type": "innius-video-panel",
+      "title": "Mazak · Digitális iker",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 26 },
+      "options": {
+        "videoType": "iframe",
+        "iframeURL": "https://demo.mtconnect.org/twin/index.html?device=Mazak"
+      }
+    }
+  ]
+}
