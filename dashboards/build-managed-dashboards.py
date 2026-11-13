@@ -82,10 +82,6 @@ home = dashboard("kfgyr-home", "KFGyR · Kezdőlap", [
           "# [📈 Gépmonitoring](/d/kfgyr-machine-monitoring)"),
     panel(2, "", "text", 12, 0, 12, 4,
           f"# [📥 Adatexport]({APP}/export)"),
-    panel(3, "", "text", 0, 4, 12, 4,
-          f"# [🔌 Agentek és gépek]({APP}/agents)"),
-    panel(4, "", "text", 12, 4, 12, 4,
-          f"# [⚙️ Monitoring beállítása]({APP}/profiles)"),
 ])
 home["timepicker"] = {"hidden": True}
 NUMBER = """
@@ -248,7 +244,6 @@ monitoring = {
             for title, url, icon in [
                 ("Kezdőlap", "/d/kfgyr-home", "home-alt"),
                 ("Adatexport", f"{APP}/export", "download-alt"),
-                ("Monitoring beállítása", f"{APP}/profiles", "cog"),
             ]
         ],
         "elements": {

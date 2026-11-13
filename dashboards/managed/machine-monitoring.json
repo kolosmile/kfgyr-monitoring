@@ -51,18 +51,6 @@
         "targetBlank": false,
         "includeVars": false,
         "keepTime": false
-      },
-      {
-        "title": "Monitoring beállítása",
-        "url": "/a/kfgyr-monitoring-app/profiles",
-        "type": "link",
-        "icon": "cog",
-        "tooltip": "",
-        "tags": [],
-        "asDropdown": false,
-        "targetBlank": false,
-        "includeVars": false,
-        "keepTime": false
       }
     ],
     "elements": {

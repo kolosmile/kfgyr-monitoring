@@ -42,36 +42,6 @@
         "mode": "markdown",
         "content": "# [📥 Adatexport](/a/kfgyr-monitoring-app/export)"
       }
-    },
-    {
-      "id": 3,
-      "type": "text",
-      "title": "",
-      "gridPos": {
-        "x": 0,
-        "y": 4,
-        "w": 12,
-        "h": 4
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "# [🔌 Agentek és gépek](/a/kfgyr-monitoring-app/agents)"
-      }
-    },
-    {
-      "id": 4,
-      "type": "text",
-      "title": "",
-      "gridPos": {
-        "x": 12,
-        "y": 4,
-        "w": 12,
-        "h": 4
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "# [⚙️ Monitoring beállítása](/a/kfgyr-monitoring-app/profiles)"
-      }
     }
   ],
   "templating": {
