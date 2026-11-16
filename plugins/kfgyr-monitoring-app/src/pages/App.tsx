@@ -38,6 +38,7 @@ export function App() {
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [setup, setSetup] = useState<Setup>();
   const [status, setStatus] = useState<RunnerStatus>({});
+  const [connections, setConnections] = useState<Record<string, 'checking' | 'online' | 'offline' | 'unknown'>>({});
   const [editor, setEditor] = useState<{ index: number | null; initial: Agent; found?: FoundDevice[] }>();
   const [editorDirty, setEditorDirty] = useState(false);
   const [query, setQuery] = useState('');
@@ -105,6 +106,40 @@ export function App() {
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [unsaved]);
+
+  const agentUrls = JSON.stringify([...new Set((setup?.relay.agents || []).map((agent) => agent.url.trim()).filter(Boolean))].sort());
+  useEffect(() => {
+    const urls: string[] = JSON.parse(agentUrls);
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    async function checkConnections() {
+      if (!urls.length) {
+        setConnections({});
+        return;
+      }
+      setConnections((previous) => Object.fromEntries(urls.map((url) => [url, previous[url] || 'checking'])));
+      for (let index = 0; index < urls.length && active; index += 4) {
+        await Promise.all(urls.slice(index, index + 4).map(async (url) => {
+          let result: 'online' | 'offline' | 'unknown' = 'online';
+          try {
+            await api<{ devices: FoundDevice[] }>('probe', 'POST', { url });
+          } catch (error) {
+            const failure = error as { status?: number; data?: { message?: string } };
+            const message = failure.data?.message || '';
+            result = failure.status === 502 && !/runner|relay kapcsolat/i.test(message) ? 'offline' : 'unknown';
+          }
+          if (active) {
+            setConnections((previous) => ({ ...previous, [url]: result }));
+          }
+        }));
+      }
+      if (active) {
+        timer = setTimeout(checkConnections, 30000);
+      }
+    }
+    void checkConnections();
+    return () => { active = false; clearTimeout(timer); };
+  }, [agentUrls]);
 
   function edit(index: number | null) {
     if (!setup) {
@@ -278,7 +313,7 @@ export function App() {
               setSettingsOpen(true);
             }}
           >
-            Monitoring beállításai
+            Relay beállításai
           </Button>
         </div>
       }
@@ -416,6 +451,10 @@ export function App() {
                         color={agent.ignore ? 'darkgrey' : 'blue'}
                         text={agent.ignore ? 'Szüneteltetve' : 'Engedélyezve'}
                       />
+                      <Badge
+                        color={connections[agent.url.trim()] === 'online' ? 'green' : connections[agent.url.trim()] === 'offline' ? 'red' : 'darkgrey'}
+                        text={connections[agent.url.trim()] === 'online' ? 'Elérhető' : connections[agent.url.trim()] === 'offline' ? 'Nem elérhető' : connections[agent.url.trim()] === 'unknown' ? 'Elérhetőség ismeretlen' : 'Ellenőrzés…'}
+                      />
                       {(isAdded || isModified) && (
                         <Badge color="orange" text={isAdded ? 'Új · nincs mentve' : 'Módosítva · nincs mentve'} />
                       )}
@@ -519,7 +558,7 @@ export function App() {
 
         {settingsOpen && client && (
           <Modal
-            title="Monitoring beállításai"
+            title="Relay beállításai"
             isOpen
             className={s.modal}
             closeOnBackdropClick={false}
