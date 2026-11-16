@@ -12,23 +12,23 @@ type Row = {
   name: string;
   dashboard: string;
   dashboardName: string;
-  deviceAvailability: string;
-  availabilityTime: string;
 };
 
 const getStyles = (theme: GrafanaTheme2) => ({
   bar: css({
     height: '100%',
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
     gap: theme.spacing(1.5),
     flexWrap: 'wrap',
     overflow: 'auto',
-    padding: theme.spacing(0.5, 1),
+    padding: theme.spacing(0, 1),
   }),
-  controls: css({ display: 'flex', alignItems: 'center', gap: theme.spacing(1), flexWrap: 'wrap' }),
+  controls: css({ display: 'flex', alignItems: 'flex-end', gap: theme.spacing(1), flexWrap: 'wrap' }),
   select: css({ width: 180, maxWidth: '100%' }),
+  label: css({ display: 'block', color: theme.colors.text.secondary, fontSize: 11, marginBottom: 2 }),
+  badge: css({ alignSelf: 'flex-end', paddingBottom: 6 }),
 });
 
 export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
@@ -44,8 +44,6 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
     name: String(field('machine_name', index) ?? ''),
     dashboard: String(field('dashboard_id', index) ?? ''),
     dashboardName: String(field('dashboard_name', index) ?? ''),
-    deviceAvailability: String(field('device_availability', index) ?? ''),
-    availabilityTime: String(field('availability_time', index) ?? ''),
   }));
   const selected = rows.find((row) => row.machine === machine);
   const agents = [...new Set(rows.map((row) => row.agent).filter(Boolean))];
@@ -92,7 +90,8 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
     <nav className={styles.bar} aria-label="Gépmonitoring navigáció">
       <div className={styles.controls}>
         <div className={styles.select}>
-          <Combobox aria-label="Agent" value={selected?.agent || null}
+          <label className={styles.label} htmlFor="monitoring-menu-agent">Agent</label>
+          <Combobox id="monitoring-menu-agent" aria-label="Agent" value={selected?.agent || null}
             options={agents.map((agent) => ({ value: agent, label: agent }))}
             placeholder="Agent" onChange={({ value }) => {
               const first = rows.find((row) => row.agent === value);
@@ -100,7 +99,8 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
             }} />
         </div>
         <div className={styles.select}>
-          <Combobox aria-label="Gép" value={selected?.machine || null}
+          <label className={styles.label} htmlFor="monitoring-menu-machine">Gép</label>
+          <Combobox id="monitoring-menu-machine" aria-label="Gép" value={selected?.machine || null}
             options={machines.map((row) => ({ value: row.machine, label: row.name }))}
             placeholder="Gép" onChange={({ value }) => {
               const next = machines.find((row) => row.machine === value);
@@ -108,19 +108,16 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
             }} />
         </div>
         <div className={styles.select}>
-          <Combobox aria-label="Dashboard" value={dashboards.some((row) => row.dashboard === dashboard) ? dashboard : null}
+          <label className={styles.label} htmlFor="monitoring-menu-dashboard">Dashboard</label>
+          <Combobox id="monitoring-menu-dashboard" aria-label="Dashboard" value={dashboards.some((row) => row.dashboard === dashboard) ? dashboard : null}
             options={dashboards.map((row) => ({ value: row.dashboard, label: row.dashboardName }))}
             placeholder="Dashboard" onChange={({ value }) => locationService.partial({ 'var-dashboard': value }, true)} />
         </div>
-        <Badge color={availability === 'online' ? 'green' : availability === 'offline' ? 'red' : 'darkgrey'}
-          text={availability === 'online' ? 'Agent elérhető' : availability === 'offline' ? 'Agent nem elérhető' :
-            availability === 'checking' ? 'Agent ellenőrzése…' : 'Agent elérhetősége ismeretlen'} />
-        {selected?.deviceAvailability && (
-          <span title={selected.availabilityTime ? `Utolsó minta: ${new Date(selected.availabilityTime).toLocaleString('hu-HU')}` : 'Utolsó minta'}>
-            <Badge color={selected.deviceAvailability === 'AVAILABLE' ? 'green' : selected.deviceAvailability === 'UNAVAILABLE' ? 'red' : 'darkgrey'}
-              text={`Utolsó gépállapot: ${selected.deviceAvailability}`} />
-          </span>
-        )}
+        <span className={styles.badge}>
+          <Badge color={availability === 'online' ? 'green' : availability === 'offline' ? 'red' : 'darkgrey'}
+            text={availability === 'online' ? 'Agent elérhető' : availability === 'offline' ? 'Agent nem elérhető' :
+              availability === 'checking' ? 'Agent ellenőrzése…' : 'Agent elérhetősége ismeretlen'} />
+        </span>
       </div>
       <HomeLink />
     </nav>

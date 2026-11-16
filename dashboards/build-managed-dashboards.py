@@ -225,25 +225,13 @@ LEFT JOIN LATERAL (
 ORDER BY 1
 """)
 quick_points["options"] = {"showHeader": True, "enablePagination": True}
-menu = panel(7, "", "kfgyr-navigation-panel", 0, 0, 24, 3, sql="""
+menu = panel(7, "", "kfgyr-navigation-panel", 0, 0, 24, 2, sql="""
 /* ${machine:sqlstring} ${dashboard:sqlstring} */
 SELECT d.node_id::text AS machine_id, d.props->>'agentAlias' AS agent,
        d.props->>'deviceAlias' AS machine_name, m.id::text AS dashboard_id,
-       m.name AS dashboard_name, m.is_default, latest.value #>> '{}' AS device_availability,
-       latest.time AS availability_time
+       m.name AS dashboard_name, m.is_default
 FROM raw.nodes d LEFT JOIN kfgyr.machine_dashboards m
   ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'
-LEFT JOIN LATERAL (
-  SELECT h.value, h.time FROM raw.nodes n
-  CROSS JOIN LATERAL (
-    SELECT value, time FROM raw.history
-    WHERE node_id=d.node_id AND dataitem_id=n.node_id
-    ORDER BY time DESC LIMIT 1
-  ) h
-  WHERE n.props->>'node_type'='DataItem' AND n.props->>'type'='AVAILABILITY'
-    AND n.props->>'agentAlias'=d.props->>'agentAlias' AND n.props->>'deviceId'=d.props->>'deviceId'
-  ORDER BY h.time DESC LIMIT 1
-) latest ON true
 WHERE d.props->>'node_type'='Device'
 ORDER BY agent, machine_name, m.is_default DESC, m.name, m.id
 """)
@@ -268,7 +256,7 @@ monitoring = {
         },
         "layout": resource("RowsLayout", rows=[
             resource("RowsLayoutRow", hideHeader=True, layout=resource("GridLayout", items=[
-                resource("GridLayoutItem", x=0, y=0, width=24, height=3,
+                resource("GridLayoutItem", x=0, y=0, width=24, height=2,
                          element={"kind": "ElementReference", "name": "panel-7"})
             ])),
             view_row("Áttekintés", 88, 6, 200, [(2, "state"), (3, "value")]),
