@@ -17,16 +17,17 @@ type Row = {
 const getStyles = (theme: GrafanaTheme2) => ({
   bar: css({
     height: '100%',
+    boxSizing: 'border-box',
     display: 'flex',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing(1.5),
-    flexWrap: 'wrap',
-    overflow: 'auto',
-    padding: theme.spacing(0, 1),
+    flexWrap: 'nowrap',
+    overflow: 'hidden',
+    padding: theme.spacing(0, 12, 0, 3),
   }),
-  controls: css({ display: 'flex', alignItems: 'flex-end', gap: theme.spacing(1), flexWrap: 'wrap' }),
-  select: css({ width: 180, maxWidth: '100%' }),
+  controls: css({ display: 'flex', alignItems: 'flex-end', gap: theme.spacing(1), flexWrap: 'nowrap', minWidth: 0 }),
+  select: css({ width: 180, maxWidth: '100%', minWidth: 0 }),
   label: css({ display: 'block', color: theme.colors.text.secondary, fontSize: 11, marginBottom: 2 }),
   badge: css({ alignSelf: 'flex-end', paddingBottom: 6 }),
 });
