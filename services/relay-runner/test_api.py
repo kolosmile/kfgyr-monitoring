@@ -75,6 +75,22 @@ class APITests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()["config"]["relay"]["agents"][0]["devices"][0]["alias"], "Renamed")
 
+    def test_dashboard_routes_dispatch_and_require_authentication(self):
+        with patch("monitoring.list_dashboards", return_value={"dashboards": []}) as listing:
+            response = self.client.get("/v1/machines/123/dashboards")
+            self.assertEqual(response.status_code, 200)
+            listing.assert_called_once_with("123")
+            self.assertEqual(self.client.get("/v1/machines/123/dashboards",
+                                             headers={"Authorization": "Bearer wrong"}).status_code, 401)
+        with patch("monitoring.create_dashboard", return_value={"id": 7}) as create:
+            response = self.client.post("/v1/dashboards", json={"machine": "123", "name": "Áttekintés"})
+            self.assertEqual(response.json(), {"id": 7})
+            self.assertEqual(create.call_args.args[0].machine, "123")
+        with patch("monitoring.delete_dashboard", return_value={"deleted": True}) as delete:
+            response = self.client.post("/v1/dashboards/delete", json={"id": 7, "revision": 2})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(delete.call_args.args[0].revision, 2)
+
     def test_checksum_mismatch_fails_closed_and_body_is_bounded(self):
         saved = self.seed().json()
         path = Path(self.temp.name) / "revisions" / (saved["revision"] + ".yaml")

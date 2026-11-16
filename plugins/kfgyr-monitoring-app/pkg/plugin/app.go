@@ -21,6 +21,8 @@ import (
 const maxBody = 1024 * 1024
 
 var machinePath = regexp.MustCompile(`^machine-monitoring/[a-zA-Z0-9_-]{1,128}$`)
+var machineDashboardsPath = regexp.MustCompile(`^machines/[a-zA-Z0-9_-]{1,128}/dashboards$`)
+var dashboardPath = regexp.MustCompile(`^dashboards/[0-9]{1,19}$`)
 
 var jobPath = regexp.MustCompile(`^discovery/[a-f0-9]{24}$`)
 
@@ -76,10 +78,14 @@ func allowed(path, method string) bool {
 		return method == "GET"
 	case "probe", "rollback":
 		return method == "POST"
+	case "dashboards":
+		return method == "POST" || method == "PUT"
+	case "dashboards/delete":
+		return method == "POST"
 	case "discovery":
 		return method == "POST" || method == "GET"
 	}
-	return (machinePath.MatchString(path) && method == "GET") || jobPath.MatchString(path) && (method == "GET" || method == "DELETE")
+	return ((machinePath.MatchString(path) || machineDashboardsPath.MatchString(path) || dashboardPath.MatchString(path)) && method == "GET") || jobPath.MatchString(path) && (method == "GET" || method == "DELETE")
 }
 
 func (a *App) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {

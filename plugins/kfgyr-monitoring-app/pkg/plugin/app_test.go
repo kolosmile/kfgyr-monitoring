@@ -27,6 +27,27 @@ func fixture(t *testing.T, handler http.HandlerFunc) *App {
 func admin() backend.PluginContext {
 	return backend.PluginContext{OrgID: 1, User: &backend.User{Role: "Admin", Login: "monitoring-admin"}}
 }
+
+func TestDashboardRoutesAreRestrictedToExpectedMethods(t *testing.T) {
+	for _, tc := range []struct {
+		path   string
+		method string
+		want   bool
+	}{
+		{"machines/123/dashboards", "GET", true},
+		{"dashboards/42", "GET", true},
+		{"dashboards", "POST", true},
+		{"dashboards", "PUT", true},
+		{"dashboards/delete", "POST", true},
+		{"dashboards/42", "DELETE", false},
+		{"dashboards/../../config", "GET", false},
+		{"machines/123/dashboards", "PUT", false},
+	} {
+		if got := allowed(tc.path, tc.method); got != tc.want {
+			t.Errorf("allowed(%q, %q) = %v, want %v", tc.path, tc.method, got, tc.want)
+		}
+	}
+}
 func TestEveryRouteEnforcesRoleAndOrganization(t *testing.T) {
 	a := fixture(t, func(w http.ResponseWriter, r *http.Request) { t.Error("Unauthorized request reached runner") })
 	for _, path := range []string{"config", "status", "probe", "rollback", "networks", "discovery", "discovery/" + strings.Repeat("a", 24)} {

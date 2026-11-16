@@ -34,8 +34,9 @@ def quote(value):
 
 MACHINE = """
 SELECT d.node_id, d.props, m.profile, m.signals
-FROM raw.nodes d LEFT JOIN kfgyr.machine_monitoring m
+FROM raw.nodes d LEFT JOIN kfgyr.machine_dashboards m
   ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'
+  AND m.id::text=${dashboard:sqlstring}
 WHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}
 """
 CATALOG = ", ".join(
@@ -163,8 +164,8 @@ def panel_resource(source, defaults=None):
                                "group": source["type"], "version": ""})
 
 
-def query_variable(name, sql, *, repeat=False, visible=False):
-    return resource("QueryVariable", name=name, label="Gép" if visible else name,
+def query_variable(name, sql, *, repeat=False, visible=False, label=None):
+    return resource("QueryVariable", name=name, label=label or name,
                     query=data_query(__legacyStringValue=sql), definition=sql,
                     current={"text": ["All"], "value": ["$__all"]} if repeat else {"text": "", "value": ""},
                     options=[], regex="", sort="disabled", refresh="onDashboardLoad",
@@ -259,7 +260,14 @@ monitoring = {
         ]),
         "variables": [
             query_variable("machine", "SELECT props->>'path' AS __text, node_id::text AS __value "
-                           "FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 1", visible=True),
+                           "FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 1", visible=True, label="Gép"),
+            query_variable("dashboard", """
+SELECT m.name AS __text, m.id::text AS __value
+FROM kfgyr.machine_dashboards m JOIN raw.nodes d
+  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'
+WHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}
+ORDER BY m.is_default DESC, lower(m.name), m.id
+""", visible=True, label="Dashboard"),
             query_variable("configured_views", f"WITH mapped AS ({MAPPED}) "
                            "SELECT coalesce(string_agg(DISTINCT view, ','), '__none__') FROM mapped"),
             *[view_variable(view) for view, *_ in views],

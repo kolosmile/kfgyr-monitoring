@@ -22,7 +22,7 @@ from discovery import Discovery, Policy, probe
 import monitoring
 from runner import Runner, healthcheck, read_json
 
-VERSION = "0.4.0"
+VERSION = "0.4.5"
 logger = logging.getLogger("kfgyr.runner")
 
 
@@ -142,6 +142,26 @@ def create_app(directory=None, token=None, policy=None, supervise=True):
     @app.put("/v1/machine-monitoring")
     def put_machine_monitoring(body: monitoring.Assignment, user=Depends(actor)):
         return monitoring.save_assignment(body, user)
+
+    @app.get("/v1/machines/{machine}/dashboards")
+    def machine_dashboards(machine: str):
+        return monitoring.list_dashboards(machine)
+
+    @app.get("/v1/dashboards/{dashboard_id}")
+    def dashboard(dashboard_id: int):
+        return monitoring.read_dashboard(dashboard_id)
+
+    @app.post("/v1/dashboards")
+    def create_dashboard(body: monitoring.DashboardCreate, user=Depends(actor)):
+        return monitoring.create_dashboard(body, user)
+
+    @app.put("/v1/dashboards")
+    def update_dashboard(body: monitoring.DashboardUpdate, user=Depends(actor)):
+        return monitoring.update_dashboard(body, user)
+
+    @app.post("/v1/dashboards/delete")
+    def delete_dashboard(body: monitoring.DashboardDelete):
+        return monitoring.delete_dashboard(body)
 
     @app.get("/v1/config")
     def get_config():

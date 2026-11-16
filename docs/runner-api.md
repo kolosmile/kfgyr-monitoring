@@ -42,7 +42,13 @@ A sikeres mentés nem azonos a sikeres adatgyűjtéssel. A runner az indulási i
 ## Gépmonitoring konfiguráció
 
 - `GET /v1/machines` felsorolja az adatbázisban ismert gépeket és a beépített profilkatalógust.
-- `GET /v1/machine-monitoring/{machine}` visszaadja a gép profilját, a mentett jel-hozzárendeléseket, a revíziót és a kiválasztható adatpontokat.
-- `PUT /v1/machine-monitoring` mezői `machine`, `profile`, `signals` és `revision`. Új beállításnál a revízió nulla. Párhuzamos módosításnál a régi revízió 409 választ kap. A runner csak a kiválasztott géphez tartozó adatpontot fogad el.
+- `GET /v1/machines/{machine}/dashboards` felsorolja a gép dashboardjait.
+- `POST /v1/dashboards` új, üres dashboardot hoz létre a gép azonosítójával és a nevével.
+- `GET /v1/dashboards/{id}` visszaadja a dashboard nevét, paneljeit, revízióját és a gép kiválasztható adatpontjait.
+- `PUT /v1/dashboards` az `id`, `name`, `panels` és `revision` alapján ment. A runner csak az adott géphez tartozó adatpontot fogad el.
+- `POST /v1/dashboards/delete` az `id` és `revision` alapján töröl. Párhuzamos módosításnál a régi revízió 409 választ kap.
+- A korábbi `GET /v1/machine-monitoring/{machine}` és `PUT /v1/machine-monitoring` végpont az alapértelmezett dashboardot kezeli.
+
+A runner induláskor tranzakcióban migrálja a meglévő gépbeállításokat a `kfgyr.machine_dashboards` táblába, gépenként egy „Áttekintés” dashboardként. A migráció egyszer fut le, és megőrzi a korábbi panelkonfigurációkat. Az első dashboard az alapértelmezett, törlésekor a legrégebbi fennmaradó dashboard veszi át ezt a szerepet.
 
 Ezek a műveletek a runner hitelesített API-ján futnak. A mentés a normál PostgreSQL konfigurációs táblát módosítja. A relay adatgyűjtési konfigurációját és alkalmazott revízióját külön kezeli.

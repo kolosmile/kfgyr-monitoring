@@ -19,7 +19,8 @@ const chartColors: Array<{ value: ChartColor; label: string }> = [
 type Panel = { name: string; point: string; view: View; minimum?: number; maximum?: number; color?: ChartColor };
 type Option = { id: string; label: string };
 type Catalog = { presets: Array<{ label: string; panels: Panel[] }>; machines: Option[] };
-type Assignment = { panels: Panel[]; revision: number; options: Option[] };
+type Dashboard = { id: number; name: string; revision: number; is_default: boolean };
+type Assignment = { id: number; name: string; panels: Panel[]; revision: number; options: Option[] };
 
 const views: Array<{ value: View; label: string }> = [
   { value: 'state', label: 'Állapot' },
@@ -33,6 +34,13 @@ export function ProfilesPage() {
   const [catalog, setCatalog] = useState<Catalog>();
   const [machine, setMachine] = useState('');
   const [assignment, setAssignment] = useState<Assignment>();
+  const [dashboards, setDashboards] = useState<Dashboard[]>();
+  const [listRevision, setListRevision] = useState(0);
+  const [dashboardId, setDashboardId] = useState<number>();
+  const [dashboardName, setDashboardName] = useState('');
+  const [search, setSearch] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [preset, setPreset] = useState<number>();
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -41,7 +49,7 @@ export function ProfilesPage() {
   const [saving, setSaving] = useState(false);
   const [savedPanels, setSavedPanels] = useState('');
   const [confirmBack, setConfirmBack] = useState(false);
-  const dirty = !!assignment && JSON.stringify(assignment.panels) !== savedPanels;
+  const dirty = !!assignment && JSON.stringify({ panels: assignment.panels, name: dashboardName }) !== savedPanels;
 
   useEffect(() => {
     api<Catalog>('machines').then(setCatalog).catch((err) => setError(errorText(err)));
@@ -52,16 +60,29 @@ export function ProfilesPage() {
       return;
     }
     let active = true;
-    api<Assignment>(`machine-monitoring/${encodeURIComponent(machine)}`)
+    api<{ dashboards: Dashboard[] }>(`machines/${encodeURIComponent(machine)}/dashboards`)
+      .then((value) => active && setDashboards(value.dashboards))
+      .catch((err) => active && setError(errorText(err)));
+    return () => { active = false; };
+  }, [machine, listRevision]);
+
+  useEffect(() => {
+    if (dashboardId === undefined) {
+      return;
+    }
+    let active = true;
+    setAssignment(undefined);
+    api<Assignment>(`dashboards/${dashboardId}`)
       .then((value) => {
         if (active) {
           setAssignment(value);
-          setSavedPanels(JSON.stringify(value.panels));
+          setDashboardName(value.name);
+          setSavedPanels(JSON.stringify({ panels: value.panels, name: value.name }));
         }
       })
       .catch((err) => active && setError(errorText(err)));
     return () => { active = false; };
-  }, [machine]);
+  }, [dashboardId]);
 
   useEffect(() => {
     if (!dirty) {
@@ -74,6 +95,9 @@ export function ProfilesPage() {
 
   function backToMachines() {
     setMachine('');
+    setDashboardId(undefined);
+    setDashboards(undefined);
+    setSearch('');
     setAssignment(undefined);
     setSavedPanels('');
     setEditor(undefined);
@@ -82,6 +106,52 @@ export function ProfilesPage() {
     setError('');
     setNotice('');
     setConfirmBack(false);
+  }
+
+  function backToDashboards() {
+    setDashboardId(undefined);
+    setAssignment(undefined);
+    setSavedPanels('');
+    setEditor(undefined);
+    setPreset(undefined);
+    setError('');
+    setNotice('');
+    setConfirmBack(false);
+    setListRevision((revision) => revision + 1);
+  }
+
+  async function createDashboard() {
+    if (!dashboardName.trim() || saving) {
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const result = await api<{ id: number }>('dashboards', 'POST', { machine, name: dashboardName.trim() });
+      setCreating(false);
+      setDashboardId(result.id);
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteDashboard() {
+    if (!assignment || saving) {
+      return;
+    }
+    setSaving(true);
+    try {
+      await api('dashboards/delete', 'POST', { id: assignment.id, revision: assignment.revision });
+      setConfirmDelete(false);
+      backToDashboards();
+    } catch (err) {
+      setConfirmDelete(false);
+      setError(errorText(err));
+    } finally {
+      setSaving(false);
+    }
   }
 
   function changePanels(panels: Panel[]) {
@@ -133,6 +203,10 @@ export function ProfilesPage() {
     setError('');
     setNotice('');
     const { panels, revision } = assignment;
+    if (!dashboardName.trim()) {
+      setError('Adj nevet a dashboardnak.');
+      return;
+    }
     const invalidIndex = panels.findIndex((panel) => !panel.name.trim() || !panel.point ||
       (panel.view === 'gauge' &&
         (!Number.isFinite(panel.minimum) || !Number.isFinite(panel.maximum) || !(panel.minimum! < panel.maximum!))));
@@ -143,9 +217,10 @@ export function ProfilesPage() {
     }
     setSaving(true);
     try {
-      const result = await api<{ revision: number }>('machine-monitoring', 'PUT', { machine, panels, revision });
+      const result = await api<{ revision: number }>('dashboards', 'PUT', { id: assignment.id, name: dashboardName.trim(), panels, revision });
       setAssignment({ ...assignment, revision: result.revision });
-      setSavedPanels(JSON.stringify(panels));
+      setDashboardName(dashboardName.trim());
+      setSavedPanels(JSON.stringify({ panels, name: dashboardName.trim() }));
       setNotice('A monitoring beállításai mentve.');
     } catch (err) {
       setError(errorText(err));
@@ -202,18 +277,56 @@ export function ProfilesPage() {
               <div className={styles.formFooter}>
                 <div>
                   <Button type="button" icon="arrow-left" variant="secondary" disabled={saving}
-                    onClick={() => dirty ? setConfirmBack(true) : backToMachines()}>
-                    Vissza a gépekhez
+                    onClick={() => dashboardId !== undefined ? (dirty ? setConfirmBack(true) : backToDashboards()) : backToMachines()}>
+                    {dashboardId !== undefined ? 'Vissza a dashboardokhoz' : 'Vissza a gépekhez'}
                   </Button>
                 </div>
                 <strong>{selected?.label}</strong>
               </div>
             </section>
           )}
-          {machine && !assignment && !error && <div role="status"><Spinner /> Beállítások betöltése…</div>}
+          {machine && dashboardId === undefined && (
+            <section className={styles.formCard}>
+              <div className={styles.formFooter}>
+                <h3>Dashboardok</h3>
+                <Button type="button" icon="plus" disabled={saving} onClick={() => {
+                  setDashboardName('');
+                  setCreating(true);
+                }}>Dashboard hozzáadása</Button>
+              </div>
+              <Field label="Dashboard keresése" htmlFor="dashboard-search">
+                <Input id="dashboard-search" placeholder="Keress név alapján…" value={search}
+                  onChange={(event) => setSearch(event.currentTarget.value)} />
+              </Field>
+              {!dashboards && !error && <div role="status"><Spinner /> Dashboardok betöltése…</div>}
+              {dashboards && !dashboards.length && <p className={styles.muted}>Ehhez a géphez még nincs dashboard.</p>}
+              {dashboards && dashboards.length > 0 && !dashboards.some((item) =>
+                item.name.toLocaleLowerCase('hu').includes(search.trim().toLocaleLowerCase('hu'))) &&
+                <p className={styles.muted}>Nincs a keresésnek megfelelő dashboard.</p>}
+              <div className={styles.machineGrid}>
+                {dashboards?.filter((item) => item.name.toLocaleLowerCase('hu')
+                  .includes(search.trim().toLocaleLowerCase('hu'))).map((item) => (
+                  <button key={item.id} type="button" className={styles.machineCard} onClick={() => {
+                    setError('');
+                    setNotice('');
+                    setDashboardId(item.id);
+                  }}>
+                    <Icon name="apps" size="xl" />
+                    <span>{item.name}</span>
+                    <Icon name="angle-right" />
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+          {dashboardId !== undefined && !assignment && !error && <div role="status"><Spinner /> Beállítások betöltése…</div>}
           {assignment && (
             <>
               <section className={styles.formCard}>
+                <Field label="Dashboard neve" htmlFor="dashboard-name">
+                  <Input id="dashboard-name" maxLength={120} disabled={saving} value={dashboardName}
+                    onChange={(event) => setDashboardName(event.currentTarget.value)} />
+                </Field>
                 <h3>Panelek</h3>
                 <p className={styles.note}>Kezdj üres listával, vagy adj hozzá szerkeszthető paneljavaslatokat. A sorrend nézetenként érvényesül.</p>
                 <Field label="Panelsablon csomag" htmlFor="panel-preset">
@@ -282,12 +395,33 @@ export function ProfilesPage() {
                 );
               })}
               <div className={styles.formFooter}>
-                <a href={config.appSubUrl + '/d/kfgyr-machine-monitoring?var-machine=' + encodeURIComponent(machine)}>Gépmonitoring megnyitása</a>
-                <Button type="submit" icon="save" disabled={saving}>{saving ? 'Mentés…' : 'Panelek mentése'}</Button>
+                <a href={config.appSubUrl + '/d/kfgyr-machine-monitoring?var-machine=' + encodeURIComponent(machine) + '&var-dashboard=' + assignment.id}>Gépmonitoring megnyitása</a>
+                <div className={styles.actions}>
+                  <Button type="button" icon="trash-alt" variant="destructive" disabled={saving}
+                    onClick={() => setConfirmDelete(true)}>Dashboard törlése</Button>
+                  <Button type="submit" icon="save" disabled={saving}>{saving ? 'Mentés…' : 'Dashboard mentése'}</Button>
+                </div>
               </div>
             </>
           )}
         </form>
+        {creating && (
+          <Modal title="Dashboard hozzáadása" isOpen onDismiss={() => setCreating(false)}>
+            <Field label="Dashboard neve" htmlFor="new-dashboard-name">
+              <Input id="new-dashboard-name" autoFocus maxLength={120} value={dashboardName}
+                onChange={(event) => setDashboardName(event.currentTarget.value)} />
+            </Field>
+            <Modal.ButtonRow>
+              <Button type="button" variant="secondary" onClick={() => setCreating(false)}>Mégse</Button>
+              <Button type="button" disabled={saving || !dashboardName.trim()} onClick={createDashboard}>Létrehozás</Button>
+            </Modal.ButtonRow>
+          </Modal>
+        )}
+        {confirmDelete && (
+          <ConfirmModal isOpen title="Dashboard törlése" body="A dashboard panelbeállításai törlődnek."
+            confirmText="Dashboard törlése" dismissText="Mégse" confirmVariant="destructive"
+            disabled={saving} onConfirm={deleteDashboard} onDismiss={() => setConfirmDelete(false)} />
+        )}
         {editor && (
           <Modal title={editor.index === null ? 'Új panel' : 'Panel szerkesztése'} isOpen
             onDismiss={() => setEditor(undefined)}>
@@ -337,7 +471,7 @@ export function ProfilesPage() {
           <ConfirmModal isOpen title="Elveted a nem mentett módosításokat?"
             body="A panelbeállítások módosításai elvesznek, ha visszalépsz mentés nélkül."
             confirmText="Módosítások elvetése" dismissText="Szerkesztés folytatása"
-            onConfirm={backToMachines} onDismiss={() => setConfirmBack(false)} />
+            onConfirm={backToDashboards} onDismiss={() => setConfirmBack(false)} />
         )}
       </div>
     </PluginPage>
