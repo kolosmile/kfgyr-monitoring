@@ -157,11 +157,16 @@ def panel_resource(source, defaults=None):
         {**resource("Transformation", options=item["options"]), "group": item["id"]}
         for item in source.get("transformations", [])
     ]
-    return resource("Panel", id=source["id"], title=source["title"], description="", links=[],
-                    data=resource("QueryGroup", queries=queries, transformations=transforms, queryOptions={}),
-                    vizConfig={**resource("VizConfig", options=source["options"],
-                                         fieldConfig={"defaults": defaults or {}, "overrides": source.get("overrides", [])}),
-                               "group": source["type"], "version": ""})
+    panel_spec = {
+        "id": source["id"], "title": source["title"], "description": "", "links": [],
+        "data": resource("QueryGroup", queries=queries, transformations=transforms, queryOptions={}),
+        "vizConfig": {**resource("VizConfig", options=source["options"],
+                                  fieldConfig={"defaults": defaults or {}, "overrides": source.get("overrides", [])}),
+                      "group": source["type"], "version": ""},
+    }
+    if source.get("transparent"):
+        panel_spec["transparent"] = True
+    return resource("Panel", **panel_spec)
 
 
 def query_variable(name, sql, *, repeat=False, visible=False, label=None, sync=False):
@@ -236,6 +241,7 @@ WHERE d.props->>'node_type'='Device'
 ORDER BY agent, machine_name, m.is_default DESC, m.name, m.id
 """)
 menu["options"] = {"mode": "monitoring"}
+menu["transparent"] = True
 
 monitoring = {
     "apiVersion": "dashboard.grafana.app/v2",

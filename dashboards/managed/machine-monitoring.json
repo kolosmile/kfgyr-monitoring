@@ -573,7 +573,8 @@
             },
             "group": "kfgyr-navigation-panel",
             "version": ""
-          }
+          },
+          "transparent": true
         }
       }
     },
