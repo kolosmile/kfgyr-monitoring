@@ -234,8 +234,12 @@ SELECT d.node_id::text AS machine_id, d.props->>'agentAlias' AS agent,
 FROM raw.nodes d LEFT JOIN kfgyr.machine_dashboards m
   ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'
 LEFT JOIN LATERAL (
-  SELECT h.value, h.time FROM raw.nodes n JOIN raw.history h
-    ON h.node_id=d.node_id AND h.dataitem_id=n.node_id
+  SELECT h.value, h.time FROM raw.nodes n
+  CROSS JOIN LATERAL (
+    SELECT value, time FROM raw.history
+    WHERE node_id=d.node_id AND dataitem_id=n.node_id
+    ORDER BY time DESC LIMIT 1
+  ) h
   WHERE n.props->>'node_type'='DataItem' AND n.props->>'type'='AVAILABILITY'
     AND n.props->>'agentAlias'=d.props->>'agentAlias' AND n.props->>'deviceId'=d.props->>'deviceId'
   ORDER BY h.time DESC LIMIT 1
