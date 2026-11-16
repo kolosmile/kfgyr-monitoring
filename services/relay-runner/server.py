@@ -22,7 +22,7 @@ from discovery import Discovery, Policy, probe
 import monitoring
 from runner import Runner, healthcheck, read_json
 
-VERSION = "0.4.7"
+VERSION = "0.4.8"
 logger = logging.getLogger("kfgyr.runner")
 
 
@@ -230,19 +230,25 @@ def create_app(directory=None, token=None, policy=None, supervise=True):
 
     @app.put("/v1/config")
     def put_config(body: SaveRequest, user=Depends(actor)):
-        previous = store.load()["config"]
-        monitoring.validate_schema_assignments(body.config, previous)
+        schema_support_enabled = os.getenv("KFGYR_MONITORING_DB_ENABLED") == "1"
+        if schema_support_enabled:
+            previous = store.load()["config"]
+            monitoring.validate_schema_assignments(body.config, previous)
         saved = store.save(body.base_revision, body.config, user)
-        monitoring.sync_machine_schema_assignments(saved["config"])
+        if schema_support_enabled:
+            monitoring.sync_machine_schema_assignments(saved["config"])
         return saved
 
     @app.post("/v1/rollback")
     def rollback(body: RollbackRequest, user=Depends(actor)):
-        previous = store.load()["config"]
-        target = store.load_revision(body.revision)["config"]
-        monitoring.validate_schema_assignments(target, previous)
+        schema_support_enabled = os.getenv("KFGYR_MONITORING_DB_ENABLED") == "1"
+        if schema_support_enabled:
+            previous = store.load()["config"]
+            target = store.load_revision(body.revision)["config"]
+            monitoring.validate_schema_assignments(target, previous)
         saved = store.rollback(body.base_revision, body.revision, user)
-        monitoring.sync_machine_schema_assignments(saved["config"])
+        if schema_support_enabled:
+            monitoring.sync_machine_schema_assignments(saved["config"])
         return saved
 
     @app.get("/v1/status")
