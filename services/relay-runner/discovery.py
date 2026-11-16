@@ -145,8 +145,6 @@ def probe(policy, raw, timeout=8):
                     for device in group:
                         if device.tag.rsplit("}", 1)[-1] == "Device" and device.get("id"):
                             devices.append({key: device.get(key, "") for key in ("id", "name", "uuid")})
-            if not devices:
-                raise Problem(502, "Az agent nem adott vissza eszközt.")
             return {"devices": devices}
         except (OSError, http.client.HTTPException):
             continue

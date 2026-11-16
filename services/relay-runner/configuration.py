@@ -60,7 +60,6 @@ def validate(config, previous, policy):
     agents = relay.get("agents")
     if not isinstance(agents, list) or len(agents) > 100:
         raise Problem(400, "Legfeljebb 100 agent adható meg.")
-    old = {a["alias"]: a for a in previous.get("relay", {}).get("agents", [])}
     seen = set()
     for agent in agents:
         if not isinstance(agent, dict) or not valid_alias(agent.get("alias")) or agent["alias"] in seen:
@@ -73,7 +72,6 @@ def validate(config, previous, policy):
         devices = agent.get("devices", [])
         if not isinstance(devices, list) or len(devices) > 1000:
             raise Problem(400, "Legfeljebb 1000 eszköznév adható meg agentenként.")
-        old_devices = {d["id"]: d["alias"] for d in old.get(agent["alias"], {}).get("devices", [])}
         ids, names = set(), set()
         for device in devices:
             if not isinstance(device, dict) or not isinstance(device.get("id"), str) or not ID.fullmatch(device["id"]) or not valid_alias(device.get("alias")):
@@ -82,8 +80,6 @@ def validate(config, previous, policy):
                 raise Problem(400, "Ismétlődő eszközazonosító vagy megjelenítési név.")
             ids.add(device["id"])
             names.add(device["alias"])
-            if device["id"] in old_devices and old_devices[device["id"]] != device["alias"]:
-                raise Problem(400, "Meglévő eszköz neve az adatfolytonosság miatt nem módosítható.")
             validate_retention(device.get("retention"))
             items = device.get("dataitems", [])
             if not isinstance(items, list):

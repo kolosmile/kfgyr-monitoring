@@ -38,7 +38,7 @@ export function App() {
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [setup, setSetup] = useState<Setup>();
   const [status, setStatus] = useState<RunnerStatus>({});
-  const [editor, setEditor] = useState<{ index: number | null; initial: Agent }>();
+  const [editor, setEditor] = useState<{ index: number | null; initial: Agent; found?: FoundDevice[] }>();
   const [editorDirty, setEditorDirty] = useState(false);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
@@ -496,16 +496,17 @@ export function App() {
           <NetworkDiscovery
             agents={agents}
             onClose={() => setDiscoveryOpen(false)}
-            onAdd={(agent) => {
+            onAdd={(agent, found) => {
               setDiscoveryOpen(false);
               setEditorDirty(false);
-              setEditor({ index: null, initial: agent });
+              setEditor({ index: null, initial: agent, found });
             }}
           />
         )}
         {editor && (
           <AgentEditor
             initial={editor.initial}
+            found={editor.found}
             isNew={editor.index === null}
             existing={savedAgents.find((a) => a.alias === editor.initial.alias)}
             otherAliases={agents.filter((_, i) => i !== editor.index).map((a) => a.alias)}

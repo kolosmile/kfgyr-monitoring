@@ -65,10 +65,15 @@ class APITests(unittest.TestCase):
             config = copy.deepcopy(CONFIG)
             config["relay"]["agents"][0][key] = value
             self.assertEqual(self.client.put("/v1/config", json={"base_revision": saved["revision"], "config": config}).status_code, 400)
+        self.assertEqual(self.client.get("/v1/config").json()["revision"], saved["revision"])
+
+    def test_device_alias_can_be_changed(self):
+        saved = self.seed().json()
         config = copy.deepcopy(CONFIG)
         config["relay"]["agents"][0]["devices"][0]["alias"] = "Renamed"
-        self.assertEqual(self.client.put("/v1/config", json={"base_revision": saved["revision"], "config": config}).status_code, 400)
-        self.assertEqual(self.client.get("/v1/config").json()["revision"], saved["revision"])
+        response = self.client.put("/v1/config", json={"base_revision": saved["revision"], "config": config})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["config"]["relay"]["agents"][0]["devices"][0]["alias"], "Renamed")
 
     def test_checksum_mismatch_fails_closed_and_body_is_bounded(self):
         saved = self.seed().json()
@@ -117,6 +122,8 @@ class NetworkTests(unittest.TestCase):
         policy.allowed_ip = lambda address, named=False: address == "127.0.0.1"
         url = f"http://127.0.0.1:{server.server_port}"
         self.assertEqual(probe(policy, url)["devices"][0]["id"], "d1")
+        Handler.data = b'<MTConnectDevices><Devices/></MTConnectDevices>'
+        self.assertEqual(probe(policy, url)["devices"], [])
         Handler.data = b'<!DOCTYPE x [<!ENTITY attack SYSTEM "file:///etc/passwd">]><MTConnectDevices>&attack;</MTConnectDevices>'
         with self.assertRaises(Problem):
             probe(policy, url)

@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Badge, Button, Field, Icon, Input, Modal, Switch, useStyles2 } from '@grafana/ui';
+import { Alert, Badge, Button, Field, Input, Modal, Switch, useStyles2 } from '@grafana/ui';
 import { Agent, aliasPattern, clone, errorText, FoundDevice, retentionPattern } from '../types';
 import { getStyles } from './styles';
 
 type Props = {
   initial: Agent;
+  found?: FoundDevice[];
   existing?: Agent;
   otherAliases: string[];
   isNew: boolean;
@@ -14,16 +15,78 @@ type Props = {
   probe: (url: string) => Promise<{ devices: FoundDevice[] }>;
 };
 
-export function AgentEditor({ initial, existing, otherAliases, isNew, onClose, onApply, onDirty, probe }: Props) {
+function mergeDevices(saved: Agent['devices'], found: FoundDevice[]): Agent['devices'] {
+  const byId = new Map(saved.map((device) => [device.id, device]));
+  const discovered = found.map((device) => byId.get(device.id) || {
+    id: device.id,
+    alias: device.uuid || device.name || device.id,
+  });
+  const foundIds = new Set(found.map((device) => device.id));
+  return [...discovered, ...saved.filter((device) => !foundIds.has(device.id))];
+}
+
+export function AgentEditor({ initial, found, existing, otherAliases, isNew, onClose, onApply, onDirty, probe }: Props) {
   const s = useStyles2(getStyles);
-  const [draft, setDraft] = useState<Agent>(() => clone(initial));
+  const [draft, setDraft] = useState<Agent>(() => ({
+    ...clone(initial),
+    devices: mergeDevices(initial.devices || [], found || []),
+  }));
   const [submitted, setSubmitted] = useState(false);
   const [urlTouched, setUrlTouched] = useState(false);
   const [closing, setClosing] = useState(false);
   const [probing, setProbing] = useState(false);
-  const [probeResult, setProbeResult] = useState<{ url: string; devices: FoundDevice[] }>();
+  const [probeResult, setProbeResult] = useState<{ url: string; devices: FoundDevice[] } | undefined>(
+    () => found ? { url: initial.url.trim(), devices: found } : undefined
+  );
   const [probeError, setProbeError] = useState('');
   const request = useRef(0);
+  const draftRef = useRef(draft);
+  const probeRef = useRef(probe);
+  const dirtyCallback = useRef(onDirty);
+  useEffect(() => {
+    probeRef.current = probe;
+    dirtyCallback.current = onDirty;
+  }, [probe, onDirty]);
+  useEffect(() => {
+    const url = draft.url.trim();
+    if (!url) {
+      return;
+    }
+    try {
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+        return;
+      }
+    } catch {
+      return;
+    }
+    const currentRequest = ++request.current;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setProbing(true);
+      setProbeError('');
+      try {
+        const result = await probeRef.current(url);
+        if (!cancelled && request.current === currentRequest) {
+          setProbeResult({ url, devices: result.devices });
+          const current = draftRef.current;
+          const next = { ...current, devices: mergeDevices(current.devices || [], result.devices) };
+          draftRef.current = next;
+          setDraft(next);
+          dirtyCallback.current(JSON.stringify(next) !== JSON.stringify(initial));
+        }
+      } catch (error) {
+        if (!cancelled && request.current === currentRequest) {
+          setProbeError(errorText(error));
+        }
+      } finally {
+        if (!cancelled && request.current === currentRequest) {
+          setProbing(false);
+        }
+      }
+    }, 600);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [draft.url, found, initial]);
   useEffect(
     () => () => {
       request.current++;
@@ -32,6 +95,7 @@ export function AgentEditor({ initial, existing, otherAliases, isNew, onClose, o
   );
   const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
   function change(next: Agent) {
+    draftRef.current = next;
     setDraft(next);
     onDirty(JSON.stringify(next) !== JSON.stringify(initial));
   }
@@ -79,6 +143,10 @@ export function AgentEditor({ initial, existing, otherAliases, isNew, onClose, o
     if (Object.keys(errors).length) {
       return;
     }
+    if ((!existing || draft.url.trim() !== existing.url.trim()) && probeResult?.url !== draft.url.trim()) {
+      setProbeError('A mentéshez előbb sikeresen le kell kérdezni az agent eszközeit.');
+      return;
+    }
     onApply({ ...draft, alias: draft.alias.trim(), url: draft.url.trim(), retention: draft.retention?.trim() });
   }
   async function discover() {
@@ -95,6 +163,8 @@ export function AgentEditor({ initial, existing, otherAliases, isNew, onClose, o
       const result = await probe(url);
       if (request.current === currentRequest) {
         setProbeResult({ url, devices: result.devices });
+        const current = draftRef.current;
+        change({ ...current, devices: mergeDevices(current.devices || [], result.devices) });
       }
     } catch (error) {
       if (request.current === currentRequest) {
@@ -105,19 +175,6 @@ export function AgentEditor({ initial, existing, otherAliases, isNew, onClose, o
         setProbing(false);
       }
     }
-  }
-  function addDevice(device: FoundDevice) {
-    const base =
-      (device.name || device.id)
-        .replace(/[^\p{L}\p{N}_. -]/gu, '_')
-        .replace(/^[^\p{L}\p{N}]+/u, '')
-        .slice(0, 58) || 'Eszköz';
-    let alias = base;
-    let suffix = 2;
-    while (devices.some((d) => d.alias === alias)) {
-      alias = `${base} ${suffix++}`;
-    }
-    change({ ...draft, devices: [...devices, { id: device.id, alias }] });
   }
   const fieldError = (key: string) => (submitted || (key === 'url' && urlTouched) ? errors[key] : undefined);
   return (
@@ -206,37 +263,6 @@ export function AgentEditor({ initial, existing, otherAliases, isNew, onClose, o
                 {probeError}
               </Alert>
             )}
-            {probeResult && (
-              <div className={s.discovery} aria-live="polite">
-                <div className={s.statusTitle}>
-                  <Icon name="check-circle" /> Sikeres kapcsolat · {probeResult.devices.length} eszköz
-                </div>
-                <p className={s.note}>
-                  A lekérdezés pillanatában az agent válaszolt. A lista gépeinek külön megjelenítési nevet adhatsz.
-                </p>
-                {probeResult.devices.length === 0 && (
-                  <p>Az agent nem adott vissza eszközt. Ellenőrizd az MTConnect agent konfigurációját.</p>
-                )}
-                {probeResult.devices.map((device) => (
-                  <div key={device.id} className={s.discoveryRow}>
-                    <div>
-                      <strong>{device.name || device.id}</strong>
-                      <div className={s.agentUrl}>{device.id}</div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      icon={devices.some((d) => d.id === device.id) ? 'check' : 'plus'}
-                      disabled={devices.some((d) => d.id === device.id)}
-                      onClick={() => addDevice(device)}
-                    >
-                      {devices.some((d) => d.id === device.id) ? 'Felvéve' : 'Név beállítása'}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
           </section>
           <section className={s.section} aria-label="Adatgyűjtés beállításai">
             <h3>Adatgyűjtés</h3>
@@ -268,37 +294,20 @@ export function AgentEditor({ initial, existing, otherAliases, isNew, onClose, o
               </Field>
             </div>
           </section>
-          <section className={s.section} aria-label="Eszköznevek beállításai">
-            <div className={s.toolbar}>
-              <h3>
-                Eszköznevek <span className={s.muted}>({devices.length})</span>
-              </h3>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                icon="plus"
-                onClick={() => change({ ...draft, devices: [...devices, { id: '', alias: '' }] })}
-              >
-                Kézi hozzáadás
-              </Button>
-            </div>
-            <p className={s.note}>
-              A relay az agent összes eszközét gyűjti. Itt az elnevezéseket kezeled; egy név eltávolítása nem állítja le
-              az eszköz adatgyűjtését.
-              {existing?.devices?.length
-                ? ' A már mentett azonosítók és nevek az adatok folytonossága miatt rögzítettek.'
-                : ''}
-            </p>
-            {!devices.length && (
-              <div className={s.discovery}>
-                Még nincs egyedi eszköznév. Használd az eszközkeresést, vagy adj hozzá egyet kézzel.
-              </div>
-            )}
+          <section className={s.section} aria-label="Gépek">
+            <h3>Gépek</h3>
+            <p className={s.note}>Az agent gépeinek azonosítója kötött. A megjelenítési név alapértelmezése a gép UUID-ja.</p>
+            {probing && <p>Gépek lekérdezése…</p>}
+            {!probing && !probeResult && !probeError && <p>Add meg az agent címét a gépek lekérdezéséhez.</p>}
+            {!probing && !probeResult && probeError && <p>A gépek listája nem érhető el.</p>}
+            {!probing && probeResult && probeResult.devices.length === 0 && <p>Az agent nem adott vissza gépet.</p>}
             {devices.map((device, i) => {
-              const locked = existing?.devices?.some((d) => d.id === device.id);
+              const missing = !!probeResult && !probeResult.devices.some((item) => item.id === device.id);
               return (
                 <div key={i} className={s.device}>
+                  {missing && <Alert severity="warning" title="Korábban mentett, jelenleg nem felismert gép">
+                    A bejegyzés megmarad, amíg el nem távolítod.
+                  </Alert>}
                   <Field
                     label="MTConnect eszköz ID"
                     htmlFor={`device-id-${i}`}
@@ -308,14 +317,7 @@ export function AgentEditor({ initial, existing, otherAliases, isNew, onClose, o
                     <Input
                       id={`device-id-${i}`}
                       value={device.id}
-                      disabled={locked}
-                      placeholder="Például: d1"
-                      onChange={(e) =>
-                        change({
-                          ...draft,
-                          devices: devices.map((d, j) => (j === i ? { ...d, id: e.currentTarget.value } : d)),
-                        })
-                      }
+                      readOnly
                     />
                   </Field>
                   <Field
@@ -327,7 +329,6 @@ export function AgentEditor({ initial, existing, otherAliases, isNew, onClose, o
                     <Input
                       id={`device-alias-${i}`}
                       value={device.alias}
-                      disabled={locked}
                       placeholder="Például: Mazak"
                       onChange={(e) =>
                         change({
@@ -337,7 +338,7 @@ export function AgentEditor({ initial, existing, otherAliases, isNew, onClose, o
                       }
                     />
                   </Field>
-                  <div style={{ paddingTop: 24 }}>
+                  {missing && <div style={{ paddingTop: 24 }}>
                     <Button
                       type="button"
                       variant="secondary"
@@ -347,7 +348,7 @@ export function AgentEditor({ initial, existing, otherAliases, isNew, onClose, o
                     >
                       Eltávolítás
                     </Button>
-                  </div>
+                  </div>}
                 </div>
               );
             })}

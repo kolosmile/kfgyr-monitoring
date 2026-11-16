@@ -15,7 +15,7 @@ type Job = {
   message?: string;
   network: string;
 };
-type Props = { agents: Agent[]; onClose: () => void; onAdd: (agent: Agent) => void };
+type Props = { agents: Agent[]; onClose: () => void; onAdd: (agent: Agent, devices: FoundDevice[]) => void };
 const active = (job?: Job) => !!job && ['running', 'cancelling'].includes(job.state);
 const canonical = (value: string) => {
   try {
@@ -123,7 +123,7 @@ export function NetworkDiscovery({ agents, onClose, onAdd }: Props) {
     while (agents.some((a) => a.alias === alias)) {
       alias = `${base} ${suffix++}`;
     }
-    onAdd({ alias, url: result.url, retention: '1week', devices: [] });
+    onAdd({ alias, url: result.url, retention: '1week', devices: [] }, result.devices);
   }
   return (
     <Modal
