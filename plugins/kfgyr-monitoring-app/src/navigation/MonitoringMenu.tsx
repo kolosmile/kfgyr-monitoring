@@ -1,0 +1,128 @@
+import React, { useEffect, useState } from 'react';
+import { css } from '@emotion/css';
+import { GrafanaTheme2, PanelProps } from '@grafana/data';
+import { getBackendSrv, locationService } from '@grafana/runtime';
+import { Badge, Combobox, useStyles2 } from '@grafana/ui';
+import { lastValueFrom } from 'rxjs';
+import { HomeLink } from '../components/HomeLink';
+
+type Row = {
+  machine: string;
+  agent: string;
+  name: string;
+  dashboard: string;
+  dashboardName: string;
+  deviceAvailability: string;
+  availabilityTime: string;
+};
+
+const getStyles = (theme: GrafanaTheme2) => ({
+  bar: css({
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing(1.5),
+    flexWrap: 'wrap',
+    overflow: 'auto',
+    padding: theme.spacing(0.5, 1),
+  }),
+  controls: css({ display: 'flex', alignItems: 'center', gap: theme.spacing(1), flexWrap: 'wrap' }),
+  select: css({ width: 180, maxWidth: '100%' }),
+});
+
+export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
+  const styles = useStyles2(getStyles);
+  const [availability, setAvailability] = useState<'checking' | 'online' | 'offline' | 'unknown'>('checking');
+  const machine = replaceVariables('${machine}');
+  const dashboard = replaceVariables('${dashboard}');
+  const frame = data.series[0];
+  const field = (name: string, index: number) => frame?.fields.find((item) => item.name === name)?.values[index];
+  const rows: Row[] = Array.from({ length: frame?.length || 0 }, (_, index) => ({
+    machine: String(field('machine_id', index) ?? ''),
+    agent: String(field('agent', index) ?? ''),
+    name: String(field('machine_name', index) ?? ''),
+    dashboard: String(field('dashboard_id', index) ?? ''),
+    dashboardName: String(field('dashboard_name', index) ?? ''),
+    deviceAvailability: String(field('device_availability', index) ?? ''),
+    availabilityTime: String(field('availability_time', index) ?? ''),
+  }));
+  const selected = rows.find((row) => row.machine === machine);
+  const agents = [...new Set(rows.map((row) => row.agent).filter(Boolean))];
+  const machines = rows.filter((row, index) => row.agent === selected?.agent &&
+    rows.findIndex((item) => item.machine === row.machine) === index);
+  const dashboards = rows.filter((row) => row.machine === machine && row.dashboard);
+
+  useEffect(() => {
+    if (!/^\d+$/.test(machine)) {
+      setAvailability('unknown');
+      return;
+    }
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    setAvailability('checking');
+    async function check() {
+      try {
+        const response = await lastValueFrom(getBackendSrv().fetch<{ status: 'online' | 'offline' | 'unknown' }>({
+          url: `/api/plugins/kfgyr-monitoring-app/resources/availability/${encodeURIComponent(machine)}`,
+          showErrorAlert: false,
+        }));
+        if (active) {
+          setAvailability(response.data.status);
+        }
+      } catch {
+        if (active) {
+          setAvailability('unknown');
+        }
+      } finally {
+        if (active) {
+          timer = setTimeout(check, 30000);
+        }
+      }
+    }
+    void check();
+    return () => { active = false; clearTimeout(timer); };
+  }, [machine]);
+
+  function selectMachine(row: Row) {
+    locationService.partial({ 'var-machine': row.machine, 'var-dashboard': row.dashboard || null }, true);
+  }
+
+  return (
+    <nav className={styles.bar} aria-label="Gépmonitoring navigáció">
+      <div className={styles.controls}>
+        <div className={styles.select}>
+          <Combobox aria-label="Agent" value={selected?.agent || null}
+            options={agents.map((agent) => ({ value: agent, label: agent }))}
+            placeholder="Agent" onChange={({ value }) => {
+              const first = rows.find((row) => row.agent === value);
+              if (first) { selectMachine(first); }
+            }} />
+        </div>
+        <div className={styles.select}>
+          <Combobox aria-label="Gép" value={selected?.machine || null}
+            options={machines.map((row) => ({ value: row.machine, label: row.name }))}
+            placeholder="Gép" onChange={({ value }) => {
+              const next = machines.find((row) => row.machine === value);
+              if (next) { selectMachine(next); }
+            }} />
+        </div>
+        <div className={styles.select}>
+          <Combobox aria-label="Dashboard" value={dashboards.some((row) => row.dashboard === dashboard) ? dashboard : null}
+            options={dashboards.map((row) => ({ value: row.dashboard, label: row.dashboardName }))}
+            placeholder="Dashboard" onChange={({ value }) => locationService.partial({ 'var-dashboard': value }, true)} />
+        </div>
+        <Badge color={availability === 'online' ? 'green' : availability === 'offline' ? 'red' : 'darkgrey'}
+          text={availability === 'online' ? 'Agent elérhető' : availability === 'offline' ? 'Agent nem elérhető' :
+            availability === 'checking' ? 'Agent ellenőrzése…' : 'Agent elérhetősége ismeretlen'} />
+        {selected?.deviceAvailability && (
+          <span title={selected.availabilityTime ? `Utolsó minta: ${new Date(selected.availabilityTime).toLocaleString('hu-HU')}` : 'Utolsó minta'}>
+            <Badge color={selected.deviceAvailability === 'AVAILABLE' ? 'green' : selected.deviceAvailability === 'UNAVAILABLE' ? 'red' : 'darkgrey'}
+              text={`Utolsó gépállapot: ${selected.deviceAvailability}`} />
+          </span>
+        )}
+      </div>
+      <HomeLink />
+    </nav>
+  );
+}

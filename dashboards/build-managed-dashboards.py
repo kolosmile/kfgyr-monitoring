@@ -164,12 +164,12 @@ def panel_resource(source, defaults=None):
                                "group": source["type"], "version": ""})
 
 
-def query_variable(name, sql, *, repeat=False, visible=False, label=None):
+def query_variable(name, sql, *, repeat=False, visible=False, label=None, sync=False):
     return resource("QueryVariable", name=name, label=label or name,
                     query=data_query(__legacyStringValue=sql), definition=sql,
                     current={"text": ["All"], "value": ["$__all"]} if repeat else {"text": "", "value": ""},
                     options=[], regex="", sort="disabled", refresh="onDashboardLoad",
-                    hide="dontHide" if visible else "hideVariable", skipUrlSync=not visible,
+                    hide="dontHide" if visible else "hideVariable", skipUrlSync=not (visible or sync),
                     multi=repeat, includeAll=repeat, allowCustomValue=False)
 
 
@@ -225,6 +225,25 @@ LEFT JOIN LATERAL (
 ORDER BY 1
 """)
 quick_points["options"] = {"showHeader": True, "enablePagination": True}
+menu = panel(7, "", "kfgyr-navigation-panel", 0, 0, 24, 3, sql="""
+/* ${machine:sqlstring} ${dashboard:sqlstring} */
+SELECT d.node_id::text AS machine_id, d.props->>'agentAlias' AS agent,
+       d.props->>'deviceAlias' AS machine_name, m.id::text AS dashboard_id,
+       m.name AS dashboard_name, m.is_default, latest.value #>> '{}' AS device_availability,
+       latest.time AS availability_time
+FROM raw.nodes d LEFT JOIN kfgyr.machine_dashboards m
+  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'
+LEFT JOIN LATERAL (
+  SELECT h.value, h.time FROM raw.nodes n JOIN raw.history h
+    ON h.node_id=d.node_id AND h.dataitem_id=n.node_id
+  WHERE n.props->>'node_type'='DataItem' AND n.props->>'type'='AVAILABILITY'
+    AND n.props->>'agentAlias'=d.props->>'agentAlias' AND n.props->>'deviceId'=d.props->>'deviceId'
+  ORDER BY h.time DESC LIMIT 1
+) latest ON true
+WHERE d.props->>'node_type'='Device'
+ORDER BY agent, machine_name, m.is_default DESC, m.name, m.id
+""")
+menu["options"] = {"mode": "monitoring"}
 
 monitoring = {
     "apiVersion": "dashboard.grafana.app/v2",
@@ -236,20 +255,18 @@ monitoring = {
         "timeSettings": {"timezone": "Europe/Budapest", "from": "now-15m", "to": "now",
                          "autoRefresh": "", "autoRefreshIntervals": ["5s", "10s", "30s", "1m", "5m"],
                          "hideTimepicker": False, "fiscalYearStartMonth": 0},
-        "links": [
-            {"title": title, "url": url, "type": "link", "icon": icon, "tooltip": "",
-             "tags": [], "asDropdown": False, "targetBlank": False, "includeVars": False, "keepTime": False}
-            for title, url, icon in [
-                ("Kezdőlap", "/d/kfgyr-home", "home-alt"),
-                ("Adatexport", f"{APP}/export", "download-alt"),
-            ]
-        ],
+        "links": [],
         "elements": {
             **{f"panel-{id}": panel_resource(signal_panel(id, view, kind))
                for id, (view, kind) in enumerate(views, 2)},
             "panel-6": panel_resource(quick_points, {"custom": {"filterable": True}}),
+            "panel-7": panel_resource(menu),
         },
         "layout": resource("RowsLayout", rows=[
+            resource("RowsLayoutRow", hideHeader=True, layout=resource("GridLayout", items=[
+                resource("GridLayoutItem", x=0, y=0, width=24, height=3,
+                         element={"kind": "ElementReference", "name": "panel-7"})
+            ])),
             view_row("Áttekintés", 88, 6, 200, [(2, "state"), (3, "value")]),
             view_row("Műszerek", 155, 5, 220, [(4, "gauge")]),
             view_row("Grafikonok", 260, 2, 420, [(5, "chart")]),
@@ -260,14 +277,14 @@ monitoring = {
         ]),
         "variables": [
             query_variable("machine", "SELECT props->>'path' AS __text, node_id::text AS __value "
-                           "FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 1", visible=True, label="Gép"),
+                           "FROM raw.nodes WHERE props->>'node_type'='Device' ORDER BY 1", sync=True, label="Gép"),
             query_variable("dashboard", """
 SELECT m.name AS __text, m.id::text AS __value
 FROM kfgyr.machine_dashboards m JOIN raw.nodes d
   ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'
 WHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}
 ORDER BY m.is_default DESC, lower(m.name), m.id
-""", visible=True, label="Dashboard"),
+""", sync=True, label="Dashboard"),
             query_variable("configured_views", f"WITH mapped AS ({MAPPED}) "
                            "SELECT coalesce(string_agg(DISTINCT view, ','), '__none__') FROM mapped"),
             *[view_variable(view) for view, *_ in views],

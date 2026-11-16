@@ -22,7 +22,7 @@ from discovery import Discovery, Policy, probe
 import monitoring
 from runner import Runner, healthcheck, read_json
 
-VERSION = "0.4.5"
+VERSION = "0.4.6"
 logger = logging.getLogger("kfgyr.runner")
 
 
@@ -134,6 +134,18 @@ def create_app(directory=None, token=None, policy=None, supervise=True):
     @app.get("/v1/machines")
     def machines():
         return monitoring.list_machines()
+
+    @app.get("/v1/availability/{machine}")
+    def machine_availability(machine: str):
+        agent, device = monitoring.get_machine_key(machine)
+        agent_config = next((a for a in store.load()["config"]["relay"]["agents"] if a["alias"] == agent), None)
+        if not agent_config:
+            return {"status": "unknown"}
+        try:
+            result = probe(policy, agent_config["url"])
+            return {"status": "online" if any(item["id"] == device for item in result["devices"]) else "unknown"}
+        except Problem as error:
+            return {"status": "offline" if error.status == 502 else "unknown"}
 
     @app.get("/v1/machine-monitoring/{machine}")
     def machine_monitoring(machine: str):

@@ -153,6 +153,11 @@ def machine_key(db, machine):
     return row
 
 
+def get_machine_key(machine):
+    with psycopg.connect(connect_timeout=5) as db:
+        return machine_key(db, machine)
+
+
 def get_assignment(machine):
     with psycopg.connect(connect_timeout=5) as db:
         key = machine_key(db, machine)

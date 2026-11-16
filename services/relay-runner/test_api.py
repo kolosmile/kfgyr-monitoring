@@ -91,6 +91,17 @@ class APITests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(delete.call_args.args[0].revision, 2)
 
+    def test_machine_availability_uses_configured_agent(self):
+        self.seed()
+        with patch("monitoring.get_machine_key", return_value=("Demo", "d1")), \
+             patch("server.probe", return_value={"devices": [{"id": "d1"}]}) as check:
+            response = self.client.get("/v1/availability/123")
+            self.assertEqual(response.json(), {"status": "online"})
+            self.assertEqual(check.call_args.args[1], "http://192.168.88.20:5000")
+        with patch("monitoring.get_machine_key", return_value=("Demo", "d1")), \
+             patch("server.probe", side_effect=Problem(502, "Az agent nem érhető el.")):
+            self.assertEqual(self.client.get("/v1/availability/123").json(), {"status": "offline"})
+
     def test_checksum_mismatch_fails_closed_and_body_is_bounded(self):
         saved = self.seed().json()
         path = Path(self.temp.name) / "revisions" / (saved["revision"] + ".yaml")

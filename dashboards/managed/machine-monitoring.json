@@ -27,32 +27,7 @@
       "hideTimepicker": false,
       "fiscalYearStartMonth": 0
     },
-    "links": [
-      {
-        "title": "Kezdőlap",
-        "url": "/d/kfgyr-home",
-        "type": "link",
-        "icon": "home-alt",
-        "tooltip": "",
-        "tags": [],
-        "asDropdown": false,
-        "targetBlank": false,
-        "includeVars": false,
-        "keepTime": false
-      },
-      {
-        "title": "Adatexport",
-        "url": "/a/kfgyr-monitoring-app/export",
-        "type": "link",
-        "icon": "download-alt",
-        "tooltip": "",
-        "tags": [],
-        "asDropdown": false,
-        "targetBlank": false,
-        "includeVars": false,
-        "keepTime": false
-      }
-    ],
+    "links": [],
     "elements": {
       "panel-2": {
         "kind": "Panel",
@@ -547,12 +522,91 @@
             "version": ""
           }
         }
+      },
+      "panel-7": {
+        "kind": "Panel",
+        "spec": {
+          "id": 7,
+          "title": "",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "spec": {
+                        "rawSql": "\n/* ${machine:sqlstring} ${dashboard:sqlstring} */\nSELECT d.node_id::text AS machine_id, d.props->>'agentAlias' AS agent,\n       d.props->>'deviceAlias' AS machine_name, m.id::text AS dashboard_id,\n       m.name AS dashboard_name, m.is_default, latest.value #>> '{}' AS device_availability,\n       latest.time AS availability_time\nFROM raw.nodes d LEFT JOIN kfgyr.machine_dashboards m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'\nLEFT JOIN LATERAL (\n  SELECT h.value, h.time FROM raw.nodes n JOIN raw.history h\n    ON h.node_id=d.node_id AND h.dataitem_id=n.node_id\n  WHERE n.props->>'node_type'='DataItem' AND n.props->>'type'='AVAILABILITY'\n    AND n.props->>'agentAlias'=d.props->>'agentAlias' AND n.props->>'deviceId'=d.props->>'deviceId'\n  ORDER BY h.time DESC LIMIT 1\n) latest ON true\nWHERE d.props->>'node_type'='Device'\nORDER BY agent, machine_name, m.is_default DESC, m.name, m.id\n",
+                        "format": "table",
+                        "rawQuery": true,
+                        "editorMode": "code"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "timescaledb"
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "spec": {
+              "options": {
+                "mode": "monitoring"
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            },
+            "group": "kfgyr-navigation-panel",
+            "version": ""
+          }
+        }
       }
     },
     "layout": {
       "kind": "RowsLayout",
       "spec": {
         "rows": [
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "hideHeader": true,
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 24,
+                        "height": 3,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-7"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           {
             "kind": "RowsLayoutRow",
             "spec": {
@@ -842,7 +896,7 @@
           "regex": "",
           "sort": "disabled",
           "refresh": "onDashboardLoad",
-          "hide": "dontHide",
+          "hide": "hideVariable",
           "skipUrlSync": false,
           "multi": false,
           "includeAll": false,
@@ -874,7 +928,7 @@
           "regex": "",
           "sort": "disabled",
           "refresh": "onDashboardLoad",
-          "hide": "dontHide",
+          "hide": "hideVariable",
           "skipUrlSync": false,
           "multi": false,
           "includeAll": false,

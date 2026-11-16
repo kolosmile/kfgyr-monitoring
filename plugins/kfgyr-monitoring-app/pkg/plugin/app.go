@@ -23,6 +23,7 @@ const maxBody = 1024 * 1024
 var machinePath = regexp.MustCompile(`^machine-monitoring/[a-zA-Z0-9_-]{1,128}$`)
 var machineDashboardsPath = regexp.MustCompile(`^machines/[a-zA-Z0-9_-]{1,128}/dashboards$`)
 var dashboardPath = regexp.MustCompile(`^dashboards/[0-9]{1,19}$`)
+var availabilityPath = regexp.MustCompile(`^availability/[0-9]{1,19}$`)
 
 var jobPath = regexp.MustCompile(`^discovery/[a-f0-9]{24}$`)
 
@@ -85,18 +86,20 @@ func allowed(path, method string) bool {
 	case "discovery":
 		return method == "POST" || method == "GET"
 	}
-	return ((machinePath.MatchString(path) || machineDashboardsPath.MatchString(path) || dashboardPath.MatchString(path)) && method == "GET") || jobPath.MatchString(path) && (method == "GET" || method == "DELETE")
+	return ((machinePath.MatchString(path) || machineDashboardsPath.MatchString(path) || dashboardPath.MatchString(path) || availabilityPath.MatchString(path)) && method == "GET") || jobPath.MatchString(path) && (method == "GET" || method == "DELETE")
 }
 
 func (a *App) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
 	user := req.PluginContext.User
-	if user == nil || user.Role != "Admin" || req.PluginContext.OrgID != a.orgID {
+	path := strings.Trim(req.Path, "/")
+	viewerAvailability := availabilityPath.MatchString(path) && req.Method == "GET" &&
+		user != nil && (user.Role == "Viewer" || user.Role == "Editor" || user.Role == "Admin")
+	if user == nil || (!viewerAvailability && user.Role != "Admin") || req.PluginContext.OrgID != a.orgID {
 		return message(sender, 403, "Ehhez a művelethez a monitoring szervezet Admin jogosultsága szükséges.")
 	}
 	if len(req.Body) > maxBody {
 		return message(sender, 413, "Túl nagy kérés.")
 	}
-	path := strings.Trim(req.Path, "/")
 	if !allowed(path, req.Method) {
 		return message(sender, 404, "Ismeretlen végpont vagy nem támogatott művelet.")
 	}
