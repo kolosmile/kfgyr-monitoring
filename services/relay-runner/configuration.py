@@ -76,6 +76,8 @@ def validate(config, previous, policy):
         for device in devices:
             if not isinstance(device, dict) or not isinstance(device.get("id"), str) or not ID.fullmatch(device["id"]) or not valid_alias(device.get("alias")):
                 raise Problem(400, "Érvénytelen eszközazonosító vagy megjelenítési név.")
+            if "schema_id" in device and (not isinstance(device["schema_id"], str) or not device["schema_id"]):
+                raise Problem(400, "Érvénytelen gépséma-azonosító.")
             if device["id"] in ids or device["alias"] in names:
                 raise Problem(400, "Ismétlődő eszközazonosító vagy megjelenítési név.")
             ids.add(device["id"])

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Badge, Button, Field, Input, Modal, Switch, useStyles2 } from '@grafana/ui';
-import { Agent, aliasPattern, clone, errorText, FoundDevice, retentionPattern } from '../types';
+import { Alert, Badge, Button, Combobox, Field, Input, Modal, Switch, useStyles2 } from '@grafana/ui';
+import { Agent, aliasPattern, clone, errorText, FoundDevice, retentionPattern, SchemaOption } from '../types';
 import { getStyles } from './styles';
 
 type Props = {
@@ -13,6 +13,8 @@ type Props = {
   onApply: (agent: Agent) => void;
   onDirty: (dirty: boolean) => void;
   probe: (url: string) => Promise<{ devices: FoundDevice[] }>;
+  schemaOptions: SchemaOption[];
+  schemaLoadError?: string;
 };
 
 function mergeDevices(saved: Agent['devices'], found: FoundDevice[]): Agent['devices'] {
@@ -25,7 +27,8 @@ function mergeDevices(saved: Agent['devices'], found: FoundDevice[]): Agent['dev
   return [...discovered, ...saved.filter((device) => !foundIds.has(device.id))];
 }
 
-export function AgentEditor({ initial, found, existing, otherAliases, isNew, onClose, onApply, onDirty, probe }: Props) {
+export function AgentEditor({ initial, found, existing, otherAliases, isNew, onClose, onApply, onDirty, probe,
+  schemaOptions, schemaLoadError }: Props) {
   const s = useStyles2(getStyles);
   const [draft, setDraft] = useState<Agent>(() => ({
     ...clone(initial),
@@ -135,6 +138,9 @@ export function AgentEditor({ initial, found, existing, otherAliases, isNew, onC
       errors[`device-${i}`] = 'Adj meg érvényes, 1–64 karakteres nevet.';
     } else if (devices.some((other, j) => i !== j && other.alias === device.alias)) {
       errors[`device-${i}`] = 'Ez az eszköznév már szerepel ennél az agentnél.';
+    }
+    if (!device.schema_id || !schemaOptions.some((schema) => schema.id === device.schema_id)) {
+      errors[`schema-${i}`] = schemaOptions.length ? 'Válassz sémát ehhez a géphez.' : 'Előbb hozz létre egy sémát a Sémakezelőben.';
     }
   });
   function submit(event: React.FormEvent) {
@@ -296,7 +302,11 @@ export function AgentEditor({ initial, found, existing, otherAliases, isNew, onC
           </section>
           <section className={s.section} aria-label="Gépek">
             <h3>Gépek</h3>
-            <p className={s.note}>Az agent gépeinek azonosítója kötött. A megjelenítési név alapértelmezése a gép UUID-ja.</p>
+            <p className={s.note}>Az agent gépeinek azonosítója kötött. Minden géphez kötelező sémát választani; automatikus alapértelmezés nincs.</p>
+            {schemaLoadError && <Alert severity="error" title="A sémák nem tölthetők be">{schemaLoadError}</Alert>}
+            {!schemaLoadError && schemaOptions.length === 0 && <Alert severity="info" title="Még nincs választható séma">
+              A gépek felvételéhez előbb hozz létre egy sémát a Monitoring beállítása → Sémakezelő oldalon.
+            </Alert>}
             {probing && <p>Gépek lekérdezése…</p>}
             {!probing && !probeResult && !probeError && <p>Add meg az agent címét a gépek lekérdezéséhez.</p>}
             {!probing && !probeResult && probeError && <p>A gépek listája nem érhető el.</p>}
@@ -334,6 +344,26 @@ export function AgentEditor({ initial, found, existing, otherAliases, isNew, onC
                         change({
                           ...draft,
                           devices: devices.map((d, j) => (j === i ? { ...d, alias: e.currentTarget.value } : d)),
+                        })
+                      }
+                    />
+                  </Field>
+                  <Field
+                    label="Séma"
+                    htmlFor={`device-schema-${i}`}
+                    invalid={!!fieldError(`schema-${i}`)}
+                    error={fieldError(`schema-${i}`)}
+                    description="A gép adatpontjait ehhez a sémához rendeli."
+                  >
+                    <Combobox
+                      id={`device-schema-${i}`}
+                      value={schemaOptions.some((schema) => schema.id === device.schema_id) ? device.schema_id! : null}
+                      placeholder="Válassz sémát"
+                      options={schemaOptions.map((schema) => ({ value: schema.id, label: schema.name }))}
+                      onChange={({ value }) =>
+                        change({
+                          ...draft,
+                          devices: devices.map((d, j) => (j === i ? { ...d, schema_id: value || undefined } : d)),
                         })
                       }
                     />

@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-PROFILES = json.loads((ROOT.parent / "services/relay-runner/profiles.json").read_text(encoding="utf-8"))
 OUTPUT = ROOT / "managed"
 DS = {"type": "grafana-postgresql-datasource", "uid": "timescaledb"}
 APP = "/a/kfgyr-monitoring-app"
@@ -33,16 +32,21 @@ def quote(value):
 
 
 MACHINE = """
-SELECT d.node_id, d.props, m.profile, m.signals
+SELECT d.node_id, d.props, m.profile, m.signals, a.schema_id
 FROM raw.nodes d LEFT JOIN kfgyr.machine_dashboards m
   ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId'
   AND m.id::text=${dashboard:sqlstring}
+LEFT JOIN kfgyr.machine_schema_assignments a
+  ON a.agent_alias=d.props->>'agentAlias' AND a.device_id=d.props->>'deviceId'
 WHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}
 """
-CATALOG = ", ".join(
-    f"({quote(profile)}, {quote(slot)}, {quote(label)})"
-    for profile, info in PROFILES.items() for slot, label in info["signals"].items()
-)
+LEGACY_CATALOG = """VALUES
+ ('generic', 'execution', 'Végrehajtási állapot'), ('generic', 'feedrate', 'Előtolás'),
+ ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'),
+ ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'),
+ ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'),
+ ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció')
+"""
 def unit_label(units):
     return f"""
       CASE {units}
@@ -59,24 +63,32 @@ def unit_label(units):
 
 
 MAPPED = f"""
-WITH machine AS ({MACHINE}), catalog(profile, slot, label) AS (VALUES {CATALOG})
-SELECT m.node_id AS device, n.node_id AS signal, p.position, p.name,
- p.view, p.minimum, p.maximum, p.color, {unit_label("n.props->>'units'")} AS units
+WITH machine AS ({MACHINE}), catalog(profile, slot, label) AS ({LEGACY_CATALOG})
+SELECT m.node_id AS device, n.node_id AS signal, p.position,
+ coalesce(nullif(p.name, ''), s.name, n.props->>'path') AS name,
+ coalesce(p.view, 'chart') AS view, p.minimum, p.maximum, p.color,
+ {unit_label("coalesce(nullif(n.props->>'units', ''), s.units)")} AS units
 FROM machine m
 CROSS JOIN LATERAL (
- SELECT item->>'name' AS name, item->>'point' AS point, item->>'view' AS view,
+ SELECT item->>'name' AS name, item->>'signal_id' AS signal_id,
+        item->>'point' AS point, item->>'view' AS view,
         (item->>'minimum')::double precision AS minimum,
         (item->>'maximum')::double precision AS maximum,
         item->>'color' AS color, ord AS position
  FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)
       WITH ORDINALITY AS items(item, ord)
  UNION ALL
- SELECT c.label, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,
+ SELECT c.label, NULL, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,
         NULL, NULL, NULL, row_number() OVER (ORDER BY c.slot)
  FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'
 ) p
-JOIN raw.nodes n ON n.node_id::text=p.point AND n.props->>'node_type'='DataItem'
+LEFT JOIN kfgyr.signal_catalog s ON s.id=p.signal_id
+LEFT JOIN kfgyr.schema_mappings sm ON sm.schema_id=m.schema_id AND sm.signal_id=p.signal_id
+JOIN raw.nodes n ON n.props->>'node_type'='DataItem'
  AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'
+ AND ((p.point IS NOT NULL AND n.node_id::text=p.point) OR
+      (p.signal_id IS NOT NULL AND sm.endpoint IS NOT NULL AND
+       n.props->>'path'=(rtrim(m.props->>'path', '/') || sm.endpoint)))
 """
 home = dashboard("kfgyr-home", "KFGyR · Kezdőlap", [
     {**panel(1, "", "kfgyr-navigation-panel", 0, 0, 24, 16), "transparent": True},
@@ -216,12 +228,15 @@ def view_row(title, height, columns, width, panels):
 views = [("state", "stat"), ("value", "stat"), ("gauge", "gauge"), ("chart", "timeseries")]
 quick_points = panel(6, "Gyors adatpontnézegető", "table", 0, 0, 24, 10, sql=f"""
 WITH machine AS ({MACHINE})
-SELECT n.props->>'path' AS "Adatpont", latest.value #>> '{{}}' AS "Érték",
+SELECT coalesce(s.name, '') AS "Jel", n.props->>'path' AS "Adatpont", latest.value #>> '{{}}' AS "Érték",
        {unit_label("n.props->>'units'")} AS "Egység", latest.time AS "Utolsó minta"
 FROM machine m
 JOIN raw.nodes n ON n.props->>'node_type'='DataItem'
  AND n.props->>'agentAlias'=m.props->>'agentAlias'
  AND n.props->>'deviceId'=m.props->>'deviceId'
+LEFT JOIN kfgyr.schema_mappings sm ON sm.schema_id=m.schema_id
+ AND n.props->>'path'=(rtrim(m.props->>'path', '/') || sm.endpoint)
+LEFT JOIN kfgyr.signal_catalog s ON s.id=sm.signal_id
 LEFT JOIN LATERAL (
  SELECT h.value, h.time FROM raw.history h
  WHERE h.node_id=m.node_id AND h.dataitem_id=n.node_id AND $__timeFilter(h.time)

@@ -10,6 +10,8 @@ import sys
 import tempfile
 import time
 
+import yaml
+
 REVISION = re.compile(r"^[a-zA-Z0-9_-]{1,80}$")
 
 
@@ -107,17 +109,23 @@ class Runner:
 
     def start(self, manifest):
         content = read_revision(self.directory, manifest)
+        setup = yaml.safe_load(content)
+        # Schema assignment is runner metadata; the upstream relay only needs its native device fields.
+        for agent in setup.get("relay", {}).get("agents", []):
+            for device in agent.get("devices", []):
+                device.pop("schema_id", None)
+        relay_content = yaml.safe_dump(setup, allow_unicode=True, sort_keys=False).encode()
         # Validate using exactly the YAML parser installed in the upstream image.
         check = subprocess.run([
             "node", "--input-type=module", "-e",
             "import fs from 'fs'; import yaml from 'js-yaml'; "
             "const c=yaml.load(fs.readFileSync(0,'utf8')); "
             "if(!c?.client?.timezone || !Array.isArray(c?.relay?.agents)) process.exit(2);"
-        ], input=content, cwd="/usr/app", stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
+        ], input=relay_content, cwd="/usr/app", stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
         if check.returncode:
             raise ValueError("Relay YAML validation failed")
         self.stop_child()
-        atomic_write(self.runtime / "setup.yaml", content)
+        atomic_write(self.runtime / "setup.yaml", relay_content)
         environment = os.environ.copy()
         environment.pop("KFGYR_RUNNER_API_TOKEN", None)
         environment["L99_SETUP_FOLDER"] = str(self.runtime)

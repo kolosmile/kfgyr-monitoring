@@ -22,8 +22,13 @@ const maxBody = 1024 * 1024
 
 var machinePath = regexp.MustCompile(`^machine-monitoring/[a-zA-Z0-9_-]{1,128}$`)
 var machineDashboardsPath = regexp.MustCompile(`^machines/[a-zA-Z0-9_-]{1,128}/dashboards$`)
+var machineDataItemsPath = regexp.MustCompile(`^machines/[a-zA-Z0-9_-]{1,128}/dataitems$`)
 var dashboardPath = regexp.MustCompile(`^dashboards/[0-9]{1,19}$`)
 var availabilityPath = regexp.MustCompile(`^availability/[0-9]{1,19}$`)
+var signalItemPath = regexp.MustCompile(`^signals/[a-zA-Z0-9_.:-]{1,128}$`)
+var schemaItemPath = regexp.MustCompile(`^schemas/[a-f0-9-]{36}$`)
+var schemaMappingsPath = regexp.MustCompile(`^schemas/[a-f0-9-]{36}/mappings$`)
+var schemaMappingItemPath = regexp.MustCompile(`^schemas/[a-f0-9-]{36}/mappings/[a-zA-Z0-9_.:-]{1,128}$`)
 
 var jobPath = regexp.MustCompile(`^discovery/[a-f0-9]{24}$`)
 
@@ -77,6 +82,8 @@ func allowed(path, method string) bool {
 		return method == "PUT"
 	case "status", "networks", "machines":
 		return method == "GET"
+	case "signals", "schemas":
+		return method == "GET" || method == "POST"
 	case "probe", "rollback":
 		return method == "POST"
 	case "dashboards":
@@ -86,7 +93,16 @@ func allowed(path, method string) bool {
 	case "discovery":
 		return method == "POST" || method == "GET"
 	}
-	return ((machinePath.MatchString(path) || machineDashboardsPath.MatchString(path) || dashboardPath.MatchString(path) || availabilityPath.MatchString(path)) && method == "GET") || jobPath.MatchString(path) && (method == "GET" || method == "DELETE")
+	if signalItemPath.MatchString(path) {
+		return method == "PUT" || method == "DELETE"
+	}
+	if schemaItemPath.MatchString(path) {
+		return method == "PUT" || method == "DELETE"
+	}
+	if schemaMappingsPath.MatchString(path) {
+		return method == "GET" || method == "PUT"
+	}
+	return ((machinePath.MatchString(path) || machineDashboardsPath.MatchString(path) || machineDataItemsPath.MatchString(path) || dashboardPath.MatchString(path) || availabilityPath.MatchString(path)) && method == "GET") || schemaMappingItemPath.MatchString(path) && method == "DELETE" || jobPath.MatchString(path) && (method == "GET" || method == "DELETE")
 }
 
 func (a *App) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {

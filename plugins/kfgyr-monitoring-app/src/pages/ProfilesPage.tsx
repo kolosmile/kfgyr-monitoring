@@ -5,6 +5,7 @@ import { Alert, Button, Combobox, ConfirmModal, Field, Icon, Input, Modal, Spinn
 import { api } from '../api';
 import { getStyles } from '../components/styles';
 import { errorText } from '../types';
+import { SchemaManager } from './SchemaManager';
 
 type View = 'value' | 'state' | 'chart' | 'gauge';
 type ChartColor = 'blue' | 'green' | 'orange' | 'red' | 'purple' | 'yellow';
@@ -16,11 +17,14 @@ const chartColors: Array<{ value: ChartColor; label: string }> = [
   { value: 'purple', label: 'Lila' },
   { value: 'yellow', label: 'Sárga' },
 ];
-type Panel = { name: string; point: string; view: View; minimum?: number; maximum?: number; color?: ChartColor };
-type Option = { id: string; label: string };
-type Catalog = { presets: Array<{ label: string; panels: Panel[] }>; machines: Option[] };
+type Panel = { name?: string; signal_id?: string; point?: string; view: View; minimum?: number; maximum?: number; color?: ChartColor };
+type Option = { id: string; label: string; schema_id?: string };
+type SignalPreset = { label: string; signals: string[] };
+type Catalog = { presets: SignalPreset[]; machines: Option[] };
 type Dashboard = { id: number; name: string; revision: number; is_default: boolean };
-type Assignment = { id: number; name: string; panels: Panel[]; revision: number; options: Option[] };
+type PanelOption = { kind: 'signal' | 'point'; id: string; label: string; units?: string };
+type Assignment = { id: number; name: string; panels: Panel[]; revision: number; options: PanelOption[] };
+type Section = 'monitoring' | 'schemas';
 
 const views: Array<{ value: View; label: string }> = [
   { value: 'state', label: 'Állapot' },
@@ -31,6 +35,7 @@ const views: Array<{ value: View; label: string }> = [
 
 export function ProfilesPage() {
   const styles = useStyles2(getStyles);
+  const [section, setSection] = useState<Section>('monitoring');
   const [catalog, setCatalog] = useState<Catalog>();
   const [machine, setMachine] = useState('');
   const [assignment, setAssignment] = useState<Assignment>();
@@ -166,7 +171,7 @@ export function ProfilesPage() {
     setEditorError('');
     setEditor({
       index,
-      panel: index === null ? { name: '', point: '', view: 'chart' } : { ...assignment.panels[index] },
+      panel: index === null ? { view: 'chart' } : { ...assignment.panels[index] },
     });
   }
 
@@ -174,9 +179,9 @@ export function ProfilesPage() {
     if (!editor || !assignment) {
       return;
     }
-    const panel = { ...editor.panel, name: editor.panel.name.trim() };
-    if (!panel.name || !panel.point) {
-      setEditorError('Adj nevet és válassz adatpontot a panelhez.');
+    const panel = { ...editor.panel, name: editor.panel.name?.trim() || undefined };
+    if (!(panel.signal_id || panel.point)) {
+      setEditorError('Válassz jelet a katalógusból.');
       return;
     }
     if (panel.view === 'gauge' &&
@@ -207,12 +212,12 @@ export function ProfilesPage() {
       setError('Adj nevet a dashboardnak.');
       return;
     }
-    const invalidIndex = panels.findIndex((panel) => !panel.name.trim() || !panel.point ||
+    const invalidIndex = panels.findIndex((panel) => !(panel.signal_id || panel.point) ||
       (panel.view === 'gauge' &&
         (!Number.isFinite(panel.minimum) || !Number.isFinite(panel.maximum) || !(panel.minimum! < panel.maximum!))));
     if (invalidIndex !== -1) {
       editPanel(invalidIndex);
-      setError('Adj nevet és adatpontot minden panelnek. A műszer maximuma pedig legyen nagyobb a minimumnál.');
+      setError('Válassz jelet minden panelhez. A műszer maximuma pedig legyen nagyobb a minimumnál.');
       return;
     }
     setSaving(true);
@@ -229,7 +234,11 @@ export function ProfilesPage() {
     }
   }
 
-  const points = assignment?.options.map(({ id, label }) => ({ value: id, label })) ?? [];
+  const points = assignment?.options ?? [];
+  const panelOption = (panel: Panel) => points.find((item) =>
+    (panel.signal_id && item.kind === 'signal' && item.id === panel.signal_id) ||
+    (panel.point && item.kind === 'point' && item.id === panel.point));
+  const panelName = (panel: Panel) => panel.name || panelOption(panel)?.label || 'Névtelen panel';
   const groups = new Map<string, Option[]>();
   for (const item of catalog?.machines ?? []) {
     const separator = item.label.indexOf('/');
@@ -237,8 +246,26 @@ export function ProfilesPage() {
     groups.set(agent, [...(groups.get(agent) || []), item]);
   }
   const selected = catalog?.machines.find((item) => item.id === machine);
+  if (section === 'schemas') {
+    return (
+      <PluginPage pageNav={{ text: 'Monitoring beállítása · Sémakezelő' }} actions={(
+        <div className={styles.actions}>
+          <Button type="button" variant="secondary" onClick={() => setSection('monitoring')}>Monitoring beállítása</Button>
+          <HomeLink />
+        </div>
+      )}>
+        <div className={styles.page}><SchemaManager /></div>
+      </PluginPage>
+    );
+  }
+
   return (
-    <PluginPage pageNav={{ text: 'Monitoring beállítása' }} actions={<HomeLink />}>
+    <PluginPage pageNav={{ text: 'Monitoring beállítása' }} actions={(
+      <div className={styles.actions}>
+        <Button type="button" variant="secondary" icon="cog" onClick={() => setSection('schemas')}>Sémakezelő</Button>
+        <HomeLink />
+      </div>
+    )}>
       <div className={styles.page}>
         <form onSubmit={save} className={styles.form}>
           {error && <Alert severity="error" title="A művelet sikertelen">{error}</Alert>}
@@ -336,9 +363,16 @@ export function ProfilesPage() {
                 </Field>
                 <div className={styles.actions}>
                   <Button type="button" variant="secondary" disabled={saving || preset === undefined} onClick={() => {
-                    const items = preset === undefined ? undefined : catalog?.presets[preset];
-                    if (items) {
-                      changePanels([...assignment.panels, ...items.panels]);
+                    const selectedPreset = preset === undefined ? undefined : catalog?.presets[preset];
+                    if (selectedPreset) {
+                      const available = selectedPreset.signals
+                        .filter((signalId) => points.some((item) => item.kind === 'signal' && item.id === signalId))
+                        .map((signal_id) => ({ signal_id, view: signal_id === 'execution' ? 'state' as View : 'chart' as View }));
+                      const missing = selectedPreset.signals.length - available.length;
+                      changePanels([...assignment.panels, ...available]);
+                      setNotice(missing
+                        ? `${available.length} jel bekerült. ${missing} jelhez ezen a gépen nincs séma-hozzárendelés vagy adatpont.`
+                        : 'A panelsablon katalógusjelei bekerültek.');
                       setPreset(undefined);
                     }
                   }}>Javasolt panelek hozzáadása</Button>
@@ -360,7 +394,8 @@ export function ProfilesPage() {
                     <h3>{label}</h3>
                     <div className={styles.panelGrid}>
                       {panels.map(({ panel, index }, position) => {
-                        const point = points.find((item) => item.value === panel.point);
+                        const option = panelOption(panel);
+                        const label = panelName(panel);
                         const move = (offset: number) => {
                           const target = panels[position + offset]?.index;
                           if (target === undefined) {
@@ -372,19 +407,20 @@ export function ProfilesPage() {
                         };
                         return (
                           <article className={styles.panelCard} key={index}>
-                            <strong>{panel.name || 'Névtelen panel'}</strong>
+                            <strong>{label}</strong>
                             <div className={styles.panelPoint}>
-                              {point?.label || (panel.point ? 'A mentett adatpont nem érhető el' : 'Nincs kiválasztott adatpont')}
+                              {option?.kind === 'signal' ? `Jelkatalógus: ${option.label}` :
+                                option?.label || (panel.signal_id ? 'A jelhez ezen a gépen nincs hozzárendelt adatpont' : 'A mentett adatpont nem érhető el')}
                             </div>
                             <div className={styles.actions}>
                               <Button type="button" variant="secondary" icon="arrow-up" disabled={saving || position === 0}
-                                aria-label={`${panel.name || 'Panel'} előrébb helyezése`} onClick={() => move(-1)} />
+                                aria-label={`${label} előrébb helyezése`} onClick={() => move(-1)} />
                               <Button type="button" variant="secondary" icon="arrow-down" disabled={saving || position === panels.length - 1}
-                                aria-label={`${panel.name || 'Panel'} hátrébb helyezése`} onClick={() => move(1)} />
+                                aria-label={`${label} hátrébb helyezése`} onClick={() => move(1)} />
                               <Button type="button" variant="secondary" icon="pen" disabled={saving}
-                                aria-label={`${panel.name || 'Panel'} szerkesztése`} onClick={() => editPanel(index)} />
+                                aria-label={`${label} szerkesztése`} onClick={() => editPanel(index)} />
                               <Button type="button" variant="destructive" icon="trash-alt" disabled={saving}
-                                aria-label={`${panel.name || 'Panel'} eltávolítása`}
+                                aria-label={`${label} eltávolítása`}
                                 onClick={() => changePanels(assignment.panels.filter((_, i) => i !== index))} />
                             </div>
                           </article>
@@ -427,16 +463,26 @@ export function ProfilesPage() {
             onDismiss={() => setEditor(undefined)}>
             {editorError && <Alert severity="error" title={editorError} />}
             <Field label="Megjelenített név" htmlFor="panel-name">
-              <Input id="panel-name" maxLength={120} value={editor.panel.name}
+              <Input id="panel-name" maxLength={120} value={editor.panel.name || ''}
+                placeholder={panelOption(editor.panel)?.label || 'A jelkatalógus neve'}
                 onChange={(event) => setEditor({ ...editor, panel: { ...editor.panel, name: event.currentTarget.value } })} />
             </Field>
-            <Field label="Adatpont" htmlFor="panel-point">
-              <Combobox id="panel-point" value={editor.panel.point || null}
-                options={editor.panel.point && !points.some((point) => point.value === editor.panel.point)
-                  ? [{ value: editor.panel.point, label: 'A mentett adatpont nem érhető el' }, ...points] : points}
-                onChange={({ value, label }) => setEditor({ ...editor, panel: {
-                  ...editor.panel, point: value, name: editor.panel.name || label || value,
-                } })} />
+            <Field label="Jel a katalógusból" htmlFor="panel-signal">
+              <Combobox id="panel-signal"
+                value={editor.panel.signal_id ? `signal:${editor.panel.signal_id}` : editor.panel.point ? `point:${editor.panel.point}` : null}
+                placeholder="Válassz jelet"
+                options={points.filter((item) => item.kind === 'signal' ||
+                  (editor.panel.point && item.kind === 'point' && item.id === editor.panel.point))
+                  .map((item) => ({ value: `${item.kind}:${item.id}`, label: item.label }))}
+                onChange={({ value }) => {
+                  const separator = value.indexOf(':');
+                  const kind = value.slice(0, separator);
+                  const id = value.slice(separator + 1);
+                  setEditor({ ...editor, panel: { ...editor.panel,
+                    signal_id: kind === 'signal' ? id : undefined,
+                    point: kind === 'point' ? id : undefined,
+                  } });
+                }} />
             </Field>
             <Field label="Nézet" htmlFor="panel-view">
               <Combobox id="panel-view" value={editor.panel.view} options={views}

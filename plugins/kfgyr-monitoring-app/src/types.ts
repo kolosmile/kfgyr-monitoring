@@ -1,4 +1,6 @@
-export type Device = { id: string; alias: string; [key: string]: unknown };
+export type Device = { id: string; alias: string; schema_id?: string; [key: string]: unknown };
+export type SchemaOption = { id: string; name: string; mapping_count?: number; machine_count?: number };
+export type Signal = { id: string; name: string; units: string };
 export type Agent = {
   alias: string;
   url: string;

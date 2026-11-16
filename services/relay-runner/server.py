@@ -22,7 +22,7 @@ from discovery import Discovery, Policy, probe
 import monitoring
 from runner import Runner, healthcheck, read_json
 
-VERSION = "0.4.6"
+VERSION = "0.4.7"
 logger = logging.getLogger("kfgyr.runner")
 
 
@@ -85,6 +85,7 @@ def create_app(directory=None, token=None, policy=None, supervise=True):
         if supervise:
             if os.getenv("KFGYR_MONITORING_DB_ENABLED") == "1":
                 await asyncio.to_thread(monitoring.migrate)
+                await asyncio.to_thread(monitoring.sync_machine_schema_assignments, store.load()["config"])
             runner = Runner()
             thread = threading.Thread(target=runner.run, kwargs={"install_signals": False}, daemon=True)
             thread.start()
@@ -135,6 +136,54 @@ def create_app(directory=None, token=None, policy=None, supervise=True):
     def machines():
         return monitoring.list_machines()
 
+    @app.get("/v1/signals")
+    def signals():
+        return monitoring.list_signals()
+
+    @app.post("/v1/signals")
+    def create_signal(body: monitoring.SignalCreate, user=Depends(actor)):
+        return monitoring.create_signal(body)
+
+    @app.put("/v1/signals")
+    def update_signal(body: monitoring.SignalUpdate, user=Depends(actor)):
+        return monitoring.update_signal(body)
+
+    @app.delete("/v1/signals/{signal_id}")
+    def delete_signal(signal_id: str, user=Depends(actor)):
+        return monitoring.delete_signal(signal_id)
+
+    @app.get("/v1/schemas")
+    def schemas():
+        return monitoring.list_schemas()
+
+    @app.post("/v1/schemas")
+    def create_schema(body: monitoring.SchemaCreate, user=Depends(actor)):
+        return monitoring.create_schema(body)
+
+    @app.put("/v1/schemas/{schema_id}")
+    def update_schema(schema_id: str, body: monitoring.SchemaUpdate, user=Depends(actor)):
+        return monitoring.update_schema(schema_id, body)
+
+    @app.delete("/v1/schemas/{schema_id}")
+    def delete_schema(schema_id: str, user=Depends(actor)):
+        return monitoring.delete_schema(schema_id)
+
+    @app.get("/v1/schemas/{schema_id}/mappings")
+    def schema_mappings(schema_id: str):
+        return monitoring.list_schema_mappings(schema_id)
+
+    @app.put("/v1/schemas/{schema_id}/mappings")
+    def put_schema_mapping(schema_id: str, body: monitoring.MappingWrite, user=Depends(actor)):
+        return monitoring.save_schema_mapping(schema_id, body)
+
+    @app.delete("/v1/schemas/{schema_id}/mappings/{signal_id}")
+    def delete_schema_mapping(schema_id: str, signal_id: str, user=Depends(actor)):
+        return monitoring.delete_schema_mapping(schema_id, signal_id)
+
+    @app.get("/v1/machines/{machine}/dataitems")
+    def machine_dataitems(machine: str):
+        return monitoring.machine_dataitems(machine)
+
     @app.get("/v1/availability/{machine}")
     def machine_availability(machine: str):
         agent, device = monitoring.get_machine_key(machine)
@@ -181,11 +230,20 @@ def create_app(directory=None, token=None, policy=None, supervise=True):
 
     @app.put("/v1/config")
     def put_config(body: SaveRequest, user=Depends(actor)):
-        return store.save(body.base_revision, body.config, user)
+        previous = store.load()["config"]
+        monitoring.validate_schema_assignments(body.config, previous)
+        saved = store.save(body.base_revision, body.config, user)
+        monitoring.sync_machine_schema_assignments(saved["config"])
+        return saved
 
     @app.post("/v1/rollback")
     def rollback(body: RollbackRequest, user=Depends(actor)):
-        return store.rollback(body.base_revision, body.revision, user)
+        previous = store.load()["config"]
+        target = store.load_revision(body.revision)["config"]
+        monitoring.validate_schema_assignments(target, previous)
+        saved = store.rollback(body.base_revision, body.revision, user)
+        monitoring.sync_machine_schema_assignments(saved["config"])
+        return saved
 
     @app.get("/v1/status")
     def status():

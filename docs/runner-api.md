@@ -41,13 +41,23 @@ A sikeres mentés nem azonos a sikeres adatgyűjtéssel. A runner az indulási i
 
 ## Gépmonitoring konfiguráció
 
-- `GET /v1/machines` felsorolja az adatbázisban ismert gépeket és a beépített profilkatalógust.
+- `GET /v1/machines` felsorolja az adatbázisban ismert gépeket és a hozzájuk rendelt sémákat.
+- `GET /v1/signals` lekéri a magyar jelnevek és egységek katalógusát.
+- `POST /v1/signals`, `PUT /v1/signals`, `DELETE /v1/signals/{id}` jelet hoz létre, módosítja a nevét/egységét, illetve törli.
+- `GET /v1/schemas`, `POST /v1/schemas`, `PUT /v1/schemas/{id}`, `DELETE /v1/schemas/{id}` a gépsémákat kezeli.
+- `GET/PUT /v1/schemas/{id}/mappings` egy séma jel-végpont hozzárendeléseit olvassa vagy menti.
+- `DELETE /v1/schemas/{id}/mappings/{signal_id}` egy hozzárendelést töröl.
+- `GET /v1/machines/{machine}/dataitems` visszaadja a gép relatív adatpontútvonalait és egységeit.
 - `GET /v1/machines/{machine}/dashboards` felsorolja a gép dashboardjait.
 - `POST /v1/dashboards` új, üres dashboardot hoz létre a gép azonosítójával és a nevével.
 - `GET /v1/dashboards/{id}` visszaadja a dashboard nevét, paneljeit, revízióját és a gép kiválasztható adatpontjait.
 - `PUT /v1/dashboards` az `id`, `name`, `panels` és `revision` alapján ment. A runner csak az adott géphez tartozó adatpontot fogad el.
 - `POST /v1/dashboards/delete` az `id` és `revision` alapján töröl. Párhuzamos módosításnál a régi revízió 409 választ kap.
 - A korábbi `GET /v1/machine-monitoring/{machine}` és `PUT /v1/machine-monitoring` végpont az alapértelmezett dashboardot kezeli.
+
+A sémák a `kfgyr.machine_schemas` és `kfgyr.schema_mappings` táblákban, a magyar jelnevek a `kfgyr.signal_catalog` táblában élnek. Egy séma egy katalógusjelhez legfeljebb egy gépen belüli útvonalat rendelhet; ugyanaz az útvonal egy sémában nem tartozhat két jelhez. A géphez rendelt sémaazonosító a verziózott agent-konfigurációban marad, és a relaynek átadott YAML-ból a runner eltávolítja. A runner az értéket a `kfgyr.machine_schema_assignments` táblába is tükrözi a Grafana olvasási lekérdezéseihez.
+
+Az új dashboardpanelek katalógusjelet használnak. A runner csak akkor kínálja fel, ha a gép sémájában van útvonala, és az útvonal az adott gép adatpontjai között ténylegesen megtalálható. A régi, közvetlen DataItem-azonosítóra mutató panelek továbbra is olvashatók és szerkeszthetők. A katalógus egysége nem íródik át, ha egy gép adatpontja eltérő egységet közöl.
 
 A runner induláskor tranzakcióban migrálja a meglévő gépbeállításokat a `kfgyr.machine_dashboards` táblába, gépenként egy „Áttekintés” dashboardként. A migráció egyszer fut le, és megőrzi a korábbi panelkonfigurációkat. Az első dashboard az alapértelmezett, törlésekor a legrégebbi fennmaradó dashboard veszi át ezt a szerepet.
 

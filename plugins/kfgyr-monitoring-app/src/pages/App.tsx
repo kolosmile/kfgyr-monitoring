@@ -18,7 +18,7 @@ import { api } from '../api';
 import { NetworkDiscovery } from '../components/NetworkDiscovery';
 import { AgentEditor } from '../components/AgentEditor';
 import { getStyles } from '../components/styles';
-import { Agent, clone, errorText, FoundDevice, retentionLabel, RunnerStatus, Setup, Snapshot } from '../types';
+import { Agent, clone, errorText, FoundDevice, retentionLabel, RunnerStatus, SchemaOption, Setup, Snapshot } from '../types';
 
 const pageNav = { text: 'Agentek és gépek', description: 'MTConnect kapcsolatok és eszköznevek kezelése.' };
 type Confirmation = 'save' | 'discard' | 'rollback' | { remove: number };
@@ -37,6 +37,8 @@ export function App() {
   const s = useStyles2(getStyles);
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [setup, setSetup] = useState<Setup>();
+  const [schemaOptions, setSchemaOptions] = useState<SchemaOption[]>([]);
+  const [schemaLoadError, setSchemaLoadError] = useState('');
   const [status, setStatus] = useState<RunnerStatus>({});
   const [connections, setConnections] = useState<Record<string, 'checking' | 'online' | 'offline' | 'unknown'>>({});
   const [editor, setEditor] = useState<{ index: number | null; initial: Agent; found?: FoundDevice[] }>();
@@ -95,6 +97,13 @@ export function App() {
       active = false;
       clearInterval(timer);
     };
+  }, []);
+  useEffect(() => {
+    let active = true;
+    api<{ schemas: SchemaOption[] }>('schemas')
+      .then((result) => active && setSchemaOptions(result.schemas))
+      .catch((e) => active && setSchemaLoadError(errorText(e)));
+    return () => { active = false; };
   }, []);
   useEffect(() => {
     if (!unsaved) {
@@ -552,6 +561,8 @@ export function App() {
             onClose={closeEditor}
             onApply={applyAgent}
             onDirty={setEditorDirty}
+            schemaOptions={schemaOptions}
+            schemaLoadError={schemaLoadError}
             probe={(url) => api<{ devices: FoundDevice[] }>('probe', 'POST', { url })}
           />
         )}
