@@ -18,7 +18,7 @@
     },
     {
       "type": "page",
-      "name": "Dashboard",
+      "name": "Dashboard szerkesztő",
       "icon": "sliders-v-alt",
       "path": "/a/kfgyr-monitoring-app/profiles",
       "addToNav": true,
@@ -69,7 +69,7 @@
         "url": "https://github.com/kolosmile/kfgyr-monitoring"
       }
     ],
-    "version": "0.4.16",
+    "version": "0.4.17",
     "updated": "2026-11-20"
   },
   "dependencies": {

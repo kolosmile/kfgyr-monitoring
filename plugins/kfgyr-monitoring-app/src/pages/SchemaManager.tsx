@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Combobox, ConfirmModal, Field, Input, Modal, Spinner, useStyles2 } from '@grafana/ui';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Button, Combobox, ConfirmModal, Field, Icon, Input, Modal, Spinner, useStyles2 } from '@grafana/ui';
 import { api } from '../api';
 import { getStyles } from '../components/styles';
 import { errorText, SchemaOption, Signal } from '../types';
+import { signalCatalogIcon } from '../navigation/menu';
 
 type Machine = { id: string; label: string; schema_id?: string };
 type DataItem = { id: string; path: string; units: string; category: string; type: string; subType: string };
@@ -60,7 +61,9 @@ export function SchemaManager() {
   const [mappingEditor, setMappingEditor] = useState<MappingEditor>();
   const [deleteSignal, setDeleteSignal] = useState<Signal>();
   const [deleteSchema, setDeleteSchema] = useState<SchemaOption>();
+  const [deleteMapping, setDeleteMapping] = useState<{ schema: SchemaOption; mapping: Mapping }>();
   const [submitted, setSubmitted] = useState(false);
+  const mappingRequest = useRef(0);
 
   async function loadBase(preferredSchema = selectedSchema) {
     const [catalog, schemaResult, machineResult] = await Promise.all([
@@ -78,12 +81,15 @@ export function SchemaManager() {
   }
 
   async function loadMappings(schemaId: string) {
+    const request = ++mappingRequest.current;
+    setMappings([]);
     if (!schemaId) {
-      setMappings([]);
       return;
     }
     const result = await api<MappingResponse>(`schemas/${encodeURIComponent(schemaId)}/mappings`);
-    setMappings(result.mappings);
+    if (request === mappingRequest.current) {
+      setMappings(result.mappings);
+    }
   }
 
   useEffect(() => {
@@ -254,19 +260,21 @@ export function SchemaManager() {
     }
   }
 
-  async function removeMapping(signalId: string) {
-    if (!selectedSchema || saving) {
+  async function removeMapping() {
+    if (!deleteMapping || saving) {
       return;
     }
+    const { schema, mapping } = deleteMapping;
     setSaving(true);
     setError('');
     try {
-      await api(`schemas/${encodeURIComponent(selectedSchema)}/mappings/${encodeURIComponent(signalId)}`, 'DELETE');
+      await api(`schemas/${encodeURIComponent(schema.id)}/mappings/${encodeURIComponent(mapping.signal_id)}`, 'DELETE');
       setNotice('A hozzárendelés törölve; a jel a katalógusban megmaradt.');
-      await reload(selectedSchema);
+      await reload(schema.id);
     } catch (err) {
       setError(errorText(err));
     } finally {
+      setDeleteMapping(undefined);
       setSaving(false);
     }
   }
@@ -291,7 +299,10 @@ export function SchemaManager() {
       <div className={styles.schemaColumns}>
         <section className={styles.formCard}>
           <div className={styles.formFooter}>
-            <div><h3>Jelkatalógus</h3><p className={styles.muted}>A magyar nevek és egységek közös listája.</p></div>
+            <div>
+              <h3 className={styles.actions}><Icon name={signalCatalogIcon} aria-hidden /> Jelkatalógus</h3>
+              <p className={styles.muted}>A magyar nevek és egységek közös listája.</p>
+            </div>
             <Button type="button" icon="plus" disabled={saving} onClick={() => {
               setSubmitted(false);
               setSignalEditor({ mode: 'catalog', id: '', name: '', units: '', machine: '', pointId: '', endpoint: '' });
@@ -312,7 +323,7 @@ export function SchemaManager() {
                       setSignalEditor({ mode: 'catalog', originalId: signal.id, id: signal.id,
                         name: signal.name, units: signal.units, machine: '', pointId: '', endpoint: '' });
                     }} />
-                  <Button type="button" size="sm" variant="destructive" icon="trash-alt" aria-label={`${signal.name} törlése`}
+                  <Button type="button" size="sm" variant="destructive" fill="outline" icon="trash-alt" aria-label={`${signal.name} törlése`}
                     disabled={saving} onClick={() => setDeleteSignal(signal)} />
                 </div>
               </div>
@@ -354,7 +365,7 @@ export function SchemaManager() {
                   }}>
                   Új jel gépadatpontból
                 </Button>
-                <Button type="button" variant="destructive" icon="trash-alt" disabled={saving}
+                <Button type="button" variant="destructive" fill="outline" icon="trash-alt" disabled={saving}
                   onClick={() => setDeleteSchema(schemas.find((item) => item.id === selectedSchema))}>
                   Séma törlése
                 </Button>
@@ -374,9 +385,14 @@ export function SchemaManager() {
                         onClick={() => openMapping(mapping.signal_id)}>
                         {mapping.endpoint ? 'Módosítás' : 'Hozzárendelés'}
                       </Button>
-                      {mapping.endpoint && <Button type="button" size="sm" variant="destructive" icon="trash-alt"
+                      {mapping.endpoint && <Button type="button" size="sm" variant="destructive" fill="outline" icon="trash-alt"
                         aria-label={`${mapping.signal_name} hozzárendelés törlése`} disabled={saving}
-                        onClick={() => removeMapping(mapping.signal_id)} />}
+                        onClick={() => {
+                          const schema = schemas.find((item) => item.id === selectedSchema);
+                          if (schema) {
+                            setDeleteMapping({ schema, mapping });
+                          }
+                        }} />}
                     </div>
                   </div>
                 ))}
@@ -496,13 +512,20 @@ export function SchemaManager() {
       )}
 
       {deleteSignal && <ConfirmModal isOpen title={`${deleteSignal.name} törlése`}
+        modalClass={styles.deleteConfirmation}
         body="A katalógusjel nem törölhető, ha valamelyik séma vagy dashboard használja."
         confirmText="Jel törlése" dismissText="Mégse" confirmVariant="destructive" disabled={saving}
         onConfirm={removeSignal} onDismiss={() => setDeleteSignal(undefined)} />}
       {deleteSchema && <ConfirmModal isOpen title={`${deleteSchema.name} törlése`}
+        modalClass={styles.deleteConfirmation}
         body="A séma hozzárendelései törlődnek. Géphez rendelt séma nem törölhető."
         confirmText="Séma törlése" dismissText="Mégse" confirmVariant="destructive" disabled={saving}
         onConfirm={removeSchema} onDismiss={() => setDeleteSchema(undefined)} />}
+      {deleteMapping && <ConfirmModal isOpen title="Hozzárendelés törlése"
+        modalClass={styles.deleteConfirmation}
+        body={`A „${deleteMapping.mapping.signal_name}” jel végpontja törlődik a „${deleteMapping.schema.name}” sémából. A jel a katalógusban megmarad.`}
+        confirmText="Hozzárendelés törlése" dismissText="Mégse" confirmVariant="destructive" disabled={saving}
+        onConfirm={removeMapping} onDismiss={() => setDeleteMapping(undefined)} />}
     </>
   );
 }

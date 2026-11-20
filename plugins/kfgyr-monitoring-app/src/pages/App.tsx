@@ -476,7 +476,8 @@ export function App() {
                       Szerkesztés
                     </Button>
                     <Button
-                      variant="secondary"
+                      variant="destructive"
+                      fill="outline"
                       icon="trash-alt"
                       aria-label={`${agent.alias} agent eltávolítása`}
                       disabled={busy}
@@ -698,6 +699,7 @@ export function App() {
           <ConfirmModal
             isOpen
             title={`${agents[confirmation.remove].alias} eltávolítása`}
+            modalClass={s.deleteConfirmation}
             confirmText="Eltávolítás a listából"
             dismissText="Mégse"
             body="Az agent a mentés és alkalmazás után leáll az adatgyűjtéssel. A korábban tárolt adatok megmaradnak, és a megőrzési szabályok továbbra is érvényesek."

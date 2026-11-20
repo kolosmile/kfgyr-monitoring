@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Badge, Button, Combobox, Field, Input, Modal, Switch, useStyles2 } from '@grafana/ui';
+import { Alert, Badge, Button, Combobox, ConfirmModal, Field, Input, Modal, Switch, useStyles2 } from '@grafana/ui';
 import { Agent, aliasPattern, clone, errorText, FoundDevice, retentionPattern, SchemaOption } from '../types';
 import { getStyles } from './styles';
 
@@ -37,6 +37,7 @@ export function AgentEditor({ initial, found, existing, otherAliases, isNew, onC
   const [submitted, setSubmitted] = useState(false);
   const [urlTouched, setUrlTouched] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [deviceToRemove, setDeviceToRemove] = useState<Agent['devices'][number]>();
   const [probing, setProbing] = useState(false);
   const [probeResult, setProbeResult] = useState<{ url: string; devices: FoundDevice[] } | undefined>(
     () => found ? { url: initial.url.trim(), devices: found } : undefined
@@ -188,7 +189,9 @@ export function AgentEditor({ initial, found, existing, otherAliases, isNew, onC
       title={isNew ? 'Új MTConnect agent' : `${initial.alias} szerkesztése`}
       isOpen
       onDismiss={dismiss}
+      closeOnEscape={!deviceToRemove}
       closeOnBackdropClick={false}
+      trapFocus={!deviceToRemove}
       className={s.modal}
       contentClassName={s.modalContent}
     >
@@ -314,10 +317,12 @@ export function AgentEditor({ initial, found, existing, otherAliases, isNew, onC
             {devices.map((device, i) => {
               const missing = !!probeResult && !probeResult.devices.some((item) => item.id === device.id);
               return (
-                <div key={i} className={s.device}>
-                  {missing && <Alert severity="warning" title="Korábban mentett, jelenleg nem felismert gép">
-                    A bejegyzés megmarad, amíg el nem távolítod.
-                  </Alert>}
+                <div key={device.id} className={s.device}>
+                  {missing && <div className={s.deviceWarning}>
+                    <Alert severity="warning" title="Korábban mentett, jelenleg nem felismert gép">
+                      A bejegyzés megmarad, amíg el nem távolítod.
+                    </Alert>
+                  </div>}
                   <Field
                     label="MTConnect eszköz ID"
                     htmlFor={`device-id-${i}`}
@@ -348,33 +353,40 @@ export function AgentEditor({ initial, found, existing, otherAliases, isNew, onC
                       }
                     />
                   </Field>
-                  <Field
-                    label="Séma"
-                    htmlFor={`device-schema-${i}`}
-                    invalid={!!fieldError(`schema-${i}`)}
-                    error={fieldError(`schema-${i}`)}
-                    description="A gép adatpontjait ehhez a sémához rendeli."
-                  >
-                    <Combobox
-                      id={`device-schema-${i}`}
-                      value={schemaOptions.some((schema) => schema.id === device.schema_id) ? device.schema_id! : null}
-                      placeholder="Válassz sémát"
-                      options={schemaOptions.map((schema) => ({ value: schema.id, label: schema.name }))}
-                      onChange={({ value }) =>
-                        change({
-                          ...draft,
-                          devices: devices.map((d, j) => (j === i ? { ...d, schema_id: value || undefined } : d)),
-                        })
-                      }
-                    />
-                  </Field>
+                  <div>
+                    <Field
+                      label="Séma"
+                      htmlFor={`device-schema-${i}`}
+                      invalid={!!fieldError(`schema-${i}`)}
+                      error={fieldError(`schema-${i}`)}
+                      noMargin
+                    >
+                      <Combobox
+                        id={`device-schema-${i}`}
+                        aria-describedby={`device-schema-hint-${i}`}
+                        value={schemaOptions.some((schema) => schema.id === device.schema_id) ? device.schema_id! : null}
+                        placeholder="Válassz sémát"
+                        options={schemaOptions.map((schema) => ({ value: schema.id, label: schema.name }))}
+                        onChange={({ value }) =>
+                          change({
+                            ...draft,
+                            devices: devices.map((d, j) => (j === i ? { ...d, schema_id: value || undefined } : d)),
+                          })
+                        }
+                      />
+                    </Field>
+                    <small id={`device-schema-hint-${i}`} className={s.deviceHint}>
+                      A gép adatpontjait ehhez a sémához rendeli.
+                    </small>
+                  </div>
                   {missing && <div style={{ paddingTop: 24 }}>
                     <Button
                       type="button"
-                      variant="secondary"
+                      variant="destructive"
+                      fill="outline"
                       icon="trash-alt"
                       aria-label={`${device.alias || i + 1} eszköznév eltávolítása`}
-                      onClick={() => change({ ...draft, devices: devices.filter((_, j) => i !== j) })}
+                      onClick={() => setDeviceToRemove(device)}
                     >
                       Eltávolítás
                     </Button>
@@ -401,6 +413,18 @@ export function AgentEditor({ initial, found, existing, otherAliases, isNew, onC
           </Button>
         </div>
       </form>
+      {deviceToRemove && (
+        <ConfirmModal isOpen title="Gép eltávolítása"
+          modalClass={s.deleteConfirmation}
+          body={`A „${deviceToRemove.alias || deviceToRemove.id}” gép eltávolítása a „Mentés és alkalmazás” után lép életbe.`}
+          confirmText="Gép eltávolítása" dismissText="Mégse" confirmVariant="destructive"
+          onConfirm={() => {
+            const current = draftRef.current;
+            change({ ...current, devices: current.devices.filter((device) => device.id !== deviceToRemove.id) });
+            setDeviceToRemove(undefined);
+          }}
+          onDismiss={() => setDeviceToRemove(undefined)} />
+      )}
     </Modal>
   );
 }

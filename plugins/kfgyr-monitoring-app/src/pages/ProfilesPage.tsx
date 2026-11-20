@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import type { IconName } from '@grafana/data';
 import { HomeLink } from '../components/HomeLink';
 import { PluginPage, config } from '@grafana/runtime';
-import { Alert, Button, Combobox, ConfirmModal, Field, Icon, Input, LinkButton, Modal, Spinner, useStyles2 } from '@grafana/ui';
+import { Alert, Badge, Button, Combobox, ConfirmModal, Field, Icon, IconButton, Input, LinkButton, Modal, Spinner, useStyles2 } from '@grafana/ui';
 import { api } from '../api';
 import { getStyles } from '../components/styles';
 import { errorText } from '../types';
-import { menu } from '../navigation/menu';
+import { menu, signalCatalogIcon } from '../navigation/menu';
+import { SchemasPage } from './SchemasPage';
 
 type View = 'value' | 'state' | 'chart' | 'gauge';
 type ChartColor = 'blue' | 'green' | 'orange' | 'red' | 'purple' | 'yellow';
@@ -25,12 +27,32 @@ type Dashboard = { id: number; name: string; revision: number; is_default: boole
 type PanelOption = { kind: 'signal' | 'point'; id: string; label: string; units?: string };
 type Assignment = { id: number; name: string; panels: Panel[]; revision: number; options: PanelOption[] };
 
-const views: Array<{ value: View; label: string }> = [
-  { value: 'state', label: 'Állapot' },
-  { value: 'value', label: 'Aktuális érték' },
-  { value: 'gauge', label: 'Műszer' },
-  { value: 'chart', label: 'Grafikon' },
+const views: Array<{ value: View; label: string; icon: IconName }> = [
+  { value: 'state', label: 'Állapot', icon: 'toggle-on' },
+  { value: 'value', label: 'Aktuális érték', icon: 'calculator-alt' },
+  { value: 'gauge', label: 'Műszer', icon: 'tachometer-fast' },
+  { value: 'chart', label: 'Grafikon', icon: 'chart-line' },
 ];
+
+function machineLabel(label: string) {
+  const separator = label.indexOf('/');
+  return separator < 0 ? { agent: '', name: label } : {
+    agent: label.slice(0, separator),
+    name: label.slice(separator + 1),
+  };
+}
+
+function DashboardIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} aria-hidden="true" width="20" height="20" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="12" width="7" height="10" rx="1" />
+      <rect x="14" y="3" width="7" height="10" rx="1" />
+      <rect x="14" y="15" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
 
 export function ProfilesPage() {
   const styles = useStyles2(getStyles);
@@ -41,9 +63,13 @@ export function ProfilesPage() {
   const [listRevision, setListRevision] = useState(0);
   const [dashboardId, setDashboardId] = useState<number>();
   const [dashboardName, setDashboardName] = useState('');
+  const [renameDraft, setRenameDraft] = useState<string>();
+  const [showSchemas, setShowSchemas] = useState(false);
+  const [openViews, setOpenViews] = useState<Partial<Record<View, boolean>>>({});
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [panelToRemove, setPanelToRemove] = useState<{ index: number; panel: Panel; label: string }>();
   const [preset, setPreset] = useState<number>();
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -117,6 +143,7 @@ export function ProfilesPage() {
     setSavedPanels('');
     setEditor(undefined);
     setPreset(undefined);
+    setOpenViews({});
     setError('');
     setNotice('');
     setConfirmBack(false);
@@ -162,14 +189,25 @@ export function ProfilesPage() {
     setNotice('');
   }
 
-  function editPanel(index: number | null) {
+  function removePanel() {
+    if (saving || !assignment || !panelToRemove) {
+      return;
+    }
+    const { index, panel } = panelToRemove;
+    if (assignment.panels[index] === panel) {
+      changePanels(assignment.panels.filter((_, currentIndex) => currentIndex !== index));
+    }
+    setPanelToRemove(undefined);
+  }
+
+  function editPanel(index: number | null, view: View = 'chart') {
     if (!assignment) {
       return;
     }
     setEditorError('');
     setEditor({
       index,
-      panel: index === null ? { view: 'chart' } : { ...assignment.panels[index] },
+      panel: index === null ? { view } : { ...assignment.panels[index] },
     });
   }
 
@@ -194,6 +232,7 @@ export function ProfilesPage() {
       panels[editor.index] = panel;
     }
     changePanels(panels);
+    setOpenViews((current) => ({ ...current, [panel.view]: true }));
     setEditor(undefined);
     setEditorError('');
   }
@@ -239,17 +278,41 @@ export function ProfilesPage() {
   const panelName = (panel: Panel) => panel.name || panelOption(panel)?.label || 'Névtelen panel';
   const groups = new Map<string, Option[]>();
   for (const item of catalog?.machines ?? []) {
-    const separator = item.label.indexOf('/');
-    const agent = separator < 0 ? 'Egyéb' : item.label.slice(0, separator);
+    const agent = machineLabel(item.label).agent || 'Egyéb';
     groups.set(agent, [...(groups.get(agent) || []), item]);
   }
   const selected = catalog?.machines.find((item) => item.id === machine);
+  const selectedMachine = selected ? machineLabel(selected.label) : undefined;
+  const dashboardQuery = search.trim().toLocaleLowerCase('hu');
+  const visibleDashboards = dashboards?.filter((item) => item.name.toLocaleLowerCase('hu').includes(dashboardQuery));
+
+  function returnFromSchemas() {
+    setShowSchemas(false);
+    if (!assignment) {
+      return;
+    }
+    const { id } = assignment;
+    api<Assignment>(`dashboards/${id}`).then(({ options }) => {
+      setAssignment((current) => current?.id === id ? { ...current, options } : current);
+    }).catch((err) => setError(errorText(err)));
+  }
+
+  if (showSchemas) {
+    return <SchemasPage onBack={returnFromSchemas} />;
+  }
+
   return (
     <PluginPage pageNav={menu.dashboard} actions={(
       <div className={styles.actions}>
-        <LinkButton href={config.appSubUrl + menu.schemas.path} variant="secondary" icon={menu.schemas.icon}>
-          {menu.schemas.text}
-        </LinkButton>
+        {assignment ? (
+          <Button type="button" variant="secondary" icon={menu.schemas.icon} disabled={saving} onClick={() => setShowSchemas(true)}>
+            {menu.schemas.text}
+          </Button>
+        ) : (
+          <LinkButton href={config.appSubUrl + menu.schemas.path} variant="secondary" icon={menu.schemas.icon}>
+            {menu.schemas.text}
+          </LinkButton>
+        )}
         <HomeLink />
       </div>
     )}>
@@ -259,6 +322,7 @@ export function ProfilesPage() {
           {notice && <Alert severity="success" title={notice} />}
           {!machine && (
             <>
+              <h2 className={styles.editorSectionTitle}>Gépek</h2>
               {!catalog && !error && <div role="status"><Spinner /> Gépek betöltése…</div>}
               {catalog && !catalog.machines.length && (
                 <div className={styles.empty}>
@@ -277,7 +341,7 @@ export function ProfilesPage() {
                         setMachine(item.id);
                       }}>
                         <Icon name="monitor" size="xl" />
-                        <span>{item.label.includes('/') ? item.label.slice(item.label.indexOf('/') + 1) : item.label}</span>
+                        <span>{machineLabel(item.label).name}</span>
                         <Icon name="angle-right" />
                       </button>
                     ))}
@@ -287,68 +351,67 @@ export function ProfilesPage() {
             </>
           )}
           {machine && (
-            <section className={styles.formCard}>
-              <div className={styles.formFooter}>
-                <div>
-                  <Button type="button" icon="arrow-left" variant="secondary" disabled={saving}
-                    onClick={() => dashboardId !== undefined ? (dirty ? setConfirmBack(true) : backToDashboards()) : backToMachines()}>
-                    {dashboardId !== undefined ? 'Vissza a dashboardokhoz' : 'Vissza a gépekhez'}
-                  </Button>
-                </div>
-                <strong>{selected?.label}</strong>
+            <header className={styles.editorHeader}>
+              <Button type="button" icon="arrow-left" variant="secondary" fill="text" disabled={saving}
+                onClick={() => dashboardId !== undefined ? (dirty ? setConfirmBack(true) : backToDashboards()) : backToMachines()}>
+                {dashboardId !== undefined ? 'Vissza a dashboardokhoz' : 'Vissza a gépekhez'}
+              </Button>
+              <div className={styles.editorTitleRow}>
+                <h2 className={styles.editorTitle}>{assignment ? dashboardName : selectedMachine?.name}</h2>
+                {assignment && <IconButton type="button" name="pen" tooltip="Dashboard átnevezése" disabled={saving}
+                  onClick={() => setRenameDraft(dashboardName)} />}
               </div>
-            </section>
+              <div className={styles.actions}>
+                {assignment && selectedMachine && <span className={styles.muted}>{selectedMachine.name}</span>}
+                {selectedMachine?.agent && <Badge color="blue" text={selectedMachine.agent} />}
+              </div>
+            </header>
           )}
           {machine && dashboardId === undefined && (
-            <section className={styles.formCard}>
-              <div className={styles.formFooter}>
-                <h3>Dashboardok</h3>
-                <Button type="button" icon="plus" disabled={saving} onClick={() => {
-                  setDashboardName('');
-                  setCreating(true);
-                }}>Dashboard hozzáadása</Button>
-              </div>
-              <Field label="Dashboard keresése" htmlFor="dashboard-search">
-                <Input id="dashboard-search" placeholder="Keress név alapján…" value={search}
-                  onChange={(event) => setSearch(event.currentTarget.value)} />
-              </Field>
-              {!dashboards && !error && <div role="status"><Spinner /> Dashboardok betöltése…</div>}
-              {dashboards && !dashboards.length && <p className={styles.muted}>Ehhez a géphez még nincs dashboard.</p>}
-              {dashboards && dashboards.length > 0 && !dashboards.some((item) =>
-                item.name.toLocaleLowerCase('hu').includes(search.trim().toLocaleLowerCase('hu'))) &&
-                <p className={styles.muted}>Nincs a keresésnek megfelelő dashboard.</p>}
-              <div className={styles.machineGrid}>
-                {dashboards?.filter((item) => item.name.toLocaleLowerCase('hu')
-                  .includes(search.trim().toLocaleLowerCase('hu'))).map((item) => (
-                  <button key={item.id} type="button" className={styles.machineCard} onClick={() => {
-                    setError('');
-                    setNotice('');
-                    setDashboardId(item.id);
-                  }}>
-                    <Icon name="apps" size="xl" />
-                    <span>{item.name}</span>
-                    <Icon name="angle-right" />
-                  </button>
-                ))}
-              </div>
-            </section>
+            <>
+              <h3 className={styles.editorSectionTitle}>Dashboardok</h3>
+              <section className={styles.formCard}>
+                <div className={styles.formFooter}>
+                  <div className={styles.dashboardSearch}>
+                    <Input aria-label="Dashboard keresése" placeholder="Dashboard keresése…"
+                      prefix={<Icon name="search" />} value={search}
+                      onChange={(event) => setSearch(event.currentTarget.value)} />
+                  </div>
+                  <Button type="button" icon="plus" disabled={saving} onClick={() => {
+                    setDashboardName('');
+                    setCreating(true);
+                  }}>Dashboard hozzáadása</Button>
+                </div>
+                {!dashboards && !error && <div role="status"><Spinner /> Dashboardok betöltése…</div>}
+                {dashboards && !dashboards.length && <p className={styles.muted}>Ehhez a géphez még nincs dashboard.</p>}
+                {dashboards && dashboards.length > 0 && !visibleDashboards?.length &&
+                  <p className={styles.muted}>Nincs a keresésnek megfelelő dashboard.</p>}
+                <div className={styles.dashboardGrid}>
+                  {visibleDashboards?.map((item) => (
+                    <button key={item.id} type="button" className={styles.machineCard} onClick={() => {
+                      setError('');
+                      setNotice('');
+                      setDashboardId(item.id);
+                    }}>
+                      <DashboardIcon className={styles.dashboardIcon} />
+                      <span>{item.name}</span>
+                      <Icon name="angle-right" />
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </>
           )}
           {dashboardId !== undefined && !assignment && !error && <div role="status"><Spinner /> Beállítások betöltése…</div>}
           {assignment && (
             <>
-              <section className={styles.formCard}>
-                <Field label="Dashboard neve" htmlFor="dashboard-name">
-                  <Input id="dashboard-name" maxLength={120} disabled={saving} value={dashboardName}
-                    onChange={(event) => setDashboardName(event.currentTarget.value)} />
-                </Field>
-                <h3>Panelek</h3>
-                <p className={styles.note}>Kezdj üres listával, vagy adj hozzá szerkeszthető paneljavaslatokat. A sorrend nézetenként érvényesül.</p>
-                <Field label="Panelsablon csomag" htmlFor="panel-preset">
-                  <Combobox id="panel-preset" disabled={saving} value={preset ?? null}
+              <div className={styles.formFooter}>
+                <h3 className={styles.editorSectionTitle}>Panelszerkesztő</h3>
+                <div className={styles.actions}>
+                  <Combobox aria-label="Panelsablon csomag" placeholder="Panelsablon csomag"
+                    disabled={saving} value={preset ?? null}
                     options={catalog?.presets.map(({ label }, value) => ({ value, label })) ?? []}
                     onChange={({ value }) => setPreset(value)} />
-                </Field>
-                <div className={styles.actions}>
                   <Button type="button" variant="secondary" disabled={saving || preset === undefined} onClick={() => {
                     const selectedPreset = preset === undefined ? undefined : catalog?.presets[preset];
                     if (selectedPreset) {
@@ -363,64 +426,80 @@ export function ProfilesPage() {
                       setPreset(undefined);
                     }
                   }}>Javasolt panelek hozzáadása</Button>
-                  <Button type="button" icon="plus" disabled={saving}
-                    onClick={() => editPanel(null)}>
-                    Panel hozzáadása
-                  </Button>
                 </div>
-              </section>
-              {views.map(({ value, label }) => {
-                const panels = assignment.panels
-                  .map((panel, index) => ({ panel, index }))
-                  .filter(({ panel }) => panel.view === value);
-                if (!panels.length) {
-                  return null;
-                }
-                return (
-                  <section key={value}>
-                    <h3>{label}</h3>
-                    <div className={styles.panelGrid}>
-                      {panels.map(({ panel, index }, position) => {
-                        const option = panelOption(panel);
-                        const label = panelName(panel);
-                        const move = (offset: number) => {
-                          const target = panels[position + offset]?.index;
-                          if (target === undefined) {
-                            return;
-                          }
-                          const next = [...assignment.panels];
-                          [next[index], next[target]] = [next[target], next[index]];
-                          changePanels(next);
-                        };
-                        return (
-                          <article className={styles.panelCard} key={index}>
-                            <strong>{label}</strong>
-                            <div className={styles.panelPoint}>
-                              {option?.kind === 'signal' ? `Jelkatalógus: ${option.label}` :
-                                option?.label || (panel.signal_id ? 'A jelhez ezen a gépen nincs hozzárendelt adatpont' : 'A mentett adatpont nem érhető el')}
-                            </div>
-                            <div className={styles.actions}>
-                              <Button type="button" variant="secondary" icon="arrow-up" disabled={saving || position === 0}
-                                aria-label={`${label} előrébb helyezése`} onClick={() => move(-1)} />
-                              <Button type="button" variant="secondary" icon="arrow-down" disabled={saving || position === panels.length - 1}
-                                aria-label={`${label} hátrébb helyezése`} onClick={() => move(1)} />
-                              <Button type="button" variant="secondary" icon="pen" disabled={saving}
-                                aria-label={`${label} szerkesztése`} onClick={() => editPanel(index)} />
-                              <Button type="button" variant="destructive" icon="trash-alt" disabled={saving}
-                                aria-label={`${label} eltávolítása`}
-                                onClick={() => changePanels(assignment.panels.filter((_, i) => i !== index))} />
-                            </div>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  </section>
-                );
-              })}
+              </div>
+              <div className={styles.panelGroups}>
+                {views.map(({ value, label, icon }) => {
+                  const panels = assignment.panels
+                    .map((panel, index) => ({ panel, index }))
+                    .filter(({ panel }) => panel.view === value);
+                  const isOpen = openViews[value] ?? (panels.length > 0);
+                  return (
+                    <details key={value} className={`${styles.panelGroup} ${styles.panelAccents[value]}`}
+                      open={isOpen}
+                      onToggle={(event) => {
+                        const open = event.currentTarget.open;
+                        if (open !== isOpen) {
+                          setOpenViews((current) => ({ ...current, [value]: open }));
+                        }
+                      }}>
+                      <summary className={styles.panelGroupTitle}><Icon name="angle-right" aria-hidden />{label}</summary>
+                      <div className={styles.panelGrid}>
+                        {panels.map(({ panel, index }, position) => {
+                          const option = panelOption(panel);
+                          const label = panelName(panel);
+                          const move = (offset: number) => {
+                            const target = panels[position + offset]?.index;
+                            if (target === undefined) {
+                              return;
+                            }
+                            const next = [...assignment.panels];
+                            [next[index], next[target]] = [next[target], next[index]];
+                            changePanels(next);
+                          };
+                          return (
+                            <article className={styles.panelCard} key={index}>
+                              <div className={styles.panelContent}>
+                                <strong className={styles.panelTitle}>
+                                  <Icon name={icon} aria-hidden />{label}
+                                </strong>
+                                <div className={styles.panelPoint}>
+                                  {panel.signal_id && <Icon name={signalCatalogIcon} aria-label="Jelkatalógus" />}
+                                  <span>{option?.label || (panel.signal_id ? 'Nincs hozzárendelt adatpont' : 'A mentett adatpont nem érhető el')}</span>
+                                </div>
+                                <div className={styles.panelActions}>
+                                  <IconButton type="button" name="pen" disabled={saving}
+                                    tooltip={`${label} szerkesztése`} onClick={() => editPanel(index)} />
+                                  <Button type="button" size="sm" variant="destructive" fill="outline" icon="trash-alt" disabled={saving}
+                                    aria-label={`${label} eltávolítása`}
+                                    onClick={() => setPanelToRemove({ index, panel, label })} />
+                                </div>
+                              </div>
+                              <div className={styles.panelMove}>
+                                <IconButton type="button" name="arrow-up" disabled={saving || position === 0}
+                                  tooltip={`${label} előrébb helyezése`} onClick={() => move(-1)} />
+                                <IconButton type="button" name="arrow-down" disabled={saving || position === panels.length - 1}
+                                  tooltip={`${label} hátrébb helyezése`} onClick={() => move(1)} />
+                              </div>
+                            </article>
+                          );
+                        })}
+                        <button type="button" className={styles.panelAdd} disabled={saving}
+                          onClick={() => editPanel(null, value)}>
+                          <Icon name="plus" aria-hidden /> Panel hozzáadása
+                        </button>
+                      </div>
+                    </details>
+                  );
+                })}
+              </div>
               <div className={styles.formFooter}>
-                <a href={config.appSubUrl + menu.monitoring.path + '?var-machine=' + encodeURIComponent(machine) + '&var-dashboard=' + assignment.id}>Monitoring megnyitása</a>
+                <LinkButton variant="secondary" fill="outline" icon={menu.monitoring.icon}
+                  href={config.appSubUrl + menu.monitoring.path + '?var-machine=' + encodeURIComponent(machine) + '&var-dashboard=' + assignment.id}>
+                  Monitoring megnyitása
+                </LinkButton>
                 <div className={styles.actions}>
-                  <Button type="button" icon="trash-alt" variant="destructive" disabled={saving}
+                  <Button type="button" icon="trash-alt" variant="destructive" fill="outline" disabled={saving}
                     onClick={() => setConfirmDelete(true)}>Dashboard törlése</Button>
                   <Button type="submit" icon="save" disabled={saving}>{saving ? 'Mentés…' : 'Dashboard mentése'}</Button>
                 </div>
@@ -428,6 +507,26 @@ export function ProfilesPage() {
             </>
           )}
         </form>
+        {renameDraft !== undefined && (
+          <Modal title="Dashboard átnevezése" isOpen onDismiss={() => setRenameDraft(undefined)}>
+            <form onSubmit={(event) => {
+              event.preventDefault();
+              if (renameDraft.trim()) {
+                setDashboardName(renameDraft.trim());
+                setRenameDraft(undefined);
+              }
+            }}>
+              <Field label="Dashboard neve" htmlFor="dashboard-rename">
+                <Input id="dashboard-rename" autoFocus maxLength={120} value={renameDraft}
+                  onChange={(event) => setRenameDraft(event.currentTarget.value)} />
+              </Field>
+              <Modal.ButtonRow>
+                <Button type="button" variant="secondary" onClick={() => setRenameDraft(undefined)}>Mégse</Button>
+                <Button type="submit" disabled={!renameDraft.trim()}>Név módosítása</Button>
+              </Modal.ButtonRow>
+            </form>
+          </Modal>
+        )}
         {creating && (
           <Modal title="Dashboard hozzáadása" isOpen onDismiss={() => setCreating(false)}>
             <Field label="Dashboard neve" htmlFor="new-dashboard-name">
@@ -442,8 +541,16 @@ export function ProfilesPage() {
         )}
         {confirmDelete && (
           <ConfirmModal isOpen title="Dashboard törlése" body="A dashboard panelbeállításai törlődnek."
+            modalClass={styles.deleteConfirmation}
             confirmText="Dashboard törlése" dismissText="Mégse" confirmVariant="destructive"
             disabled={saving} onConfirm={deleteDashboard} onDismiss={() => setConfirmDelete(false)} />
+        )}
+        {panelToRemove && (
+          <ConfirmModal isOpen title="Panel eltávolítása"
+            modalClass={styles.deleteConfirmation}
+            body={`A „${panelToRemove.label}” panel a dashboard mentésekor kerül le a dashboardról.`}
+            confirmText="Panel eltávolítása" dismissText="Mégse" confirmVariant="destructive"
+            disabled={saving} onConfirm={removePanel} onDismiss={() => setPanelToRemove(undefined)} />
         )}
         {editor && (
           <Modal title={editor.index === null ? 'Új panel' : 'Panel szerkesztése'} isOpen
