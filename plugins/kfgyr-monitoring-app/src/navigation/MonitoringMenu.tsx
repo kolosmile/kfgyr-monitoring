@@ -95,7 +95,7 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
   }
 
   return (
-    <nav className={styles.bar} aria-label="Gépmonitoring navigáció">
+    <nav className={styles.bar} aria-label="Monitoring navigáció">
       <div className={styles.controls}>
         <div className={styles.select}>
           <label className={styles.label} htmlFor="monitoring-menu-agent">Agent</label>

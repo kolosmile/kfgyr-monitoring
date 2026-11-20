@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { HomeLink } from '../components/HomeLink';
 import { PluginPage, config } from '@grafana/runtime';
-import { Alert, Button, Combobox, ConfirmModal, Field, Icon, Input, Modal, Spinner, useStyles2 } from '@grafana/ui';
+import { Alert, Button, Combobox, ConfirmModal, Field, Icon, Input, LinkButton, Modal, Spinner, useStyles2 } from '@grafana/ui';
 import { api } from '../api';
 import { getStyles } from '../components/styles';
 import { errorText } from '../types';
-import { SchemaManager } from './SchemaManager';
+import { menu } from '../navigation/menu';
 
 type View = 'value' | 'state' | 'chart' | 'gauge';
 type ChartColor = 'blue' | 'green' | 'orange' | 'red' | 'purple' | 'yellow';
@@ -24,7 +24,6 @@ type Catalog = { presets: SignalPreset[]; machines: Option[] };
 type Dashboard = { id: number; name: string; revision: number; is_default: boolean };
 type PanelOption = { kind: 'signal' | 'point'; id: string; label: string; units?: string };
 type Assignment = { id: number; name: string; panels: Panel[]; revision: number; options: PanelOption[] };
-type Section = 'monitoring' | 'schemas';
 
 const views: Array<{ value: View; label: string }> = [
   { value: 'state', label: 'Állapot' },
@@ -35,7 +34,6 @@ const views: Array<{ value: View; label: string }> = [
 
 export function ProfilesPage() {
   const styles = useStyles2(getStyles);
-  const [section, setSection] = useState<Section>('monitoring');
   const [catalog, setCatalog] = useState<Catalog>();
   const [machine, setMachine] = useState('');
   const [assignment, setAssignment] = useState<Assignment>();
@@ -246,23 +244,12 @@ export function ProfilesPage() {
     groups.set(agent, [...(groups.get(agent) || []), item]);
   }
   const selected = catalog?.machines.find((item) => item.id === machine);
-  if (section === 'schemas') {
-    return (
-      <PluginPage pageNav={{ text: 'Monitoring beállítása · Sémakezelő' }} actions={(
-        <div className={styles.actions}>
-          <Button type="button" variant="secondary" onClick={() => setSection('monitoring')}>Monitoring beállítása</Button>
-          <HomeLink />
-        </div>
-      )}>
-        <div className={styles.page}><SchemaManager /></div>
-      </PluginPage>
-    );
-  }
-
   return (
-    <PluginPage pageNav={{ text: 'Monitoring beállítása' }} actions={(
+    <PluginPage pageNav={menu.dashboard} actions={(
       <div className={styles.actions}>
-        <Button type="button" variant="secondary" icon="cog" onClick={() => setSection('schemas')}>Sémakezelő</Button>
+        <LinkButton href={config.appSubUrl + menu.schemas.path} variant="secondary" icon={menu.schemas.icon}>
+          {menu.schemas.text}
+        </LinkButton>
         <HomeLink />
       </div>
     )}>
@@ -431,7 +418,7 @@ export function ProfilesPage() {
                 );
               })}
               <div className={styles.formFooter}>
-                <a href={config.appSubUrl + '/d/kfgyr-machine-monitoring?var-machine=' + encodeURIComponent(machine) + '&var-dashboard=' + assignment.id}>Gépmonitoring megnyitása</a>
+                <a href={config.appSubUrl + menu.monitoring.path + '?var-machine=' + encodeURIComponent(machine) + '&var-dashboard=' + assignment.id}>Monitoring megnyitása</a>
                 <div className={styles.actions}>
                   <Button type="button" icon="trash-alt" variant="destructive" disabled={saving}
                     onClick={() => setConfirmDelete(true)}>Dashboard törlése</Button>

@@ -18,9 +18,10 @@ import { api } from '../api';
 import { NetworkDiscovery } from '../components/NetworkDiscovery';
 import { AgentEditor } from '../components/AgentEditor';
 import { getStyles } from '../components/styles';
+import { menu } from '../navigation/menu';
 import { Agent, clone, errorText, FoundDevice, retentionLabel, RunnerStatus, SchemaOption, Setup, Snapshot } from '../types';
 
-const pageNav = { text: 'Agentek és gépek', description: 'MTConnect kapcsolatok és eszköznevek kezelése.' };
+const pageNav = { ...menu.agents, description: 'MTConnect kapcsolatok és eszköznevek kezelése.' };
 type Confirmation = 'save' | 'discard' | 'rollback' | { remove: number };
 const stateLabels: Record<string, string> = {
   starting: 'Indul',

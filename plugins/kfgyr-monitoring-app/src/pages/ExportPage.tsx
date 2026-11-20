@@ -4,6 +4,7 @@ import { getBackendSrv, PluginPage } from '@grafana/runtime';
 import { Alert, Badge, Button, Combobox, Field, Input, MultiCombobox, useStyles2 } from '@grafana/ui';
 import { lastValueFrom } from 'rxjs';
 import { getStyles } from '../components/styles';
+import { menu } from '../navigation/menu';
 import { errorText } from '../types';
 
 type Option = { id: string; label: string };
@@ -150,7 +151,7 @@ export function ExportPage() {
   const signalDisabled = busy || loadingSignals || !signals.length;
   const ready = machine.length > 0 && signal.length > 0 && !signalDisabled;
   return (
-    <PluginPage pageNav={{ text: 'Adatexport' }} actions={<HomeLink />}>
+    <PluginPage pageNav={menu.export} actions={<HomeLink />}>
       <div className={styles.page}>
         <form onSubmit={download} className={styles.form}>
           {error && <Alert title="Az adatexport művelete sikertelen" severity="error">{error}</Alert>}

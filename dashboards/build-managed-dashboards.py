@@ -91,7 +91,7 @@ JOIN raw.nodes n ON n.props->>'node_type'='DataItem'
        n.props->>'path'=(rtrim(m.props->>'path', '/') || sm.endpoint)))
 """
 home = dashboard("kfgyr-home", "KFGyR · Kezdőlap", [
-    {**panel(1, "", "kfgyr-navigation-panel", 0, 0, 24, 16), "transparent": True},
+    {**panel(1, "", "kfgyr-navigation-panel", 0, 0, 24, 20), "transparent": True},
 ])
 home["timepicker"] = {"hidden": True}
 NUMBER = """
@@ -263,7 +263,7 @@ monitoring = {
     "kind": "Dashboard",
     "metadata": {"name": "kfgyr-machine-monitoring"},
     "spec": {
-        "title": "KFGyR · Gépmonitoring", "editable": False, "tags": ["KFGyR"],
+        "title": "KFGyR · Monitoring", "editable": False, "tags": ["KFGyR"],
         "annotations": [], "cursorSync": "Off",
         "timeSettings": {"timezone": "Europe/Budapest", "from": "now-15m", "to": "now",
                          "autoRefresh": "", "autoRefreshIntervals": ["5s", "10s", "30s", "1m", "5m"],

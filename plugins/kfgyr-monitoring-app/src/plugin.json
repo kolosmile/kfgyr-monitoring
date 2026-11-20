@@ -10,6 +10,7 @@
     {
       "type": "page",
       "name": "Agentek és gépek",
+      "icon": "plug",
       "path": "/a/kfgyr-monitoring-app/agents",
       "addToNav": true,
       "defaultNav": true,
@@ -17,15 +18,33 @@
     },
     {
       "type": "page",
-      "name": "Monitoring beállítása",
+      "name": "Dashboard",
+      "icon": "sliders-v-alt",
       "path": "/a/kfgyr-monitoring-app/profiles",
       "addToNav": true,
       "role": "Admin"
     },
     {
       "type": "page",
+      "name": "Sémakezelő",
+      "icon": "sitemap",
+      "path": "/a/kfgyr-monitoring-app/schemas",
+      "addToNav": true,
+      "role": "Admin"
+    },
+    {
+      "type": "page",
       "name": "Adatexport",
+      "icon": "download-alt",
       "path": "/a/kfgyr-monitoring-app/export",
+      "addToNav": true,
+      "role": "Viewer"
+    },
+    {
+      "type": "page",
+      "name": "Használati útmutató",
+      "icon": "book-open",
+      "path": "/a/kfgyr-monitoring-app/guide",
       "addToNav": true,
       "role": "Viewer"
     }
@@ -50,8 +69,8 @@
         "url": "https://github.com/kolosmile/kfgyr-monitoring"
       }
     ],
-    "version": "0.4.14",
-    "updated": "2026-11-16"
+    "version": "0.4.15",
+    "updated": "2026-11-20"
   },
   "dependencies": {
     "grafanaDependency": ">=13.0.2",

@@ -2,6 +2,7 @@ import { PanelPlugin } from '@grafana/data';
 import React from 'react';
 import { NavigationPanel } from './NavigationPanel';
 import { MonitoringMenu } from './MonitoringMenu';
+import { menu } from './menu';
 import { PanelProps } from '@grafana/data';
 
 function Navigation(props: PanelProps<{ mode?: string }>) {
@@ -15,7 +16,7 @@ export const plugin = new PanelPlugin(Navigation).setPanelOptions((builder) =>
     defaultValue: 'home',
     settings: { options: [
       { value: 'home', label: 'Kezdőlap' },
-      { value: 'monitoring', label: 'Gépmonitoring' },
+      { value: 'monitoring', label: menu.monitoring.text },
     ] },
   })
 );

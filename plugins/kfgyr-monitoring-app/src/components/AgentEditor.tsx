@@ -305,7 +305,7 @@ export function AgentEditor({ initial, found, existing, otherAliases, isNew, onC
             <p className={s.note}>Az agent gépeinek azonosítója kötött. Minden géphez kötelező sémát választani; automatikus alapértelmezés nincs.</p>
             {schemaLoadError && <Alert severity="error" title="A sémák nem tölthetők be">{schemaLoadError}</Alert>}
             {!schemaLoadError && schemaOptions.length === 0 && <Alert severity="info" title="Még nincs választható séma">
-              A gépek felvételéhez előbb hozz létre egy sémát a Monitoring beállítása → Sémakezelő oldalon.
+              A gépek felvételéhez előbb hozz létre egy sémát a Sémakezelőben.
             </Alert>}
             {probing && <p>Gépek lekérdezése…</p>}
             {!probing && !probeResult && !probeError && <p>Add meg az agent címét a gépek lekérdezéséhez.</p>}
