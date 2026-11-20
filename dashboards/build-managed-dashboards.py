@@ -265,8 +265,8 @@ monitoring = {
     "spec": {
         "title": "KFGyR · Monitoring", "editable": False, "tags": ["KFGyR"],
         "annotations": [], "cursorSync": "Off",
-        "timeSettings": {"timezone": "Europe/Budapest", "from": "now-15m", "to": "now",
-                         "autoRefresh": "", "autoRefreshIntervals": ["5s", "10s", "30s", "1m", "5m"],
+        "timeSettings": {"timezone": "Europe/Budapest", "from": "now-5m", "to": "now",
+                         "autoRefresh": "5s", "autoRefreshIntervals": ["5s", "10s", "30s", "1m", "5m"],
                          "hideTimepicker": False, "fiscalYearStartMonth": 0},
         "links": [],
         "elements": {

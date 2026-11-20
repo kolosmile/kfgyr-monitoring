@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { HomeLink } from '../components/HomeLink';
-import { renderMenuPageTitle } from '../components/MenuPageTitle';
+import { MenuPageTitle } from '../components/MenuPageTitle';
 import { PluginPage } from '@grafana/runtime';
 import {
   Alert,
@@ -238,8 +238,9 @@ export function App() {
 
   if (!setup || !snapshot) {
     return (
-      <PluginPage pageNav={pageNav} renderTitle={renderMenuPageTitle(menu.agents.icon)}>
+      <PluginPage pageNav={pageNav} renderTitle={() => null}>
         <div className={s.page}>
+          <MenuPageTitle item={menu.agents} />
           <div className={s.cardNavigation}><HomeLink /></div>
           {error ? (
             <Alert title="Nem sikerült betölteni a konfigurációt" severity="error">
@@ -309,8 +310,9 @@ export function App() {
   }
 
   return (
-    <PluginPage pageNav={pageNav} renderTitle={renderMenuPageTitle(menu.agents.icon)}>
+    <PluginPage pageNav={pageNav} renderTitle={() => null}>
       <div className={s.page}>
+        <MenuPageTitle item={menu.agents} />
         <div className={s.cardNavigation}>
           <HomeLink />
           <Button

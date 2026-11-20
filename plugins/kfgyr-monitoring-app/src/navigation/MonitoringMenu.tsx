@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { css } from '@emotion/css';
 import { GrafanaTheme2, PanelProps } from '@grafana/data';
 import { config, getBackendSrv, locationService } from '@grafana/runtime';
-import { Badge, Combobox, Icon, LinkButton, useStyles2 } from '@grafana/ui';
+import { Badge, Combobox, LinkButton, useStyles2 } from '@grafana/ui';
 import { lastValueFrom } from 'rxjs';
 import { HomeLink } from '../components/HomeLink';
 import { menu } from './menu';
@@ -41,7 +41,6 @@ const getStyles = (theme: GrafanaTheme2) => ({
   machineTitle: css({ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: theme.spacing(1),
     minWidth: 0, maxWidth: 360, marginLeft: 'auto', overflow: 'hidden', textOverflow: 'ellipsis',
     whiteSpace: 'nowrap', textAlign: 'right', fontSize: 24, lineHeight: 1.05, fontWeight: 700, color: theme.colors.text.primary,
-    '& > svg': { flexShrink: 0 },
     '& > span': { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' } }),
   label: css({ display: 'block', color: theme.colors.text.secondary, fontSize: 11, marginBottom: 2 }),
   badge: css({ alignSelf: 'flex-end', paddingBottom: 6 }),
@@ -147,7 +146,6 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
         </span>
       </div>
       {selected?.name && <div className={styles.machineTitle} title={selected.name}>
-        <Icon name={menu.monitoring.icon} size="lg" aria-hidden />
         <span>{selected.name}</span>
       </div>}
     </nav>

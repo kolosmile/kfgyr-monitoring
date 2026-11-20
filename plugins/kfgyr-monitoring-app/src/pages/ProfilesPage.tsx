@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { IconName } from '@grafana/data';
 import { HomeLink } from '../components/HomeLink';
-import { renderMenuPageTitle } from '../components/MenuPageTitle';
+import { MenuPageTitle } from '../components/MenuPageTitle';
 import { PluginPage, config } from '@grafana/runtime';
 import { Alert, Badge, Button, Combobox, ConfirmModal, Field, Icon, IconButton, Input, LinkButton, Modal, Spinner, useStyles2 } from '@grafana/ui';
 import { api } from '../api';
@@ -309,8 +309,9 @@ export function ProfilesPage() {
   }
 
   return (
-    <PluginPage pageNav={menu.dashboard} renderTitle={renderMenuPageTitle(menu.dashboard.icon)}>
+    <PluginPage pageNav={menu.dashboard} renderTitle={() => null}>
       <div className={styles.page}>
+        <MenuPageTitle item={menu.dashboard} />
         <form onSubmit={save} className={styles.form}>
           {error && <Alert severity="error" title="A művelet sikertelen">{error}</Alert>}
           {notice && <Alert severity="success" title={notice} />}

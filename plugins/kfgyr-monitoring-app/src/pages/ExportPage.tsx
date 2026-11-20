@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { HomeLink } from '../components/HomeLink';
-import { renderMenuPageTitle } from '../components/MenuPageTitle';
+import { MenuPageTitle } from '../components/MenuPageTitle';
 import { getBackendSrv, PluginPage } from '@grafana/runtime';
 import { Alert, Badge, Button, Combobox, Field, Input, MultiCombobox, useStyles2 } from '@grafana/ui';
 import { lastValueFrom } from 'rxjs';
@@ -152,8 +152,9 @@ export function ExportPage() {
   const signalDisabled = busy || loadingSignals || !signals.length;
   const ready = machine.length > 0 && signal.length > 0 && !signalDisabled;
   return (
-    <PluginPage pageNav={menu.export} renderTitle={renderMenuPageTitle(menu.export.icon)}>
+    <PluginPage pageNav={menu.export} renderTitle={() => null}>
       <div className={styles.page}>
+        <MenuPageTitle item={menu.export} />
         <form onSubmit={download} className={styles.form}>
           {error && <Alert title="Az adatexport művelete sikertelen" severity="error">{error}</Alert>}
           <div className={styles.cardNavigation}><HomeLink /></div>

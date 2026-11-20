@@ -14,9 +14,9 @@
     "cursorSync": "Off",
     "timeSettings": {
       "timezone": "Europe/Budapest",
-      "from": "now-15m",
+      "from": "now-5m",
       "to": "now",
-      "autoRefresh": "",
+      "autoRefresh": "5s",
       "autoRefreshIntervals": [
         "5s",
         "10s",

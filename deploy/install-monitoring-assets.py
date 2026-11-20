@@ -19,10 +19,6 @@ RAW = f"https://raw.githubusercontent.com/{REPOSITORY}"
 PLUGIN = "kfgyr-monitoring-app"
 DASHBOARDS = {
     "home.json": ("55d75adada483a4a1ac53f63741960be64756a11/dashboards/managed/home.json", "kfgyr-home"),
-    "machine-monitoring.json": (
-        "55d75adada483a4a1ac53f63741960be64756a11/dashboards/managed/machine-monitoring.json",
-        "kfgyr-machine-monitoring",
-    ),
     "mazak-digital-twin.json": (
         "170f50ec049965fab5383b6eecee6eb5eab5efc2/examples/mazak-digital-twin.json",
         "kfgyr-mazak-digital-twin",
@@ -61,7 +57,7 @@ def install_plugin(root, requested):
     marker = root / f".{PLUGIN}-verified"
     if marker.is_file() and marker.read_text().strip() == version and plugin_version(target) == version:
         print(f"Grafana plugin {version} is already installed", flush=True)
-        return
+        return tag
 
     name = f"{PLUGIN}-{version}.zip"
     asset = next((asset for asset in release["assets"] if asset["name"] == name), None)
@@ -95,6 +91,7 @@ def install_plugin(root, requested):
             raise
     marker.write_text(version + "\n", encoding="utf-8")
     print(f"Installed Grafana plugin {version}", flush=True)
+    return tag
 
 
 def install_dashboards(directory):
@@ -114,14 +111,33 @@ def install_dashboards(directory):
                 os.replace(stage / name, directory / name)
 
 
+def install_monitoring_dashboard(directory, release_tag):
+    directory.mkdir(parents=True, exist_ok=True)
+    dashboard = directory / "machine-monitoring.json"
+    marker = directory.parent / ".machine-monitoring-release"
+    if dashboard.is_file() and marker.is_file() and marker.read_text().strip() == release_tag:
+        return
+    content = download(f"{RAW}/{release_tag}/dashboards/managed/{dashboard.name}")
+    model = json.loads(content)
+    if model.get("uid", model.get("metadata", {}).get("name")) != "kfgyr-machine-monitoring":
+        raise RuntimeError("Unexpected Monitoring dashboard UID")
+    with tempfile.TemporaryDirectory(dir=directory) as temporary:
+        staged = Path(temporary) / dashboard.name
+        staged.write_bytes(content)
+        os.replace(staged, dashboard)
+    marker.write_text(release_tag + "\n", encoding="utf-8")
+    print(f"Installed Monitoring dashboard from {release_tag}", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--plugin-dir", type=Path, required=True)
     parser.add_argument("--dashboard-dir", type=Path)
     args = parser.parse_args()
-    install_plugin(args.plugin_dir, os.environ.get("KFGYR_PLUGIN_RELEASE") or "latest")
+    release_tag = install_plugin(args.plugin_dir, os.environ.get("KFGYR_PLUGIN_RELEASE") or "latest")
     if args.dashboard_dir:
         install_dashboards(args.dashboard_dir)
+        install_monitoring_dashboard(args.dashboard_dir, release_tag)
 
 
 if __name__ == "__main__":

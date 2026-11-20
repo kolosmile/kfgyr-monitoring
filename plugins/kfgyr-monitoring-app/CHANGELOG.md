@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.24 — 2026-11-20
+
+- Enlarged and aligned the titles of the plugin pages.
+- Removed the icon next to the machine name in Monitoring.
+- Set Monitoring to show the last five minutes and refresh every five seconds by default.
+
 ## 0.4.23 — 2026-11-20
 
 - Add a prominent title above the main menu and show matching menu icons in app page headings.
