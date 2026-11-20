@@ -11,11 +11,11 @@ Külön gépeken a Grafana hoston hozd létre a Grafana Compose által külsők�
 
 ## Provisioning és kiadás
 
-- A Grafana a hivatalos image. A `GF_PLUGINS_PREINSTALL_SYNC` telepíti a rögzített verziójú plugin ZIP-et. A jelenlegi kiadás az adott pluginazonosítóhoz engedélyezi az aláírás nélküli betöltést. Pluginverzió változtatásakor a Grafana konténerét újra kell létrehozni.
+- A `monitoring-assets` konténer az `install-monitoring-assets.py` szkripttel kiválasztja a GitHub legfrissebb pluginkiadását, ellenőrzi a ZIP SHA-256 összegét, és stabil útvonalra telepíti a csomagot. Új verzióhoz telepítsd újra a Grafana stacket. Helyben futtasd a `docker compose -f compose.grafana.yaml up -d --force-recreate` parancsot, így a telepítő újra lefut, és a Grafana az új csomagot tölti be. Visszaállításhoz a `KFGYR_PLUGIN_RELEASE` változóban adj meg egy konkrét `plugin-vX.Y.Z` taget.
 - Az app, a `timescaledb` UID-jú olvasási adatforrás és a kezelt **KFGyR** mappa a Grafana Compose-ból jön. A dashboardok forrása a `dashboards/managed` mappa. Újragenerálás a repó gyökeréből: `python dashboards/build-managed-dashboards.py`. A gyári dashboardok mentése a UI-ban tiltott. Saját nézethez használj külön dashboardot.
 - A Kezdőlap a Grafana szerver alapértelmezett Home dashboardja. Meglévő szervezeti, csapat- vagy személyes Home választás elsőbbséget élvezhet.
 - A runner induláskor létrehozza a `kfgyr.machine_dashboards` konfigurációs táblát, és a korábbi gépbeállításokat egyszer migrálja. A Grafana olvasási jogosultságát a runner migrációja adja meg a meglévő `grafana_reader` szerepnek. Az alap olvasó szerepet a PostgreSQL első inicializálásakor a `grafana-reader.psql` hozza létre.
-- A plugin és a runner kiadását a `plugin-vX.Y.Z` és `relay-runner-vX.Y.Z` Git tagek indítják. A telepítési példákban és a Compose-ban rögzített verziót csak a megfelelő artefaktumok elkészülte után használd.
+- A plugin és a runner kiadását a `plugin-vX.Y.Z` és `relay-runner-vX.Y.Z` Git tagek indítják. A runner Compose-ban rögzített verzióját a konténerkép közzététele után állítsd át.
 
 ## Átállás a korábbi egyprojektes telepítésről
 
@@ -29,15 +29,12 @@ A külön projektek leállításához használd a `stop` parancsot. A megosztott
 
 ### Helyi plugin csomag, ha a release URL nem érhető el a szerverről
 
-A GitHub release ZIP a GitHub asset API-ján keresztül is letölthető. Ellenőrizd a kiadott SHA-256 értéket, bontsd ki a csomagot, és tedd futtathatóvá a `gpx_*` backend binárisokat. A Grafana Compose-hoz adj helyi override fájlt. A példában a kibontott könyvtár a `deploy` mappa melletti `plugin-dist` alatt van.
+A GitHub release ZIP a GitHub asset API-ján keresztül is letölthető. Ellenőrizd a kiadott SHA-256 értéket, bontsd ki a csomagot a `deploy/runtime/grafana-plugin` mappába, és tedd futtathatóvá a `gpx_*` backend binárisokat. Az alábbi Compose override kihagyja a hálózati letöltést, így a Grafana a kézzel bemásolt plugint olvassa a megszokott helyről.
 
 ```yaml
 services:
-  grafana:
-    environment:
-      GF_PLUGINS_PREINSTALL_SYNC: ''
-    volumes:
-      - ../plugin-dist/kfgyr-monitoring-app:/var/lib/grafana/plugins/kfgyr-monitoring-app:ro
+  monitoring-assets:
+    command: ["true"]
 ```
 
 Mindig add meg ugyanazokat az override fájlokat a Compose indításakor és újralétrehozásakor. Meglévő kötet átvételéhez az override-ban a megfelelő kötetekhez megadható az `external: true` beállítás. A régi Compose projektet csak visszaállításkor indítsd újra, miután a két új projekt leállt.

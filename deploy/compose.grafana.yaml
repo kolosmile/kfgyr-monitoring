@@ -1,7 +1,19 @@
 name: kfgyr-grafana
 services:
+  monitoring-assets:
+    image: python:3.12-alpine
+    command: ["python", "/install-monitoring-assets.py", "--plugin-dir", "/plugin-release"]
+    environment:
+      KFGYR_PLUGIN_RELEASE: ${KFGYR_PLUGIN_RELEASE:-latest}
+    volumes:
+      - ./install-monitoring-assets.py:/install-monitoring-assets.py:ro
+      - ./runtime/grafana-plugin:/plugin-release
+    restart: "no"
   grafana:
     image: grafana/grafana-oss:13.0.2
+    depends_on:
+      monitoring-assets:
+        condition: service_completed_successfully
     ports:
       - "${GRAFANA_PORT:-3000}:3000"
     environment:
@@ -16,13 +28,13 @@ services:
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/kfgyr-dashboards/home.json
       GF_USERS_DEFAULT_THEME: dark
       GF_ANALYTICS_REPORTING_ENABLED: "false"
-      GF_PLUGINS_PREINSTALL_SYNC: ${KFGYR_PLUGIN_INSTALL:-kfgyr-monitoring-app@0.4.23@https://github.com/kolosmile/kfgyr-monitoring/releases/download/plugin-v0.4.23/kfgyr-monitoring-app-0.4.23.zip}
       GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: kfgyr-monitoring-app,kfgyr-navigation-panel
       GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:?}
       KFGYR_RUNNER_API_TOKEN: ${KFGYR_RUNNER_API_TOKEN:?}
       KFGYR_ADMIN_ORG_ID: ${KFGYR_ADMIN_ORG_ID:-1}
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./runtime/grafana-plugin/kfgyr-monitoring-app:/var/lib/grafana/plugins/kfgyr-monitoring-app:ro
       - ../dashboards/managed:/var/lib/kfgyr-dashboards:ro
     configs:
       - source: managed_dashboards
