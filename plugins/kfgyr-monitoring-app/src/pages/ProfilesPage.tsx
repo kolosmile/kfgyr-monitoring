@@ -460,13 +460,13 @@ export function ProfilesPage() {
                                 {panel.signal_id && <Icon name={signalCatalogIcon} aria-label="Jelkatalógus" />}
                                 <span className={styles.panelText} title={pointLabel}>{pointLabel}</span>
                               </div>
-                              <div className={styles.panelMove}>
-                                <IconButton type="button" name="arrow-left" disabled={saving || position === 0}
-                                  tooltip={`${label} előrébb helyezése`} onClick={() => move(-1)} />
-                                <IconButton type="button" name="arrow-right" disabled={saving || position === panels.length - 1}
-                                  tooltip={`${label} hátrébb helyezése`} onClick={() => move(1)} />
-                              </div>
-                              <div className={styles.panelDelete}>
+                              <div className={styles.panelActions}>
+                                <div className={styles.panelMove}>
+                                  <IconButton type="button" name="arrow-left" disabled={saving || position === 0}
+                                    tooltip={`${label} előrébb helyezése`} onClick={() => move(-1)} />
+                                  <IconButton type="button" name="arrow-right" disabled={saving || position === panels.length - 1}
+                                    tooltip={`${label} hátrébb helyezése`} onClick={() => move(1)} />
+                                </div>
                                 <IconButton type="button" name="trash-alt" variant="destructive" disabled={saving}
                                   tooltip={`${label} eltávolítása`} onClick={() => setPanelToRemove({ index, panel, label })} />
                               </div>

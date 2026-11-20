@@ -142,12 +142,12 @@ export const getStyles = (t: GrafanaTheme2) => ({
     '& > svg': { flexShrink: 0 },
   }),
   panelText: css({ minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }),
-  panelMove: css({
+  panelActions: css({
     gridColumn: 2,
     gridRow: 3,
-    display: 'flex', justifyContent: 'flex-end', gap: 4, minWidth: 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, minWidth: 0,
   }),
-  panelDelete: css({ gridColumn: 1, gridRow: 3, justifySelf: 'start', display: 'flex', alignItems: 'center' }),
+  panelMove: css({ display: 'flex', alignItems: 'center', gap: 4 }),
   panelAdd: css({
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
     minWidth: 0, border: `1px dashed ${t.colors.border.medium}`, borderRadius: 8,
