@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.25 — 2026-11-20
+
+- Open dashboard creation from Monitoring when the machine has no dashboard.
+- Validate that a dashboard belongs to the selected machine before opening the panel editor.
+- Create a dashboard from an existing dashboard on the same machine schema.
+
 ## 0.4.24 — 2026-11-20
 
 - Enlarged and aligned the titles of the plugin pages.

@@ -69,6 +69,7 @@ class DashboardCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     machine: str = Field(min_length=1, max_length=128)
     name: str = Field(min_length=1, max_length=120)
+    source_dashboard_id: int | None = Field(default=None, ge=1)
 
 
 class DashboardUpdate(BaseModel):
@@ -361,9 +362,27 @@ def list_dashboards(machine):
             SELECT id, name, revision, is_default FROM kfgyr.machine_dashboards
             WHERE agent_alias=%s AND device_id=%s ORDER BY is_default DESC, lower(name), id
         """, key).fetchall()
+        sources = db.execute("""
+            SELECT d.id, d.name, source.agent_alias,
+                   coalesce(node.props->>'deviceAlias', source.device_id)
+            FROM kfgyr.machine_schema_assignments target
+            JOIN kfgyr.machine_schema_assignments source ON source.schema_id=target.schema_id
+            JOIN kfgyr.machine_dashboards d ON d.agent_alias=source.agent_alias AND d.device_id=source.device_id
+            JOIN LATERAL (
+                SELECT props FROM raw.nodes WHERE props->>'node_type'='Device'
+                  AND props->>'agentAlias'=source.agent_alias AND props->>'deviceId'=source.device_id
+                ORDER BY node_id LIMIT 1
+            ) node ON true
+            WHERE target.agent_alias=%s AND target.device_id=%s
+            ORDER BY lower(source.agent_alias), lower(coalesce(node.props->>'deviceAlias', source.device_id)),
+                     lower(d.name), d.id
+        """, key).fetchall()
         return {"dashboards": [
             {"id": row[0], "name": row[1], "revision": row[2], "is_default": row[3]}
             for row in rows
+        ], "copy_sources": [
+            {"id": row[0], "name": row[1], "agent": row[2], "machine": row[3]}
+            for row in sources
         ]}
 
 
@@ -441,6 +460,43 @@ def read_dashboard(dashboard_id):
                 "options": options}
 
 
+def copy_dashboard_panels(db, machine, key, source_id):
+    row = db.execute("""
+        SELECT d.agent_alias, d.device_id, d.profile, d.signals, node.node_id::text
+        FROM kfgyr.machine_dashboards d
+        JOIN kfgyr.machine_schema_assignments source USING (agent_alias, device_id)
+        JOIN kfgyr.machine_schema_assignments target ON target.schema_id=source.schema_id
+        JOIN LATERAL (
+            SELECT node_id FROM raw.nodes WHERE props->>'node_type'='Device'
+              AND props->>'agentAlias'=d.agent_alias AND props->>'deviceId'=d.device_id
+            ORDER BY node_id LIMIT 1
+        ) node ON true
+        WHERE d.id=%s AND target.agent_alias=%s AND target.device_id=%s
+    """, (source_id, *key)).fetchone()
+    if not row:
+        raise Problem(422, "A forrásdashboard nem található, vagy másik gépsémához tartozik.")
+
+    source_agent, source_device, profile, signals, source_machine = row
+    panels = signals if isinstance(signals, list) else legacy_panels(profile, signals)
+    same_machine = key == (source_agent, source_device)
+    available = _machine_signal_options(db, machine, panel_point_ids(panels) if same_machine else ())
+    signal_ids = {item["id"] for item in available if item["kind"] == "signal"}
+    point_ids = {item["id"] for item in available if item["kind"] == "point"}
+    source_points = {}
+    if not same_machine and panel_point_ids(panels):
+        for item in _machine_signal_options(db, source_machine):
+            if item["id"] in signal_ids:
+                source_points.setdefault(item["point_id"], set()).add(item["id"])
+
+    copied = []
+    for panel in panels:
+        if panel.get("signal_id") in signal_ids or panel.get("point") in point_ids:
+            copied.append(panel)
+        elif len(matches := source_points.get(panel.get("point"), ())) == 1:
+            copied.append({k: v for k, v in panel.items() if k != "point"} | {"signal_id": next(iter(matches))})
+    return copied, len(panels) - len(copied)
+
+
 def create_dashboard(body, actor):
     name = body.name.strip()
     if not name:
@@ -448,13 +504,16 @@ def create_dashboard(body, actor):
     with psycopg.connect(connect_timeout=5) as db:
         agent, device, _ = machine_info(db, body.machine)
         db.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (agent + "/" + device,))
+        panels, skipped = ([], 0)
+        if body.source_dashboard_id is not None:
+            panels, skipped = copy_dashboard_panels(db, body.machine, (agent, device), body.source_dashboard_id)
         row = db.execute("""
-            INSERT INTO kfgyr.machine_dashboards (agent_alias, device_id, name, updated_by, is_default)
-            VALUES (%s, %s, %s, %s, NOT EXISTS (
+            INSERT INTO kfgyr.machine_dashboards (agent_alias, device_id, name, signals, updated_by, is_default)
+            VALUES (%s, %s, %s, %s, %s, NOT EXISTS (
                 SELECT 1 FROM kfgyr.machine_dashboards WHERE agent_alias=%s AND device_id=%s
             )) RETURNING id
-        """, (agent, device, name, actor, agent, device)).fetchone()
-        return {"id": row[0]}
+        """, (agent, device, name, Jsonb(panels), actor, agent, device)).fetchone()
+        return {"id": row[0], "skipped_panels": skipped}
 
 
 def update_dashboard(body, actor):

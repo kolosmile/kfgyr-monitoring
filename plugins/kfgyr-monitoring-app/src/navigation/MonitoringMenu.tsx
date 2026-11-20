@@ -51,9 +51,6 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
   const [availability, setAvailability] = useState<'checking' | 'online' | 'offline' | 'unknown'>('checking');
   const machine = replaceVariables('${machine}');
   const dashboard = replaceVariables('${dashboard}');
-  const dashboardEditorUrl = machine && /^\d+$/.test(dashboard)
-    ? `${config.appSubUrl}${menu.dashboard.path}?machine=${encodeURIComponent(machine)}&dashboard=${encodeURIComponent(dashboard)}`
-    : undefined;
   const frame = data.series[0];
   const field = (name: string, index: number) => frame?.fields.find((item) => item.name === name)?.values[index];
   const rows: Row[] = Array.from({ length: frame?.length || 0 }, (_, index) => ({
@@ -68,6 +65,9 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
   const machines = rows.filter((row, index) => row.agent === selected?.agent &&
     rows.findIndex((item) => item.machine === row.machine) === index);
   const dashboards = rows.filter((row) => row.machine === machine && row.dashboard);
+  const currentDashboard = dashboards.find((row) => row.dashboard === dashboard);
+  const canCreateDashboard = !!selected && dashboards.length === 0;
+  const dashboardEditorUrl = `${config.appSubUrl}${menu.dashboard.path}?machine=${encodeURIComponent(machine)}`;
 
   useEffect(() => {
     if (!/^\d+$/.test(machine)) {
@@ -109,9 +109,10 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
       <div className={styles.controls}>
         <div className={styles.homeActions}>
           <HomeLink />
-          {dashboardEditorUrl && (
-            <LinkButton href={dashboardEditorUrl} icon="pen" variant="secondary">
-              Dashboard szerkesztése
+          {(currentDashboard || canCreateDashboard) && (
+            <LinkButton href={dashboardEditorUrl + (currentDashboard ? `&dashboard=${encodeURIComponent(currentDashboard.dashboard)}` : '&create=1')}
+              icon={currentDashboard ? 'pen' : 'plus'} variant="secondary">
+              {currentDashboard ? 'Dashboard szerkesztése' : 'Dashboard hozzáadása'}
             </LinkButton>
           )}
         </div>

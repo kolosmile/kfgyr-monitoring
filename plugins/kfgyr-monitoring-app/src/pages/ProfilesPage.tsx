@@ -24,6 +24,8 @@ type Panel = { name?: string; signal_id?: string; point?: string; view: View; mi
 type Option = { id: string; label: string; schema_id?: string };
 type Catalog = { machines: Option[] };
 type Dashboard = { id: number; name: string; revision: number; is_default: boolean };
+type CopySource = { id: number; name: string; agent: string; machine: string };
+type DashboardList = { dashboards: Dashboard[]; copy_sources?: CopySource[] };
 type PanelOption = { kind: 'signal' | 'point'; id: string; label: string; units?: string };
 type Assignment = { id: number; name: string; panels: Panel[]; revision: number; options: PanelOption[] };
 
@@ -45,9 +47,12 @@ function machineLabel(label: string) {
 function initialEditorRoute() {
   const params = new URLSearchParams(window.location.search);
   const dashboard = params.get('dashboard') ?? '';
+  const machine = params.get('machine') ?? '';
+  const create = !!machine && params.get('create') === '1';
   return {
-    machine: params.get('machine') ?? '',
-    dashboardId: /^\d+$/.test(dashboard) ? Number(dashboard) : undefined,
+    machine,
+    dashboardId: machine && !create && /^\d+$/.test(dashboard) ? Number(dashboard) : undefined,
+    create,
   };
 }
 
@@ -70,6 +75,7 @@ export function ProfilesPage() {
   const [machine, setMachine] = useState(initialRoute.machine);
   const [assignment, setAssignment] = useState<Assignment>();
   const [dashboards, setDashboards] = useState<Dashboard[]>();
+  const [copySources, setCopySources] = useState<CopySource[]>([]);
   const [listRevision, setListRevision] = useState(0);
   const [dashboardId, setDashboardId] = useState<number | undefined>(initialRoute.dashboardId);
   const [dashboardName, setDashboardName] = useState('');
@@ -77,7 +83,10 @@ export function ProfilesPage() {
   const [showSchemas, setShowSchemas] = useState(false);
   const [openViews, setOpenViews] = useState<Partial<Record<View, boolean>>>({});
   const [search, setSearch] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(initialRoute.create);
+  const [copySourceId, setCopySourceId] = useState(0);
+  const [createError, setCreateError] = useState('');
+  const [skippedPanels, setSkippedPanels] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [panelToRemove, setPanelToRemove] = useState<{ index: number; panel: Panel; label: string }>();
   const [error, setError] = useState('');
@@ -98,14 +107,26 @@ export function ProfilesPage() {
       return;
     }
     let active = true;
-    api<{ dashboards: Dashboard[] }>(`machines/${encodeURIComponent(machine)}/dashboards`)
-      .then((value) => active && setDashboards(value.dashboards))
+    api<DashboardList>(`machines/${encodeURIComponent(machine)}/dashboards`)
+      .then((value) => {
+        if (active) {
+          setDashboards(value.dashboards);
+          setCopySources(value.copy_sources ?? []);
+        }
+      })
       .catch((err) => active && setError(errorText(err)));
     return () => { active = false; };
   }, [machine, listRevision]);
 
   useEffect(() => {
-    if (dashboardId === undefined) {
+    if (dashboardId === undefined || !dashboards) {
+      return;
+    }
+    if (!dashboards.some(({ id }) => id === dashboardId)) {
+      setDashboardId(undefined);
+      if (dashboards.length === 0) {
+        setCreating(true);
+      }
       return;
     }
     let active = true;
@@ -120,7 +141,7 @@ export function ProfilesPage() {
       })
       .catch((err) => active && setError(errorText(err)));
     return () => { active = false; };
-  }, [dashboardId]);
+  }, [dashboardId, dashboards]);
 
   useEffect(() => {
     if (!dirty) {
@@ -135,6 +156,9 @@ export function ProfilesPage() {
     setMachine('');
     setDashboardId(undefined);
     setDashboards(undefined);
+    setCopySources([]);
+    setSkippedPanels(0);
+    setCreating(false);
     setSearch('');
     setAssignment(undefined);
     setSavedPanels('');
@@ -151,6 +175,7 @@ export function ProfilesPage() {
     setSavedPanels('');
     setEditor(undefined);
     setOpenViews({});
+    setSkippedPanels(0);
     setError('');
     setNotice('');
     setConfirmBack(false);
@@ -162,13 +187,18 @@ export function ProfilesPage() {
       return;
     }
     setSaving(true);
-    setError('');
+    setCreateError('');
     try {
-      const result = await api<{ id: number }>('dashboards', 'POST', { machine, name: dashboardName.trim() });
+      const result = await api<{ id: number; skipped_panels: number }>('dashboards', 'POST', {
+        machine, name: dashboardName.trim(), ...(copySourceId ? { source_dashboard_id: copySourceId } : {}),
+      });
+      setSkippedPanels(result.skipped_panels ?? 0);
       setCreating(false);
+      setDashboards(undefined);
+      setListRevision((revision) => revision + 1);
       setDashboardId(result.id);
     } catch (err) {
-      setError(errorText(err));
+      setCreateError(errorText(err));
     } finally {
       setSaving(false);
     }
@@ -315,6 +345,9 @@ export function ProfilesPage() {
         <form onSubmit={save} className={styles.form}>
           {error && <Alert severity="error" title="A művelet sikertelen">{error}</Alert>}
           {notice && <Alert severity="success" title={notice} />}
+          {skippedPanels > 0 && <Alert severity="warning" title={`${skippedPanels} panel kimaradt a másolásból`}>
+            Ezekhez a panelekhez a célgépen nem találtunk megfelelő adatpontot.
+          </Alert>}
           {!machine && (
             <>
               <div><HomeLink /></div>
@@ -393,6 +426,8 @@ export function ProfilesPage() {
                   </div>
                   <Button type="button" icon="plus" disabled={saving} onClick={() => {
                     setDashboardName('');
+                    setCopySourceId(0);
+                    setCreateError('');
                     setCreating(true);
                   }}>Dashboard hozzáadása</Button>
                 </div>
@@ -523,13 +558,22 @@ export function ProfilesPage() {
           </Modal>
         )}
         {creating && (
-          <Modal title="Dashboard hozzáadása" isOpen onDismiss={() => setCreating(false)}>
+          <Modal title="Dashboard hozzáadása" isOpen onDismiss={() => !saving && setCreating(false)}>
+            {createError && <Alert severity="error" title="A dashboard nem hozható létre">{createError}</Alert>}
             <Field label="Dashboard neve" htmlFor="new-dashboard-name">
               <Input id="new-dashboard-name" autoFocus maxLength={120} value={dashboardName}
                 onChange={(event) => setDashboardName(event.currentTarget.value)} />
             </Field>
+            <Field label="Kiindulás" htmlFor="new-dashboard-source">
+              <Combobox id="new-dashboard-source" value={copySourceId} isClearable={false}
+                loading={!dashboards && !error} disabled={saving || (!dashboards && !error)}
+                options={[{ value: 0, label: 'Új, üres dashboard' }, ...copySources.map((source) => ({
+                  value: source.id, label: `${source.name} · ${source.agent} / ${source.machine}`,
+                }))]}
+                onChange={(option) => setCopySourceId(option.value)} />
+            </Field>
             <Modal.ButtonRow>
-              <Button type="button" variant="secondary" onClick={() => setCreating(false)}>Mégse</Button>
+              <Button type="button" variant="secondary" disabled={saving} onClick={() => setCreating(false)}>Mégse</Button>
               <Button type="button" disabled={saving || !dashboardName.trim()} onClick={createDashboard}>Létrehozás</Button>
             </Modal.ButtonRow>
           </Modal>
