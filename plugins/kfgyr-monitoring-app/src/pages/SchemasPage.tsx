@@ -2,6 +2,7 @@ import React from 'react';
 import { PluginPage, config } from '@grafana/runtime';
 import { Button, LinkButton, useStyles2 } from '@grafana/ui';
 import { HomeLink } from '../components/HomeLink';
+import { renderMenuPageTitle } from '../components/MenuPageTitle';
 import { getStyles } from '../components/styles';
 import { menu } from '../navigation/menu';
 import { SchemaManager } from './SchemaManager';
@@ -10,7 +11,7 @@ export function SchemasPage({ onBack }: { onBack?: () => void } = {}) {
   const styles = useStyles2(getStyles);
 
   return (
-    <PluginPage pageNav={menu.schemas}>
+    <PluginPage pageNav={menu.schemas} renderTitle={renderMenuPageTitle(menu.schemas.icon)}>
       <div className={styles.page}>
         <div className={styles.cardNavigation}>
           <HomeLink />

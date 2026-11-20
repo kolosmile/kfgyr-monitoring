@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.3.0 � 2026-10-19
+## 0.4.23 — 2026-11-20
+
+- Add a prominent title above the main menu and show matching menu icons in app page headings.
+- Rename the schema management page to Jelkatalógus throughout the user interface.
+
+## 0.3.0 — 2026-10-19
 
 - Move configuration, validation, revision storage and MTConnect probing to the authenticated relay-runner API.
 - Keep Admin authorization in the Grafana backend and store runner credentials in secureJsonData.

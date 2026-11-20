@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { HomeLink } from '../components/HomeLink';
+import { renderMenuPageTitle } from '../components/MenuPageTitle';
 import { PluginPage } from '@grafana/runtime';
 import {
   Alert,
@@ -237,7 +238,7 @@ export function App() {
 
   if (!setup || !snapshot) {
     return (
-      <PluginPage pageNav={pageNav}>
+      <PluginPage pageNav={pageNav} renderTitle={renderMenuPageTitle(menu.agents.icon)}>
         <div className={s.page}>
           <div className={s.cardNavigation}><HomeLink /></div>
           {error ? (
@@ -308,7 +309,7 @@ export function App() {
   }
 
   return (
-    <PluginPage pageNav={pageNav}>
+    <PluginPage pageNav={pageNav} renderTitle={renderMenuPageTitle(menu.agents.icon)}>
       <div className={s.page}>
         <div className={s.cardNavigation}>
           <HomeLink />

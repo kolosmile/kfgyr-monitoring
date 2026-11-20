@@ -14,7 +14,7 @@ Az „Elvetés” a legutóbb mentett konfigurációt tölti be. Az űrlap módo
 
 A már mentett agentnevek és eszközaliasok az adatbázis azonosításának részei, ezért rögzítettek. A relay az agent összes eszközét olvassa; a névlista szerkesztése nem eszközönkénti adatgyűjtési szűrő. Az agent teljes adatgyűjtése az engedélyezés kapcsolójával szüneteltethető.
 
-Az alsó **Gépek** részen minden géphez kötelező sémát választani. Új gépnél a lista nem választ ki alapértelmezett sémát, így a gép és a sémája egymás ellenőrzése után kerül a konfigurációba. A séma a gyártó- vagy gépcsalád-specifikus, gépen belüli MTConnect útvonalakat jelenti. Új katalógusjeleket és sémákat a **Monitoring beállítása → Sémakezelő** oldalon hozhatsz létre.
+Az alsó **Gépek** részen minden géphez kötelező sémát választani. Új gépnél a lista nem választ ki alapértelmezett sémát, így a gép és a sémája egymás ellenőrzése után kerül a konfigurációba. A séma a gyártó- vagy gépcsalád-specifikus, gépen belüli MTConnect útvonalakat jelenti. Új katalógusjeleket és sémákat a **Beállítások → Jelkatalógus** menüpontban hozhatsz létre.
 
 A monitoring neve és időzónája a „Monitoring beállításai” ablakban módosítható, ugyanazzal a mentési folyamattal. A technikai állapot és az utolsó mentett YAML külön lenyitható részben található.
 

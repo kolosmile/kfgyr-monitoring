@@ -26,7 +26,7 @@
     },
     {
       "type": "page",
-      "name": "Sémakezelő",
+      "name": "Jelkatalógus",
       "icon": "sitemap",
       "path": "/a/kfgyr-monitoring-app/schemas",
       "addToNav": true,
@@ -69,7 +69,7 @@
         "url": "https://github.com/kolosmile/kfgyr-monitoring"
       }
     ],
-    "version": "0.4.22",
+    "version": "0.4.23",
     "updated": "2026-11-20"
   },
   "dependencies": {

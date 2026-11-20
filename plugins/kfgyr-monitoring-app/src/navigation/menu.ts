@@ -9,7 +9,7 @@ export const menu = {
   export: { text: 'Adatexport', icon: 'download-alt', path: app + '/export' },
   agents: { text: 'Agentek és gépek', icon: 'plug', path: app + '/agents' },
   dashboard: { text: 'Dashboard szerkesztő', icon: 'sliders-v-alt', path: app + '/profiles' },
-  schemas: { text: 'Sémakezelő', icon: 'sitemap', path: app + '/schemas' },
+  schemas: { text: 'Jelkatalógus', icon: 'sitemap', path: app + '/schemas' },
   guide: { text: 'Használati útmutató', icon: 'book-open', path: app + '/guide' },
 } satisfies Record<string, MenuItem>;
 

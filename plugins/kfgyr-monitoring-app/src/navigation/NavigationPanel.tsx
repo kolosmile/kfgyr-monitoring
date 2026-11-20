@@ -21,6 +21,14 @@ const getStyles = (theme: GrafanaTheme2) => ({
     margin: '0 auto',
     padding: theme.spacing(2),
   }),
+  title: css({
+    margin: theme.spacing(1, 0, 1.5),
+    color: theme.colors.text.primary,
+    fontSize: 32,
+    lineHeight: 1.15,
+    fontWeight: theme.typography.fontWeightBold,
+    '@media (max-width: 600px)': { fontSize: 26 },
+  }),
   tools: css({ '--menu-accent': theme.isDark ? '#91b9ea' : '#325e94' }),
   settings: css({ '--menu-accent': theme.isDark ? '#c3aae4' : '#6c478a' }),
   docs: css({ '--menu-accent': theme.isDark ? '#8ec6b4' : '#326d5d' }),
@@ -75,6 +83,7 @@ export function NavigationPanel() {
   return (
     <nav aria-label="KFGyR főmenü" className={styles.container}>
       <div className={styles.list}>
+        <h1 className={styles.title}>Gyártórendszer Monitoring</h1>
         {groups.filter((group) => !('adminOnly' in group) || isAdmin).map(({ title, accent, items }) => (
           <section key={accent} aria-labelledby={`kfgyr-menu-${accent}`} className={styles[accent]}>
             <h2 id={`kfgyr-menu-${accent}`} className={styles.heading}>{title}</h2>
