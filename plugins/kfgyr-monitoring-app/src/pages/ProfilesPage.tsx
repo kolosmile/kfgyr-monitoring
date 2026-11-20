@@ -346,12 +346,14 @@ export function ProfilesPage() {
           )}
           {machine && (
             <header className={styles.editorHeader}>
-              <HomeLink />
-              <div className={styles.formFooter}>
-                <Button type="button" icon="arrow-left" variant="secondary" disabled={saving}
-                  onClick={() => dashboardId !== undefined ? (dirty ? setConfirmBack(true) : backToDashboards()) : backToMachines()}>
-                  {dashboardId !== undefined ? 'Vissza a dashboardokhoz' : 'Vissza a gépekhez'}
-                </Button>
+              <div className={styles.editorColumns}>
+                <div className={styles.editorNavigation}>
+                  <HomeLink />
+                  <Button type="button" icon="arrow-left" variant="secondary" disabled={saving}
+                    onClick={() => dashboardId !== undefined ? (dirty ? setConfirmBack(true) : backToDashboards()) : backToMachines()}>
+                    {dashboardId !== undefined ? 'Vissza a dashboardokhoz' : 'Vissza a gépekhez'}
+                  </Button>
+                </div>
                 <div className={styles.editorHeaderRight}>
                   {assignment ? (
                     <Button type="button" variant="secondary" icon={menu.schemas.icon} disabled={saving} onClick={() => setShowSchemas(true)}>
@@ -454,19 +456,21 @@ export function ProfilesPage() {
                                 <Icon name={icon} aria-hidden />
                                 <span className={styles.panelText} title={label}>{label}</span>
                               </strong>
-                              <IconButton type="button" name="pen" disabled={saving}
-                                tooltip={`${label} szerkesztése`} onClick={() => editPanel(index)} />
+                              <div className={styles.panelEdit}>
+                                <IconButton type="button" name="pen" disabled={saving}
+                                  tooltip={`${label} szerkesztése`} onClick={() => editPanel(index)} />
+                              </div>
                               <div className={styles.panelPoint}>
                                 {panel.signal_id && <Icon name={signalCatalogIcon} aria-label="Jelkatalógus" />}
                                 <span className={styles.panelText} title={pointLabel}>{pointLabel}</span>
                               </div>
-                              <div className={styles.panelActions}>
-                                <div className={styles.panelMove}>
-                                  <IconButton type="button" name="arrow-left" disabled={saving || position === 0}
-                                    tooltip={`${label} előrébb helyezése`} onClick={() => move(-1)} />
-                                  <IconButton type="button" name="arrow-right" disabled={saving || position === panels.length - 1}
-                                    tooltip={`${label} hátrébb helyezése`} onClick={() => move(1)} />
-                                </div>
+                              <div className={styles.panelMove}>
+                                <IconButton type="button" name="arrow-left" disabled={saving || position === 0}
+                                  tooltip={`${label} előrébb helyezése`} onClick={() => move(-1)} />
+                                <IconButton type="button" name="arrow-right" disabled={saving || position === panels.length - 1}
+                                  tooltip={`${label} hátrébb helyezése`} onClick={() => move(1)} />
+                              </div>
+                              <div className={styles.panelDelete}>
                                 <IconButton type="button" name="trash-alt" variant="destructive" disabled={saving}
                                   tooltip={`${label} eltávolítása`} onClick={() => setPanelToRemove({ index, panel, label })} />
                               </div>

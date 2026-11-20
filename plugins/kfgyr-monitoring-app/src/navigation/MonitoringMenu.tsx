@@ -38,8 +38,8 @@ const getStyles = (theme: GrafanaTheme2) => ({
   }),
   select: css({ width: 180, maxWidth: '100%', minWidth: 0 }),
   homeActions: css({ display: 'flex', alignItems: 'center', gap: theme.spacing(1), flexShrink: 0 }),
-  machineTitle: css({ minWidth: 0, maxWidth: 240, marginLeft: 'auto', overflow: 'hidden', textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap', textAlign: 'right', fontSize: 14, fontWeight: 600, color: theme.colors.text.primary }),
+  machineTitle: css({ minWidth: 0, maxWidth: 360, marginLeft: 'auto', overflow: 'hidden', textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap', textAlign: 'right', fontSize: 24, lineHeight: 1.05, fontWeight: 700, color: theme.colors.text.primary }),
   label: css({ display: 'block', color: theme.colors.text.secondary, fontSize: 11, marginBottom: 2 }),
   badge: css({ alignSelf: 'flex-end', paddingBottom: 6 }),
 });

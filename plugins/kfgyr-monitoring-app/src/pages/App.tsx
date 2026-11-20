@@ -310,23 +310,23 @@ export function App() {
   return (
     <PluginPage pageNav={pageNav}>
       <div className={s.page}>
-        <div className={s.cardNavigation}><HomeLink /></div>
+        <div className={s.cardNavigation}>
+          <HomeLink />
+          <Button
+            variant="secondary"
+            icon="cog"
+            disabled={busy}
+            onClick={() => {
+              setClient(clone(setup.client));
+              setSettingsSubmitted(false);
+              setSettingsClosing(false);
+              setSettingsOpen(true);
+            }}
+          >
+            Relay beállításai
+          </Button>
+        </div>
         <section className={s.status} aria-label="Monitoring áttekintése">
-          <div className={s.statusNavigation}>
-            <Button
-              variant="secondary"
-              icon="cog"
-              disabled={busy}
-              onClick={() => {
-                setClient(clone(setup.client));
-                setSettingsSubmitted(false);
-                setSettingsClosing(false);
-                setSettingsOpen(true);
-              }}
-            >
-              Relay beállításai
-            </Button>
-          </div>
           <div>
             <div className={s.statusTitle}>
               <Badge
