@@ -310,9 +310,9 @@ export function App() {
   return (
     <PluginPage pageNav={pageNav}>
       <div className={s.page}>
+        <div className={s.cardNavigation}><HomeLink /></div>
         <section className={s.status} aria-label="Monitoring áttekintése">
           <div className={s.statusNavigation}>
-            <HomeLink />
             <Button
               variant="secondary"
               icon="cog"

@@ -41,6 +41,15 @@ function machineLabel(label: string) {
   };
 }
 
+function initialEditorRoute() {
+  const params = new URLSearchParams(window.location.search);
+  const dashboard = params.get('dashboard') ?? '';
+  return {
+    machine: params.get('machine') ?? '',
+    dashboardId: /^\d+$/.test(dashboard) ? Number(dashboard) : undefined,
+  };
+}
+
 function DashboardIcon({ className }: { className: string }) {
   return (
     <svg className={className} aria-hidden="true" width="20" height="20" viewBox="0 0 24 24"
@@ -55,12 +64,13 @@ function DashboardIcon({ className }: { className: string }) {
 
 export function ProfilesPage() {
   const styles = useStyles2(getStyles);
+  const [initialRoute] = useState(initialEditorRoute);
   const [catalog, setCatalog] = useState<Catalog>();
-  const [machine, setMachine] = useState('');
+  const [machine, setMachine] = useState(initialRoute.machine);
   const [assignment, setAssignment] = useState<Assignment>();
   const [dashboards, setDashboards] = useState<Dashboard[]>();
   const [listRevision, setListRevision] = useState(0);
-  const [dashboardId, setDashboardId] = useState<number>();
+  const [dashboardId, setDashboardId] = useState<number | undefined>(initialRoute.dashboardId);
   const [dashboardName, setDashboardName] = useState('');
   const [renameDraft, setRenameDraft] = useState<string>();
   const [showSchemas, setShowSchemas] = useState(false);
@@ -306,7 +316,7 @@ export function ProfilesPage() {
           {!machine && (
             <>
               <div><HomeLink /></div>
-              <h2 className={styles.editorSectionTitle}>Gépek</h2>
+              <h2 className={`${styles.editorSectionTitle} ${styles.machineListTitle}`}>Gépek</h2>
               {!catalog && !error && <div role="status"><Spinner /> Gépek betöltése…</div>}
               {catalog && !catalog.machines.length && (
                 <div className={styles.empty}>
@@ -343,15 +353,6 @@ export function ProfilesPage() {
                   {dashboardId !== undefined ? 'Vissza a dashboardokhoz' : 'Vissza a gépekhez'}
                 </Button>
                 <div className={styles.editorHeaderRight}>
-                  {assignment ? (
-                    <Button type="button" variant="secondary" icon={menu.schemas.icon} disabled={saving} onClick={() => setShowSchemas(true)}>
-                      {menu.schemas.text}
-                    </Button>
-                  ) : (
-                    <LinkButton href={config.appSubUrl + menu.schemas.path} variant="secondary" icon={menu.schemas.icon}>
-                      {menu.schemas.text}
-                    </LinkButton>
-                  )}
                   <div className={styles.editorHeading}>
                     <div className={styles.editorTitleRow}>
                       <h2 className={styles.editorTitle}>{assignment ? dashboardName : selectedMachine?.name}</h2>
@@ -363,6 +364,15 @@ export function ProfilesPage() {
                       {selectedMachine?.agent && <Badge color="blue" text={selectedMachine.agent} />}
                     </div>
                   </div>
+                  {assignment ? (
+                    <Button type="button" variant="secondary" icon={menu.schemas.icon} disabled={saving} onClick={() => setShowSchemas(true)}>
+                      {menu.schemas.text}
+                    </Button>
+                  ) : (
+                    <LinkButton href={config.appSubUrl + menu.schemas.path} variant="secondary" icon={menu.schemas.icon}>
+                      {menu.schemas.text}
+                    </LinkButton>
+                  )}
                 </div>
               </div>
             </header>
@@ -456,8 +466,10 @@ export function ProfilesPage() {
                                 <IconButton type="button" name="arrow-right" disabled={saving || position === panels.length - 1}
                                   tooltip={`${label} hátrébb helyezése`} onClick={() => move(1)} />
                               </div>
-                              <IconButton type="button" name="trash-alt" variant="destructive" disabled={saving}
-                                tooltip={`${label} eltávolítása`} onClick={() => setPanelToRemove({ index, panel, label })} />
+                              <div className={styles.panelDelete}>
+                                <IconButton type="button" name="trash-alt" variant="destructive" disabled={saving}
+                                  tooltip={`${label} eltávolítása`} onClick={() => setPanelToRemove({ index, panel, label })} />
+                              </div>
                             </article>
                           );
                         })}

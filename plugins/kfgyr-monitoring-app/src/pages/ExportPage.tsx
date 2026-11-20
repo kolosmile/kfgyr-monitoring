@@ -155,8 +155,8 @@ export function ExportPage() {
       <div className={styles.page}>
         <form onSubmit={download} className={styles.form}>
           {error && <Alert title="Az adatexport művelete sikertelen" severity="error">{error}</Alert>}
+          <div className={styles.cardNavigation}><HomeLink /></div>
           <section className={styles.formCard} aria-labelledby="export-source-heading">
-            <div className={styles.cardNavigation}><HomeLink /></div>
             <div className={styles.formFooter}>
               <h3 id="export-source-heading">Gépek és adatpontok</h3>
               <Badge text={`${machine.length} gép · ${signal.length} adatpont`} color="blue" />

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { css } from '@emotion/css';
 import { GrafanaTheme2, PanelProps } from '@grafana/data';
-import { getBackendSrv, locationService } from '@grafana/runtime';
-import { Badge, Combobox, useStyles2 } from '@grafana/ui';
+import { config, getBackendSrv, locationService } from '@grafana/runtime';
+import { Badge, Combobox, LinkButton, useStyles2 } from '@grafana/ui';
 import { lastValueFrom } from 'rxjs';
 import { HomeLink } from '../components/HomeLink';
+import { menu } from './menu';
 
 type Row = {
   machine: string;
@@ -35,7 +36,7 @@ const getStyles = (theme: GrafanaTheme2) => ({
     transform: 'translateY(-2px)',
   }),
   select: css({ width: 180, maxWidth: '100%', minWidth: 0 }),
-  home: css({ flexShrink: 0 }),
+  homeActions: css({ display: 'flex', alignItems: 'center', gap: theme.spacing(1), flexShrink: 0 }),
   label: css({ display: 'block', color: theme.colors.text.secondary, fontSize: 11, marginBottom: 2 }),
   badge: css({ alignSelf: 'flex-end', paddingBottom: 6 }),
 });
@@ -45,6 +46,9 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
   const [availability, setAvailability] = useState<'checking' | 'online' | 'offline' | 'unknown'>('checking');
   const machine = replaceVariables('${machine}');
   const dashboard = replaceVariables('${dashboard}');
+  const dashboardEditorUrl = machine && /^\d+$/.test(dashboard)
+    ? `${config.appSubUrl}${menu.dashboard.path}?machine=${encodeURIComponent(machine)}&dashboard=${encodeURIComponent(dashboard)}`
+    : undefined;
   const frame = data.series[0];
   const field = (name: string, index: number) => frame?.fields.find((item) => item.name === name)?.values[index];
   const rows: Row[] = Array.from({ length: frame?.length || 0 }, (_, index) => ({
@@ -98,7 +102,14 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
   return (
     <nav className={styles.bar} aria-label="Monitoring navigáció">
       <div className={styles.controls}>
-        <div className={styles.home}><HomeLink /></div>
+        <div className={styles.homeActions}>
+          <HomeLink />
+          {dashboardEditorUrl && (
+            <LinkButton href={dashboardEditorUrl} icon="pen" variant="secondary">
+              Dashboard szerkesztése
+            </LinkButton>
+          )}
+        </div>
         <div className={styles.select}>
           <label className={styles.label} htmlFor="monitoring-menu-agent">Agent</label>
           <Combobox id="monitoring-menu-agent" aria-label="Agent" value={selected?.agent || null}
