@@ -353,6 +353,15 @@ export function ProfilesPage() {
                   {dashboardId !== undefined ? 'Vissza a dashboardokhoz' : 'Vissza a gépekhez'}
                 </Button>
                 <div className={styles.editorHeaderRight}>
+                  {assignment ? (
+                    <Button type="button" variant="secondary" icon={menu.schemas.icon} disabled={saving} onClick={() => setShowSchemas(true)}>
+                      {menu.schemas.text}
+                    </Button>
+                  ) : (
+                    <LinkButton href={config.appSubUrl + menu.schemas.path} variant="secondary" icon={menu.schemas.icon}>
+                      {menu.schemas.text}
+                    </LinkButton>
+                  )}
                   <div className={styles.editorHeading}>
                     <div className={styles.editorTitleRow}>
                       <h2 className={styles.editorTitle}>{assignment ? dashboardName : selectedMachine?.name}</h2>
@@ -364,15 +373,6 @@ export function ProfilesPage() {
                       {selectedMachine?.agent && <Badge color="blue" text={selectedMachine.agent} />}
                     </div>
                   </div>
-                  {assignment ? (
-                    <Button type="button" variant="secondary" icon={menu.schemas.icon} disabled={saving} onClick={() => setShowSchemas(true)}>
-                      {menu.schemas.text}
-                    </Button>
-                  ) : (
-                    <LinkButton href={config.appSubUrl + menu.schemas.path} variant="secondary" icon={menu.schemas.icon}>
-                      {menu.schemas.text}
-                    </LinkButton>
-                  )}
                 </div>
               </div>
             </header>

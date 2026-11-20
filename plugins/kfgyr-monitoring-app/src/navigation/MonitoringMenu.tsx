@@ -29,6 +29,7 @@ const getStyles = (theme: GrafanaTheme2) => ({
   }),
   controls: css({
     display: 'flex',
+    flex: '1 1 auto',
     alignItems: 'flex-end',
     gap: theme.spacing(1),
     flexWrap: 'nowrap',
@@ -37,6 +38,8 @@ const getStyles = (theme: GrafanaTheme2) => ({
   }),
   select: css({ width: 180, maxWidth: '100%', minWidth: 0 }),
   homeActions: css({ display: 'flex', alignItems: 'center', gap: theme.spacing(1), flexShrink: 0 }),
+  machineTitle: css({ minWidth: 0, maxWidth: 240, marginLeft: 'auto', overflow: 'hidden', textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap', textAlign: 'right', fontSize: 14, fontWeight: 600, color: theme.colors.text.primary }),
   label: css({ display: 'block', color: theme.colors.text.secondary, fontSize: 11, marginBottom: 2 }),
   badge: css({ alignSelf: 'flex-end', paddingBottom: 6 }),
 });
@@ -140,6 +143,7 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
               availability === 'checking' ? 'Agent ellenőrzése…' : 'Agent elérhetősége ismeretlen'} />
         </span>
       </div>
+      {selected?.name && <div className={styles.machineTitle} title={selected.name}>{selected.name}</div>}
     </nav>
   );
 }
