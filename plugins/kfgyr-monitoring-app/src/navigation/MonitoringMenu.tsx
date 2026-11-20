@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { css } from '@emotion/css';
 import { GrafanaTheme2, PanelProps } from '@grafana/data';
 import { config, getBackendSrv, locationService } from '@grafana/runtime';
@@ -14,6 +14,9 @@ type Row = {
   dashboard: string;
   dashboardName: string;
 };
+
+const subscribeToLocation = (onChange: () => void) => locationService.getHistory().listen(onChange);
+const getLocationSearch = () => locationService.getLocation().search;
 
 const getStyles = (theme: GrafanaTheme2) => ({
   bar: css({
@@ -49,8 +52,10 @@ const getStyles = (theme: GrafanaTheme2) => ({
 export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
   const styles = useStyles2(getStyles);
   const [availability, setAvailability] = useState<'checking' | 'online' | 'offline' | 'unknown'>('checking');
-  const machine = replaceVariables('${machine}');
-  const dashboard = replaceVariables('${dashboard}');
+  const params = new URLSearchParams(useSyncExternalStore(subscribeToLocation, getLocationSearch));
+  // Grafana can update its template variables after the URL changes.
+  const machine = params.get('var-machine') ?? replaceVariables('${machine}');
+  const dashboard = params.get('var-dashboard') ?? replaceVariables('${dashboard}');
   const frame = data.series[0];
   const field = (name: string, index: number) => frame?.fields.find((item) => item.name === name)?.values[index];
   const rows: Row[] = Array.from({ length: frame?.length || 0 }, (_, index) => ({

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.26 — 2026-11-20
+
+- Update the Monitoring dashboard action immediately when switching machines.
+- Show the machine before the dashboard name in the copy dropdown.
+
 ## 0.4.25 — 2026-11-20
 
 - Open dashboard creation from Monitoring when the machine has no dashboard.

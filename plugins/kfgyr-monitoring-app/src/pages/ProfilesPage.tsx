@@ -568,7 +568,7 @@ export function ProfilesPage() {
               <Combobox id="new-dashboard-source" value={copySourceId} isClearable={false}
                 loading={!dashboards && !error} disabled={saving || (!dashboards && !error)}
                 options={[{ value: 0, label: 'Új, üres dashboard' }, ...copySources.map((source) => ({
-                  value: source.id, label: `${source.name} · ${source.agent} / ${source.machine}`,
+                  value: source.id, label: `${source.agent} / ${source.machine} · ${source.name}`,
                 }))]}
                 onChange={(option) => setCopySourceId(option.value)} />
             </Field>
