@@ -151,11 +151,12 @@ export function ExportPage() {
   const signalDisabled = busy || loadingSignals || !signals.length;
   const ready = machine.length > 0 && signal.length > 0 && !signalDisabled;
   return (
-    <PluginPage pageNav={menu.export} actions={<HomeLink />}>
+    <PluginPage pageNav={menu.export}>
       <div className={styles.page}>
         <form onSubmit={download} className={styles.form}>
           {error && <Alert title="Az adatexport művelete sikertelen" severity="error">{error}</Alert>}
           <section className={styles.formCard} aria-labelledby="export-source-heading">
+            <div className={styles.cardNavigation}><HomeLink /></div>
             <div className={styles.formFooter}>
               <h3 id="export-source-heading">Gépek és adatpontok</h3>
               <Badge text={`${machine.length} gép · ${signal.length} adatpont`} color="blue" />

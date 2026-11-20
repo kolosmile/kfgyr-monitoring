@@ -237,8 +237,9 @@ export function App() {
 
   if (!setup || !snapshot) {
     return (
-      <PluginPage pageNav={pageNav} actions={<HomeLink />}>
+      <PluginPage pageNav={pageNav}>
         <div className={s.page}>
+          <div className={s.cardNavigation}><HomeLink /></div>
           {error ? (
             <Alert title="Nem sikerült betölteni a konfigurációt" severity="error">
               {error}
@@ -307,29 +308,25 @@ export function App() {
   }
 
   return (
-    <PluginPage
-      pageNav={pageNav}
-      actions={
-        <div className={s.actions}>
-          <HomeLink />
-          <Button
-            variant="secondary"
-            icon="cog"
-            disabled={busy}
-            onClick={() => {
-              setClient(clone(setup.client));
-              setSettingsSubmitted(false);
-              setSettingsClosing(false);
-              setSettingsOpen(true);
-            }}
-          >
-            Relay beállításai
-          </Button>
-        </div>
-      }
-    >
+    <PluginPage pageNav={pageNav}>
       <div className={s.page}>
         <section className={s.status} aria-label="Monitoring áttekintése">
+          <div className={s.statusNavigation}>
+            <HomeLink />
+            <Button
+              variant="secondary"
+              icon="cog"
+              disabled={busy}
+              onClick={() => {
+                setClient(clone(setup.client));
+                setSettingsSubmitted(false);
+                setSettingsClosing(false);
+                setSettingsOpen(true);
+              }}
+            >
+              Relay beállításai
+            </Button>
+          </div>
           <div>
             <div className={s.statusTitle}>
               <Badge

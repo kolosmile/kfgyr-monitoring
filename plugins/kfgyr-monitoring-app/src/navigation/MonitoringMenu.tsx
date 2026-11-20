@@ -35,6 +35,7 @@ const getStyles = (theme: GrafanaTheme2) => ({
     transform: 'translateY(-2px)',
   }),
   select: css({ width: 180, maxWidth: '100%', minWidth: 0 }),
+  home: css({ flexShrink: 0 }),
   label: css({ display: 'block', color: theme.colors.text.secondary, fontSize: 11, marginBottom: 2 }),
   badge: css({ alignSelf: 'flex-end', paddingBottom: 6 }),
 });
@@ -97,6 +98,7 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
   return (
     <nav className={styles.bar} aria-label="Monitoring navigáció">
       <div className={styles.controls}>
+        <div className={styles.home}><HomeLink /></div>
         <div className={styles.select}>
           <label className={styles.label} htmlFor="monitoring-menu-agent">Agent</label>
           <Combobox id="monitoring-menu-agent" aria-label="Agent" value={selected?.agent || null}
@@ -127,7 +129,6 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
               availability === 'checking' ? 'Agent ellenőrzése…' : 'Agent elérhetősége ismeretlen'} />
         </span>
       </div>
-      <HomeLink />
     </nav>
   );
 }

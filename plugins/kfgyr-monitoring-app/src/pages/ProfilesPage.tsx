@@ -21,8 +21,7 @@ const chartColors: Array<{ value: ChartColor; label: string }> = [
 ];
 type Panel = { name?: string; signal_id?: string; point?: string; view: View; minimum?: number; maximum?: number; color?: ChartColor };
 type Option = { id: string; label: string; schema_id?: string };
-type SignalPreset = { label: string; signals: string[] };
-type Catalog = { presets: SignalPreset[]; machines: Option[] };
+type Catalog = { machines: Option[] };
 type Dashboard = { id: number; name: string; revision: number; is_default: boolean };
 type PanelOption = { kind: 'signal' | 'point'; id: string; label: string; units?: string };
 type Assignment = { id: number; name: string; panels: Panel[]; revision: number; options: PanelOption[] };
@@ -70,7 +69,6 @@ export function ProfilesPage() {
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [panelToRemove, setPanelToRemove] = useState<{ index: number; panel: Panel; label: string }>();
-  const [preset, setPreset] = useState<number>();
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [editor, setEditor] = useState<{ index: number | null; panel: Panel }>();
@@ -131,7 +129,6 @@ export function ProfilesPage() {
     setSavedPanels('');
     setEditor(undefined);
     setEditorError('');
-    setPreset(undefined);
     setError('');
     setNotice('');
     setConfirmBack(false);
@@ -142,7 +139,6 @@ export function ProfilesPage() {
     setAssignment(undefined);
     setSavedPanels('');
     setEditor(undefined);
-    setPreset(undefined);
     setOpenViews({});
     setError('');
     setNotice('');
@@ -302,26 +298,14 @@ export function ProfilesPage() {
   }
 
   return (
-    <PluginPage pageNav={menu.dashboard} actions={(
-      <div className={styles.actions}>
-        {assignment ? (
-          <Button type="button" variant="secondary" icon={menu.schemas.icon} disabled={saving} onClick={() => setShowSchemas(true)}>
-            {menu.schemas.text}
-          </Button>
-        ) : (
-          <LinkButton href={config.appSubUrl + menu.schemas.path} variant="secondary" icon={menu.schemas.icon}>
-            {menu.schemas.text}
-          </LinkButton>
-        )}
-        <HomeLink />
-      </div>
-    )}>
+    <PluginPage pageNav={menu.dashboard}>
       <div className={styles.page}>
         <form onSubmit={save} className={styles.form}>
           {error && <Alert severity="error" title="A művelet sikertelen">{error}</Alert>}
           {notice && <Alert severity="success" title={notice} />}
           {!machine && (
             <>
+              <div><HomeLink /></div>
               <h2 className={styles.editorSectionTitle}>Gépek</h2>
               {!catalog && !error && <div role="status"><Spinner /> Gépek betöltése…</div>}
               {catalog && !catalog.machines.length && (
@@ -352,18 +336,34 @@ export function ProfilesPage() {
           )}
           {machine && (
             <header className={styles.editorHeader}>
-              <Button type="button" icon="arrow-left" variant="secondary" fill="text" disabled={saving}
-                onClick={() => dashboardId !== undefined ? (dirty ? setConfirmBack(true) : backToDashboards()) : backToMachines()}>
-                {dashboardId !== undefined ? 'Vissza a dashboardokhoz' : 'Vissza a gépekhez'}
-              </Button>
-              <div className={styles.editorTitleRow}>
-                <h2 className={styles.editorTitle}>{assignment ? dashboardName : selectedMachine?.name}</h2>
-                {assignment && <IconButton type="button" name="pen" tooltip="Dashboard átnevezése" disabled={saving}
-                  onClick={() => setRenameDraft(dashboardName)} />}
-              </div>
-              <div className={styles.actions}>
-                {assignment && selectedMachine && <span className={styles.muted}>{selectedMachine.name}</span>}
-                {selectedMachine?.agent && <Badge color="blue" text={selectedMachine.agent} />}
+              <HomeLink />
+              <div className={styles.formFooter}>
+                <Button type="button" icon="arrow-left" variant="secondary" disabled={saving}
+                  onClick={() => dashboardId !== undefined ? (dirty ? setConfirmBack(true) : backToDashboards()) : backToMachines()}>
+                  {dashboardId !== undefined ? 'Vissza a dashboardokhoz' : 'Vissza a gépekhez'}
+                </Button>
+                <div className={styles.editorHeaderRight}>
+                  {assignment ? (
+                    <Button type="button" variant="secondary" icon={menu.schemas.icon} disabled={saving} onClick={() => setShowSchemas(true)}>
+                      {menu.schemas.text}
+                    </Button>
+                  ) : (
+                    <LinkButton href={config.appSubUrl + menu.schemas.path} variant="secondary" icon={menu.schemas.icon}>
+                      {menu.schemas.text}
+                    </LinkButton>
+                  )}
+                  <div className={styles.editorHeading}>
+                    <div className={styles.editorTitleRow}>
+                      <h2 className={styles.editorTitle}>{assignment ? dashboardName : selectedMachine?.name}</h2>
+                      {assignment && <IconButton type="button" name="pen" tooltip="Dashboard átnevezése" disabled={saving}
+                        onClick={() => setRenameDraft(dashboardName)} />}
+                    </div>
+                    <div className={styles.actions}>
+                      {assignment && selectedMachine && <span className={styles.muted}>{selectedMachine.name}</span>}
+                      {selectedMachine?.agent && <Badge color="blue" text={selectedMachine.agent} />}
+                    </div>
+                  </div>
+                </div>
               </div>
             </header>
           )}
@@ -405,35 +405,13 @@ export function ProfilesPage() {
           {dashboardId !== undefined && !assignment && !error && <div role="status"><Spinner /> Beállítások betöltése…</div>}
           {assignment && (
             <>
-              <div className={styles.formFooter}>
-                <h3 className={styles.editorSectionTitle}>Panelszerkesztő</h3>
-                <div className={styles.actions}>
-                  <Combobox aria-label="Panelsablon csomag" placeholder="Panelsablon csomag"
-                    disabled={saving} value={preset ?? null}
-                    options={catalog?.presets.map(({ label }, value) => ({ value, label })) ?? []}
-                    onChange={({ value }) => setPreset(value)} />
-                  <Button type="button" variant="secondary" disabled={saving || preset === undefined} onClick={() => {
-                    const selectedPreset = preset === undefined ? undefined : catalog?.presets[preset];
-                    if (selectedPreset) {
-                      const available = selectedPreset.signals
-                        .filter((signalId) => points.some((item) => item.kind === 'signal' && item.id === signalId))
-                        .map((signal_id) => ({ signal_id, view: signal_id === 'execution' ? 'state' as View : 'chart' as View }));
-                      const missing = selectedPreset.signals.length - available.length;
-                      changePanels([...assignment.panels, ...available]);
-                      setNotice(missing
-                        ? `${available.length} jel bekerült. ${missing} jelhez ezen a gépen nincs séma-hozzárendelés vagy adatpont.`
-                        : 'A panelsablon katalógusjelei bekerültek.');
-                      setPreset(undefined);
-                    }
-                  }}>Javasolt panelek hozzáadása</Button>
-                </div>
-              </div>
+              <h3 className={styles.editorSectionTitle}>Panelszerkesztő</h3>
               <div className={styles.panelGroups}>
                 {views.map(({ value, label, icon }) => {
                   const panels = assignment.panels
                     .map((panel, index) => ({ panel, index }))
                     .filter(({ panel }) => panel.view === value);
-                  const isOpen = openViews[value] ?? (panels.length > 0);
+                  const isOpen = openViews[value] ?? false;
                   return (
                     <details key={value} className={`${styles.panelGroup} ${styles.panelAccents[value]}`}
                       open={isOpen}
@@ -443,11 +421,14 @@ export function ProfilesPage() {
                           setOpenViews((current) => ({ ...current, [value]: open }));
                         }
                       }}>
-                      <summary className={styles.panelGroupTitle}><Icon name="angle-right" aria-hidden />{label}</summary>
+                      <summary className={styles.panelGroupTitle}>
+                        <Icon name={icon} aria-hidden />{label}<Icon name="angle-right" aria-hidden />
+                      </summary>
                       <div className={styles.panelGrid}>
                         {panels.map(({ panel, index }, position) => {
                           const option = panelOption(panel);
                           const label = panelName(panel);
+                          const pointLabel = option?.label || (panel.signal_id ? 'Nincs hozzárendelt adatpont' : 'A mentett adatpont nem érhető el');
                           const move = (offset: number) => {
                             const target = panels[position + offset]?.index;
                             if (target === undefined) {
@@ -459,28 +440,24 @@ export function ProfilesPage() {
                           };
                           return (
                             <article className={styles.panelCard} key={index}>
-                              <div className={styles.panelContent}>
-                                <strong className={styles.panelTitle}>
-                                  <Icon name={icon} aria-hidden />{label}
-                                </strong>
-                                <div className={styles.panelPoint}>
-                                  {panel.signal_id && <Icon name={signalCatalogIcon} aria-label="Jelkatalógus" />}
-                                  <span>{option?.label || (panel.signal_id ? 'Nincs hozzárendelt adatpont' : 'A mentett adatpont nem érhető el')}</span>
-                                </div>
-                                <div className={styles.panelActions}>
-                                  <IconButton type="button" name="pen" disabled={saving}
-                                    tooltip={`${label} szerkesztése`} onClick={() => editPanel(index)} />
-                                  <Button type="button" size="sm" variant="destructive" fill="outline" icon="trash-alt" disabled={saving}
-                                    aria-label={`${label} eltávolítása`}
-                                    onClick={() => setPanelToRemove({ index, panel, label })} />
-                                </div>
+                              <strong className={styles.panelTitle}>
+                                <Icon name={icon} aria-hidden />
+                                <span className={styles.panelText} title={label}>{label}</span>
+                              </strong>
+                              <IconButton type="button" name="pen" disabled={saving}
+                                tooltip={`${label} szerkesztése`} onClick={() => editPanel(index)} />
+                              <div className={styles.panelPoint}>
+                                {panel.signal_id && <Icon name={signalCatalogIcon} aria-label="Jelkatalógus" />}
+                                <span className={styles.panelText} title={pointLabel}>{pointLabel}</span>
                               </div>
                               <div className={styles.panelMove}>
-                                <IconButton type="button" name="arrow-up" disabled={saving || position === 0}
+                                <IconButton type="button" name="arrow-left" disabled={saving || position === 0}
                                   tooltip={`${label} előrébb helyezése`} onClick={() => move(-1)} />
-                                <IconButton type="button" name="arrow-down" disabled={saving || position === panels.length - 1}
+                                <IconButton type="button" name="arrow-right" disabled={saving || position === panels.length - 1}
                                   tooltip={`${label} hátrébb helyezése`} onClick={() => move(1)} />
                               </div>
+                              <IconButton type="button" name="trash-alt" variant="destructive" disabled={saving}
+                                tooltip={`${label} eltávolítása`} onClick={() => setPanelToRemove({ index, panel, label })} />
                             </article>
                           );
                         })}
