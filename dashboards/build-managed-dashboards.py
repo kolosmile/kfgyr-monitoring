@@ -55,6 +55,7 @@ WITH machine AS ({MACHINE}), catalog(profile, slot, label) AS ({LEGACY_CATALOG})
 SELECT m.node_id AS device, n.node_id AS signal, p.position,
  coalesce(nullif(p.name, ''), s.name, n.props->>'path') AS name,
  coalesce(p.view, 'chart') AS view, p.minimum, p.maximum, p.color,
+ p.show_timeline,
  coalesce(nullif(u.label, ''), {MAPPED_UNIT}) AS units
 FROM machine m
 CROSS JOIN LATERAL (
@@ -62,12 +63,12 @@ CROSS JOIN LATERAL (
         item->>'point' AS point, item->>'view' AS view,
         (item->>'minimum')::double precision AS minimum,
         (item->>'maximum')::double precision AS maximum,
-        item->>'color' AS color, ord AS position
+        item->>'color' AS color, item->'show_timeline' = 'true'::jsonb AS show_timeline, ord AS position
  FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)
       WITH ORDINALITY AS items(item, ord)
  UNION ALL
  SELECT c.label, NULL, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,
-        NULL, NULL, NULL, row_number() OVER (ORDER BY c.slot)
+        NULL, NULL, NULL, false, row_number() OVER (ORDER BY c.slot)
  FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'
 ) p
 LEFT JOIN kfgyr.signal_catalog s ON s.id=p.signal_id
@@ -139,6 +140,63 @@ FROM mapped m WHERE {scope}
     return result
 
 
+def view_filter(view):
+    return "view='state' AND show_timeline" if view == "state_timeline" else f"view={quote(view)}"
+
+
+def state_timeline_panel():
+    observations = f"""
+WITH mapped AS ({MAPPED}), selected AS (
+ SELECT device, signal FROM mapped WHERE {view_filter("state_timeline")}
+   AND (device::text || ':' || position::text) IN (${{state_timeline:sqlstring}})
+), observations AS (
+ SELECT $__timeFrom()::timestamptz AS time, h.value #>> '{{}}' AS state
+ FROM selected m CROSS JOIN LATERAL (
+   SELECT value FROM raw.history WHERE node_id=m.device AND dataitem_id=m.signal
+     AND time <= $__timeFrom() ORDER BY time DESC LIMIT 1
+ ) h
+ UNION ALL
+ SELECT h.time, h.value #>> '{{}}'
+ FROM selected m JOIN raw.history h ON h.node_id=m.device AND h.dataitem_id=m.signal
+ WHERE h.time > $__timeFrom() AND h.time < $__timeTo()
+)
+"""
+    intervals = observations + """
+SELECT time, lead(time, 1, $__timeTo()::timestamptz) OVER (ORDER BY time) AS time_end,
+       state AS "Állapot"
+FROM observations ORDER BY time
+"""
+    colors = observations + """
+SELECT state, state AS label,
+       CASE upper(state)
+         WHEN 'AVAILABLE' THEN '#73bf69'
+         WHEN 'UNAVAILABLE' THEN '#8e8e8e'
+         WHEN 'ACTIVE' THEN '#73bf69'
+         WHEN 'READY' THEN '#5794f2'
+         WHEN 'STOPPED' THEN '#f2495c'
+         WHEN 'INTERRUPTED' THEN '#ff9830'
+         WHEN 'FEED_HOLD' THEN '#e0b400'
+         WHEN 'PROGRAM_STOPPED' THEN '#de6f94'
+         WHEN 'PROGRAM_COMPLETED' THEN '#56a5a1'
+         ELSE (ARRAY['#5794f2', '#73bf69', '#b877d9', '#ff9830', '#56a5a1', '#e0752d',
+                     '#8ab8ff', '#de6f94', '#9fbd57', '#e0b400', '#8e77ed', '#cf6956'])
+              [1 + get_byte(decode(md5(state), 'hex'), 0) % 12]
+       END AS color
+FROM (SELECT DISTINCT state FROM observations WHERE state IS NOT NULL) states
+ORDER BY state
+"""
+    result = panel(8, "${state_timeline:text} · Idősor", "state-timeline", 0, 0, 24, 4, sql=intervals)
+    result["targets"].append({**result["targets"][0], "refId": "B", "rawSql": colors})
+    result["options"].update(mergeValues=True, showValue="auto", alignValue="center", rowHeight=0.72,
+                             legend={"showLegend": False}, tooltip={"mode": "single"})
+    result["transformations"] = [{"id": "configFromData", "options": {
+        "configRefId": "B", "applyTo": {"id": "byName", "options": "Állapot"},
+        "mappings": [{"fieldName": key, "handlerKey": f"mappings.{role}"}
+                     for key, role in (("state", "value"), ("label", "text"), ("color", "color"))],
+    }}]
+    return result
+
+
 def resource(kind, **spec):
     return {"kind": kind, "spec": spec}
 
@@ -183,7 +241,7 @@ def view_variable(view):
     unit_suffix = " || coalesce(' (' || units || ')', '')" if view == "chart" else ""
     # An explicit option replaces the old selection even when the new machine has no panels of this type.
     return query_variable(view, f"""
-WITH mapped AS ({MAPPED}), selected AS (SELECT * FROM mapped WHERE view={quote(view)})
+WITH mapped AS ({MAPPED}), selected AS (SELECT * FROM mapped WHERE {view_filter(view)})
 SELECT label AS __text, panel_key AS __value FROM (
  SELECT name || CASE WHEN count(*) OVER (PARTITION BY name) > 1 THEN ' · ' || position ELSE '' END{unit_suffix} AS label,
         device::text || ':' || position::text AS panel_key, position
@@ -201,16 +259,14 @@ def show_views(pattern):
     ])
 
 
-def view_row(title, height, columns, width, panels):
-    return resource("RowsLayoutRow", title=title, collapse=False, hideHeader=False,
-                    conditionalRendering=show_views("|".join(view for _, view in panels)),
+def view_row(title, height, columns, width, panel_id, view):
+    return resource("RowsLayoutRow", title=title, collapse=False, hideHeader=not title,
+                    conditionalRendering=show_views(view),
                     layout=resource("AutoGridLayout", maxColumnCount=columns, columnWidthMode="custom",
                                     columnWidth=width, rowHeightMode="custom", rowHeight=height,
                                     fillScreen=False, items=[
-                        resource("AutoGridLayoutItem", element={"kind": "ElementReference", "name": f"panel-{id}"},
-                                 repeat={"mode": "variable", "value": view},
-                                 conditionalRendering=show_views(view))
-                        for id, view in panels
+                        resource("AutoGridLayoutItem", element={"kind": "ElementReference", "name": f"panel-{panel_id}"},
+                                 repeat={"mode": "variable", "value": view})
                     ]))
 
 
@@ -264,15 +320,24 @@ monitoring = {
                for id, (view, kind) in enumerate(views, 2)},
             "panel-6": panel_resource(quick_points, {"custom": {"filterable": True}}),
             "panel-7": panel_resource(menu),
+            "panel-8": panel_resource(state_timeline_panel(), {
+                "color": {"mode": "fixed"},
+                "custom": {"fillOpacity": 85, "lineWidth": 0},
+            }),
         },
         "layout": resource("RowsLayout", rows=[
             resource("RowsLayoutRow", hideHeader=True, layout=resource("GridLayout", items=[
                 resource("GridLayoutItem", x=0, y=0, width=24, height=2,
                          element={"kind": "ElementReference", "name": "panel-7"})
             ])),
-            view_row("Áttekintés", 88, 6, 200, [(2, "state"), (3, "value")]),
-            view_row("Műszerek", 155, 5, 220, [(4, "gauge")]),
-            view_row("Grafikonok", 260, 2, 420, [(5, "chart")]),
+            resource("RowsLayoutRow", title="Állapot", collapse=False, hideHeader=False,
+                     conditionalRendering=show_views("state"), layout=resource("RowsLayout", rows=[
+                         view_row("", 88, 6, 200, 2, "state"),
+                         view_row("", 120, 1, 300, 8, "state_timeline"),
+                     ])),
+            view_row("Aktuális érték", 88, 6, 200, 3, "value"),
+            view_row("Műszer", 155, 5, 220, 4, "gauge"),
+            view_row("Grafikon", 260, 4, 290, 5, "chart"),
             resource("RowsLayoutRow", hideHeader=True, layout=resource("GridLayout", items=[
                 resource("GridLayoutItem", x=0, y=0, width=24, height=10,
                          element={"kind": "ElementReference", "name": "panel-6"})
@@ -289,8 +354,11 @@ WHERE d.props->>'node_type'='Device' AND d.node_id::text=${machine:sqlstring}
 ORDER BY m.is_default DESC, lower(m.name), m.id
 """, sync=True, label="Dashboard"),
             query_variable("configured_views", f"WITH mapped AS ({MAPPED}) "
-                           "SELECT coalesce(string_agg(DISTINCT view, ','), '__none__') FROM mapped"),
+                           "SELECT coalesce(string_agg(DISTINCT view, ','), '__none__') "
+                           "FROM (SELECT view FROM mapped UNION ALL SELECT 'state_timeline' FROM mapped "
+                           f"WHERE {view_filter('state_timeline')}) visible"),
             *[view_variable(view) for view, *_ in views],
+            view_variable("state_timeline"),
         ],
     },
 }

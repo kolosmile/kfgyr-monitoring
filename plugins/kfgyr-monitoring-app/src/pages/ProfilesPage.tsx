@@ -4,7 +4,7 @@ import { HomeLink } from '../components/HomeLink';
 import { MenuPageTitle } from '../components/MenuPageTitle';
 import { useMobileLayout } from '../components/useMobileLayout';
 import { PluginPage, config } from '@grafana/runtime';
-import { Alert, Badge, Button, Combobox, ConfirmModal, Field, Icon, IconButton, Input, LinkButton, Modal, Spinner, useStyles2 } from '@grafana/ui';
+import { Alert, Badge, Button, Combobox, ConfirmModal, Field, Icon, IconButton, Input, LinkButton, Modal, Spinner, Switch, useStyles2 } from '@grafana/ui';
 import { api } from '../api';
 import { getStyles } from '../components/styles';
 import { errorText } from '../types';
@@ -21,7 +21,16 @@ const chartColors: Array<{ value: ChartColor; label: string }> = [
   { value: 'purple', label: 'Lila' },
   { value: 'yellow', label: 'Sárga' },
 ];
-type Panel = { name?: string; signal_id?: string; point?: string; view: View; minimum?: number; maximum?: number; color?: ChartColor };
+type Panel = {
+  name?: string;
+  signal_id?: string;
+  point?: string;
+  view: View;
+  minimum?: number;
+  maximum?: number;
+  color?: ChartColor;
+  show_timeline?: boolean;
+};
 type Option = { id: string; label: string; schema_id?: string };
 type Catalog = { machines: Option[] };
 type Dashboard = { id: number; name: string; revision: number; is_default: boolean };
@@ -254,7 +263,11 @@ export function ProfilesPage() {
     if (!editor || !assignment) {
       return;
     }
-    const panel = { ...editor.panel, name: editor.panel.name?.trim() || undefined };
+    const panel = {
+      ...editor.panel,
+      name: editor.panel.name?.trim() || undefined,
+      show_timeline: editor.panel.view === 'state' && editor.panel.show_timeline ? true : undefined,
+    };
     if (!(panel.signal_id || panel.point)) {
       setEditorError('Válassz jelet a katalógusból.');
       return;
@@ -630,6 +643,13 @@ export function ProfilesPage() {
               <Combobox id="panel-view" value={editor.panel.view} options={views}
                 onChange={({ value }) => setEditor({ ...editor, panel: { ...editor.panel, view: value } })} />
             </Field>
+            {editor.panel.view === 'state' && (
+              <Field label="Állapotidősor megjelenítése" htmlFor="panel-state-timeline"
+                description="Színes idővonalat jelenít meg az aktuális állapot mellett a kiválasztott időszakra.">
+                <Switch id="panel-state-timeline" value={!!editor.panel.show_timeline}
+                  onChange={(event) => setEditor({ ...editor, panel: { ...editor.panel, show_timeline: event.currentTarget.checked } })} />
+              </Field>
+            )}
             {editor.panel.view === 'chart' && (
               <Field label="Vonalszín" htmlFor="panel-color">
                 <Combobox id="panel-color" value={editor.panel.color ?? null} options={chartColors}

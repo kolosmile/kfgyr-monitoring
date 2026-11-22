@@ -70,6 +70,7 @@ class Panel(BaseModel):
     minimum: float | None = None
     maximum: float | None = None
     color: Literal["blue", "green", "orange", "red", "purple", "yellow"] | None = None
+    show_timeline: bool | None = None
 
     @model_validator(mode="after")
     def check_panel(self):
@@ -79,6 +80,8 @@ class Panel(BaseModel):
             raise ValueError("Érvénytelen katalógusjel-azonosító.")
         if self.name is not None:
             self.name = self.name.strip() or None
+        if self.show_timeline and self.view != "state":
+            raise ValueError("Állapotidősor csak állapotpanelhez adható hozzá.")
         if self.view == "gauge" and (
             self.minimum is None or self.maximum is None or self.minimum >= self.maximum
         ):

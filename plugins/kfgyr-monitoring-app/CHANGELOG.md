@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.36 — 2026-11-22
+
+- Add optional state timelines beneath current state panels.
+- Use the panel editor categories in Monitoring and fit up to four charts per row.
+
 ## 0.4.35 — 2026-11-22
 
 - Use a compact machine and dashboard chooser on mobile Monitoring.
