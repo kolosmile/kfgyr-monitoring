@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.35 — 2026-11-22
+
+- Use a compact machine and dashboard chooser on mobile Monitoring.
+- Align Signal Catalog with Home on mobile dashboard and panel editor pages.
+
 ## 0.4.34 — 2026-11-22
 
 - Color catalog signals and panel signal labels by their standard MTConnect branch.

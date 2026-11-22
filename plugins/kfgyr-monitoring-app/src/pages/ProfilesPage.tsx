@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { IconName } from '@grafana/data';
 import { HomeLink } from '../components/HomeLink';
 import { MenuPageTitle } from '../components/MenuPageTitle';
+import { useMobileLayout } from '../components/useMobileLayout';
 import { PluginPage, config } from '@grafana/runtime';
 import { Alert, Badge, Button, Combobox, ConfirmModal, Field, Icon, IconButton, Input, LinkButton, Modal, Spinner, useStyles2 } from '@grafana/ui';
 import { api } from '../api';
@@ -70,6 +71,7 @@ function DashboardIcon({ className }: { className: string }) {
 
 export function ProfilesPage() {
   const styles = useStyles2(getStyles);
+  const mobile = useMobileLayout();
   const [initialRoute] = useState(initialEditorRoute);
   const [catalog, setCatalog] = useState<Catalog>();
   const [machine, setMachine] = useState(initialRoute.machine);
@@ -338,6 +340,16 @@ export function ProfilesPage() {
     return <SchemasPage onBack={returnFromSchemas} />;
   }
 
+  const catalogAction = assignment ? (
+    <Button type="button" variant="secondary" icon={menu.schemas.icon} disabled={saving} onClick={() => setShowSchemas(true)}>
+      {menu.schemas.text}
+    </Button>
+  ) : (
+    <LinkButton href={config.appSubUrl + menu.schemas.path} variant="secondary" icon={menu.schemas.icon}>
+      {menu.schemas.text}
+    </LinkButton>
+  );
+
   return (
     <PluginPage pageNav={menu.dashboard} renderTitle={() => null}>
       <div className={styles.page}>
@@ -381,24 +393,21 @@ export function ProfilesPage() {
           )}
           {machine && (
             <header className={styles.editorHeader}>
-              <div className={styles.editorColumns}>
+              <div className={mobile ? styles.editorMobileColumns : styles.editorColumns}>
                 <div className={styles.editorNavigation}>
-                  <HomeLink />
+                  {mobile ? (
+                    <div className={styles.editorMobileActions}>
+                      <HomeLink />
+                      {catalogAction}
+                    </div>
+                  ) : <HomeLink />}
                   <Button type="button" icon="arrow-left" variant="secondary" disabled={saving}
                     onClick={() => dashboardId !== undefined ? (dirty ? setConfirmBack(true) : backToDashboards()) : backToMachines()}>
                     {dashboardId !== undefined ? 'Vissza a dashboardokhoz' : 'Vissza a gépekhez'}
                   </Button>
                 </div>
                 <div className={styles.editorHeaderRight}>
-                  {assignment ? (
-                    <Button type="button" variant="secondary" icon={menu.schemas.icon} disabled={saving} onClick={() => setShowSchemas(true)}>
-                      {menu.schemas.text}
-                    </Button>
-                  ) : (
-                    <LinkButton href={config.appSubUrl + menu.schemas.path} variant="secondary" icon={menu.schemas.icon}>
-                      {menu.schemas.text}
-                    </LinkButton>
-                  )}
+                  {!mobile && catalogAction}
                   <div className={styles.editorHeading}>
                     <div className={styles.editorTitleRow}>
                       <h2 className={styles.editorTitle}>{assignment ? dashboardName : selectedMachine?.name}</h2>

@@ -49,6 +49,12 @@ export const getStyles = (t: GrafanaTheme2) => ({
   editorHeader: css({ minWidth: 0 }),
   editorColumns: css({ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }),
   editorNavigation: css({ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, flexShrink: 0 }),
+  editorMobileColumns: css({
+    display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 10,
+  }),
+  editorMobileActions: css({
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8,
+  }),
   editorHeaderRight: css({ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end',
     gap: 8, marginLeft: 'auto', minWidth: 0 }),
   editorHeading: css({ display: 'grid', justifyItems: 'end', gap: 4, minWidth: 0, textAlign: 'right' }),
