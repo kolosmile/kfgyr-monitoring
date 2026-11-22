@@ -23,7 +23,7 @@ type SignalEditor = {
   pointId: string;
   endpoint: string;
 };
-type SchemaEditor = { id?: string; name: string };
+type SchemaEditor = { id?: string; name: string; sourceSchemaId?: string };
 type MappingEditor = { signalId: string; source: 'manual' | 'machine'; machine: string; endpoint: string };
 const emptyMappings: Mapping[] = [];
 
@@ -210,12 +210,15 @@ export function SchemaManager() {
         await api(`schemas/${encodeURIComponent(schemaEditor.id)}`, 'PUT', { name: schemaEditor.name.trim() });
         preferredSchema = schemaEditor.id;
       } else {
-        const result = await api<{ schema: SchemaOption }>('schemas', 'POST', { name: schemaEditor.name.trim() });
+        const result = await api<{ schema: SchemaOption }>('schemas', 'POST', {
+          name: schemaEditor.name.trim(),
+          source_schema_id: schemaEditor.sourceSchemaId || undefined,
+        });
         preferredSchema = result.schema.id;
       }
       setSchemaEditor(undefined);
       await reload(preferredSchema);
-      setNotice('A séma mentése sikerült.');
+      setNotice(schemaEditor.sourceSchemaId ? 'A séma és a hozzárendelései másolva.' : 'A séma mentése sikerült.');
     } catch (err) {
       setError(errorText(err));
     } finally {
@@ -303,8 +306,8 @@ export function SchemaManager() {
   }
 
   function openMapping(signalId: string) {
-    const current = mappingBySignal.get(signalId);
-    setMappingEditor({ signalId, source: 'manual', machine: '', endpoint: current?.endpoint || '' });
+    const endpoint = mappingBySignal.get(signalId)?.endpoint || '';
+    setMappingEditor({ signalId, source: endpoint ? 'manual' : 'machine', machine: '', endpoint });
   }
 
   function openSignalEditor(mode: SignalEditor['mode'], signal?: Signal) {
@@ -325,7 +328,7 @@ export function SchemaManager() {
 
   return (
     <>
-      {error && <Alert severity="error" title="A művelet sikertelen">{error}</Alert>}
+      {error && !schemaEditor && <Alert severity="error" title="A művelet sikertelen">{error}</Alert>}
       {notice && <Alert severity="success" title={notice} />}
       <div className={styles.schemaColumns}>
         <section className={styles.formCard}>
@@ -431,6 +434,7 @@ export function SchemaManager() {
               <h3 id="schema-settings-title">Sémák</h3>
               <Button type="button" size="sm" icon="plus" disabled={saving} onClick={() => {
                 setSubmitted(false);
+                setError('');
                 setSchemaEditor({ name: '' });
               }}>Új séma</Button>
             </div>
@@ -449,6 +453,7 @@ export function SchemaManager() {
                 <Button type="button" size="sm" variant="secondary" icon="pen" disabled={saving}
                   onClick={() => {
                     setSubmitted(false);
+                    setError('');
                     setSchemaEditor({ id: schema.id, name: schema.name });
                   }}>Átnevezés</Button>
                 <Button type="button" size="sm" variant="destructive" fill="outline" icon="trash-alt" disabled={saving}
@@ -511,16 +516,31 @@ export function SchemaManager() {
       )}
 
       {schemaEditor && (
-        <Modal title={schemaEditor.id ? 'Séma átnevezése' : 'Séma hozzáadása'} isOpen onDismiss={() => setSchemaEditor(undefined)}>
+        <Modal title={schemaEditor.id ? 'Séma átnevezése' : 'Séma hozzáadása'} isOpen
+          onDismiss={() => { if (!saving) { setSchemaEditor(undefined); setError(''); } }}>
           <div className={styles.schemaModalFields}>
+            {error && <Alert severity="error" title="A séma nem menthető">{error}</Alert>}
             <Field label="Séma neve" htmlFor="schema-name" invalid={submitted && !schemaEditor.name.trim()}
               error={submitted && !schemaEditor.name.trim() ? 'Adj nevet a sémának.' : undefined}>
               <Input id="schema-name" autoFocus value={schemaEditor.name} maxLength={120}
                 onChange={(event) => setSchemaEditor({ ...schemaEditor, name: event.currentTarget.value })} />
             </Field>
+            {!schemaEditor.id && (
+              <Field label="Kiindulás" htmlFor="new-schema-source">
+                <Combobox id="new-schema-source" value={schemaEditor.sourceSchemaId ?? ''} isClearable={false}
+                  disabled={saving}
+                  options={[{ value: '', label: 'Új, üres séma' }, ...schemas.map((item) => ({
+                    value: item.id, label: item.name,
+                  }))]}
+                  onChange={({ value }) => setSchemaEditor({ ...schemaEditor, sourceSchemaId: value })} />
+              </Field>
+            )}
             <Modal.ButtonRow>
-              <Button type="button" variant="secondary" onClick={() => setSchemaEditor(undefined)}>Mégse</Button>
-              <Button type="button" disabled={saving || !schemaEditor.name.trim()} onClick={saveSchema}>Mentés</Button>
+              <Button type="button" variant="secondary" disabled={saving}
+                onClick={() => { setSchemaEditor(undefined); setError(''); }}>Mégse</Button>
+              <Button type="button" disabled={saving || !schemaEditor.name.trim()} onClick={saveSchema}>
+                {schemaEditor.id ? 'Mentés' : 'Létrehozás'}
+              </Button>
             </Modal.ButtonRow>
           </div>
         </Modal>
@@ -531,8 +551,8 @@ export function SchemaManager() {
           <div className={styles.schemaModalFields}>
             <Field label="Hozzárendelés módja" htmlFor="mapping-source">
               <Combobox id="mapping-source" value={mappingEditor.source} options={[
-                { value: 'manual', label: 'Útvonal kézi megadása' },
                 { value: 'machine', label: 'Kiválasztás egy gép adatpontjai közül' },
+                { value: 'manual', label: 'Útvonal kézi megadása' },
               ]} onChange={({ value }) => setMappingEditor({ ...mappingEditor, source: value,
                 machine: '', endpoint: value === 'manual' ? mappingEditor.endpoint : '' })} />
             </Field>

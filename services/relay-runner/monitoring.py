@@ -145,6 +145,7 @@ class DisplayUnitsUpdate(BaseModel):
 class SchemaCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     name: str = Field(min_length=1, max_length=120)
+    source_schema_id: str | None = Field(default=None, pattern=r"^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$")
 
 
 class SchemaUpdate(BaseModel):
@@ -683,12 +684,24 @@ def create_schema(body):
     if not name:
         raise Problem(422, "Adj meg nevet a sémának.")
     schema_id = str(uuid.uuid4())
+    mapping_count = 0
     with psycopg.connect(connect_timeout=5) as db:
+        if body.source_schema_id is not None:
+            source = db.execute(
+                "SELECT id FROM kfgyr.machine_schemas WHERE id=%s FOR KEY SHARE", (body.source_schema_id,)
+            ).fetchone()
+            if source is None:
+                raise Problem(404, "A másolni kívánt séma nem található.")
         try:
             db.execute("INSERT INTO kfgyr.machine_schemas (id, name) VALUES (%s, %s)", (schema_id, name))
         except psycopg.errors.UniqueViolation:
             raise Problem(409, "Ilyen nevű séma már létezik.") from None
-    return {"schema": {"id": schema_id, "name": name, "mapping_count": 0, "machine_count": 0}}
+        if body.source_schema_id is not None:
+            mapping_count = db.execute("""
+                INSERT INTO kfgyr.schema_mappings (schema_id, signal_id, endpoint)
+                SELECT %s, signal_id, endpoint FROM kfgyr.schema_mappings WHERE schema_id=%s
+            """, (schema_id, body.source_schema_id)).rowcount
+    return {"schema": {"id": schema_id, "name": name, "mapping_count": mapping_count, "machine_count": 0}}
 
 
 def update_schema(schema_id, body):

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.33 — 2026-11-22
+
+- Copy an existing schema and its mappings when creating a schema.
+- Default new mappings to machine data points and keep display unit headers visible.
+
 ## 0.4.32 — 2026-11-22
 
 - Edit MTConnect display labels in the catalog and use them in Monitoring.

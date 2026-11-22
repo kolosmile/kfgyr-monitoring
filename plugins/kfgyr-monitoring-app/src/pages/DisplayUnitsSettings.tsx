@@ -60,7 +60,7 @@ export function DisplayUnitsSettings({ onChange }: { onChange: (labels: Map<stri
 
   return (
     <>
-      <Button type="button" variant="secondary" className={styles.displayUnitsButton} onClick={() => {
+      <Button type="button" variant="secondary" icon="calculator-alt" className={styles.displayUnitsButton} onClick={() => {
         setDraft({});
         setQuery('');
         if (units) {
