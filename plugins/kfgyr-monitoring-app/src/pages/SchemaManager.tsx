@@ -373,11 +373,12 @@ export function SchemaManager() {
                   const displayUnit = displayUnitLabels.get(signal.units);
                   const signalDetails = displayUnit ? signal.id : `${signal.id} · ${signal.units || 'Nincs megadott egység'}`;
                   return (
-                    <tr key={signal.id}>
+                    <tr key={signal.id} className={styles.mtconnectBranchClass(mapping?.endpoint)}>
                       <th scope="row">
                         <div className={styles.schemaCell}>
                           <div className={styles.schemaRowText}>
-                            <strong className={styles.schemaTruncated} title={signal.name}>{signal.name}</strong>
+                            <strong className={`${styles.schemaTruncated} ${styles.schemaSignalName}`}
+                              title={signal.name}>{signal.name}</strong>
                             <small className={styles.schemaTruncated} title={signalDetails}>{signalDetails}</small>
                           </div>
                           <div className={styles.schemaActions}>

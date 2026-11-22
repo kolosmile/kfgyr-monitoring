@@ -26,7 +26,7 @@ type Catalog = { machines: Option[] };
 type Dashboard = { id: number; name: string; revision: number; is_default: boolean };
 type CopySource = { id: number; name: string; agent: string; machine: string };
 type DashboardList = { dashboards: Dashboard[]; copy_sources?: CopySource[] };
-type PanelOption = { kind: 'signal' | 'point'; id: string; label: string; units?: string };
+type PanelOption = { kind: 'signal' | 'point'; id: string; label: string; units?: string; endpoint?: string };
 type Assignment = { id: number; name: string; panels: Panel[]; revision: number; options: PanelOption[] };
 
 const views: Array<{ value: View; label: string; icon: IconName }> = [
@@ -497,7 +497,7 @@ export function ProfilesPage() {
                                 <IconButton type="button" name="pen" disabled={saving}
                                   tooltip={`${label} szerkesztése`} onClick={() => editPanel(index)} />
                               </div>
-                              <div className={styles.panelPoint}>
+                              <div className={`${styles.panelPoint} ${styles.mtconnectBranchClass(option?.endpoint)}`}>
                                 {panel.signal_id && <Icon name={signalCatalogIcon} aria-label="Jelkatalógus" />}
                                 <span className={styles.panelText} title={pointLabel}>{pointLabel}</span>
                               </div>

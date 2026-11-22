@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.34 — 2026-11-22
+
+- Color catalog signals and panel signal labels by their standard MTConnect branch.
+
 ## 0.4.33 — 2026-11-22
 
 - Copy an existing schema and its mappings when creating a schema.

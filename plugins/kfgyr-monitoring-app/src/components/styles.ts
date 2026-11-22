@@ -1,7 +1,31 @@
 import { css } from '@emotion/css';
 import { GrafanaTheme2 } from '@grafana/data';
 
+const mtconnectBranchColors = [
+  { segments: ['adapters', 'adapter'], dark: '#a7bed4', light: '#455c75' },
+  { segments: ['auxiliaries', 'auxiliary'], dark: '#f09eab', light: '#a02c48' },
+  { segments: ['axes', 'axis'], dark: '#8dbcf5', light: '#255a9b' },
+  { segments: ['controllers', 'controller'], dark: '#cbb3f4', light: '#70409f' },
+  { segments: ['interfaces', 'interface'], dark: '#76cfe1', light: '#176b7e' },
+  { segments: ['resources', 'resource'], dark: '#ebce7e', light: '#765b14' },
+  { segments: ['structures', 'structure'], dark: '#e9b586', light: '#8a4d23' },
+  { segments: ['systems', 'system'], dark: '#8fd4a8', light: '#276345' },
+];
+
+function mtconnectBranchStyles(theme: GrafanaTheme2) {
+  const styles = new Map(mtconnectBranchColors.flatMap(({ segments, dark, light }) => {
+    const className = css({ '--mtconnect-branch-color': theme.isDark ? dark : light });
+    return segments.map((segment) => [segment, className] as const);
+  }));
+
+  return (endpoint?: string | null) => {
+    const branch = endpoint?.split('/', 2)[1]?.split('[', 1)[0].toLowerCase();
+    return branch ? styles.get(branch) ?? '' : '';
+  };
+}
+
 export const getStyles = (t: GrafanaTheme2) => ({
+  mtconnectBranchClass: mtconnectBranchStyles(t),
   page: css({ maxWidth: 1180, margin: '0 auto', paddingBottom: 32, color: t.colors.text.primary }),
   form: css({ display: 'grid', gap: 16, maxWidth: 960 }),
   formCard: css({
@@ -159,6 +183,7 @@ export const getStyles = (t: GrafanaTheme2) => ({
     color: t.colors.text.secondary,
     fontSize: 12,
     '& > svg': { flexShrink: 0 },
+    '& > span': { color: 'var(--mtconnect-branch-color, inherit)' },
   }),
   panelText: css({ minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }),
   panelEdit: css({ gridColumn: 2, gridRow: 1, justifySelf: 'end', display: 'flex', alignItems: 'center' }),
@@ -245,8 +270,12 @@ export const getStyles = (t: GrafanaTheme2) => ({
     '&:disabled': { opacity: 0.5, cursor: 'default' },
   }),
   schemaRowText: css({ small: { color: t.colors.text.secondary } }),
+  schemaSignalName: css({ color: 'var(--mtconnect-branch-color, inherit)' }),
   schemaTruncated: css({ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }),
-  schemaPath: css({ fontFamily: t.typography.fontFamilyMonospace, fontSize: 12, color: t.colors.text.secondary }),
+  schemaPath: css({
+    fontFamily: t.typography.fontFamilyMonospace, fontSize: 12,
+    color: `var(--mtconnect-branch-color, ${t.colors.text.secondary})`,
+  }),
   schemaActions: css({ display: 'flex', gap: 4, alignItems: 'center' }),
   displayUnitsButton: css({ minWidth: 0, whiteSpace: 'normal', justifyContent: 'center' }),
   displayUnitBadgeText: css({
