@@ -1,6 +1,6 @@
 # Agentek és gépek kezelése
 
-A Grafana app agentlistája név, URL, eszköznév és MTConnect eszközazonosító alapján kereshető. A szűrő az engedélyezett és szüneteltetett agenteket külön is megjeleníti. Az „Engedélyezve” az agent konfigurációja; az adatbeérkezés ellenőrzésére a dashboard szolgál. A felső állapotjelzés a relay folyamatának és a mentett konfiguráció alkalmazásának állapotát mutatja.
+A Grafana app **Agentek és gépek** oldala név, URL, eszköznév és MTConnect eszközazonosító alapján kereshető. A szűrő az engedélyezett és szüneteltetett agenteket külön is megjeleníti. Az „Engedélyezve” az agent konfigurációja; az élő agentkapcsolatot a felület időszakosan `/probe` lekérdezéssel ellenőrzi, az adatbeérkezés ellenőrzésére pedig a **KFGyR · Monitoring** dashboard szolgál. A felső állapotjelzés a relay folyamatának és a mentett konfiguráció alkalmazásának állapotát mutatja.
 
 ## Szerkesztés és mentés
 
@@ -14,7 +14,7 @@ Az „Elvetés” a legutóbb mentett konfigurációt tölti be. Az űrlap módo
 
 A már mentett agentnevek és eszközaliasok az adatbázis azonosításának részei, ezért rögzítettek. A relay az agent összes eszközét olvassa; a névlista szerkesztése nem eszközönkénti adatgyűjtési szűrő. Az agent teljes adatgyűjtése az engedélyezés kapcsolójával szüneteltethető.
 
-Az alsó **Gépek** részen minden géphez kötelező sémát választani. Új gépnél a lista nem választ ki alapértelmezett sémát, így a gép és a sémája egymás ellenőrzése után kerül a konfigurációba. A séma a gyártó- vagy gépcsalád-specifikus, gépen belüli MTConnect útvonalakat jelenti. Új katalógusjeleket és sémákat a **Beállítások → Jelkatalógus** menüpontban hozhatsz létre.
+Az alsó **Gépek** részen minden géphez kötelező sémát választani. Új gépnél a lista nem választ ki alapértelmezett sémát, így a gép és a sémája egymás ellenőrzése után kerül a konfigurációba. A séma a gyártó- vagy gépcsalád-specifikus, gépen belüli MTConnect útvonalakat jelenti. Új katalógusjeleket és sémákat a **Jelkatalógus** oldalon (`/a/kfgyr-monitoring-app/schemas`) hozhatsz létre; a jelkatalógus és a **Dashboard szerkesztő** részleteit a [jelkatalógus és dashboardok dokumentuma](signal-catalog-and-dashboards.md) írja le.
 
 A monitoring neve és időzónája a „Monitoring beállításai” ablakban módosítható, ugyanazzal a mentési folyamattal. A technikai állapot és az utolsó mentett YAML külön lenyitható részben található.
 
@@ -34,7 +34,7 @@ A tesztpéldányban nem futott külön relay-adatgyűjtés. A konfiguráció men
 
 A felső **Hálózati keresés** gomb a runner által felismert LAN-t kínálja fel. Válassz legfeljebb /24 méretű tartományt és 1–8 portot. A keresés előrehaladása látható, megszakítható, bezárás után az utolsó eredmény visszatölthető. A találat **Agent beállítása** gombja megnyitja a szokásos szerkesztőt; a keresés önmagában nem módosítja a konfigurációt. A keresés mindig a relay-runner hálózatán történik, akkor is, ha a Grafana más gépen fut.
 
-A kapcsolat a plugin **Relay kapcsolat** beállítási lapján ellenőrizhető. A Coolify által provisionált cím és token ott nem szerkeszthető. Viewer és névtelen látogató a dashboardot olvashatja; az agentkezelő API minden művelete Admin jogot igényel.
+A kapcsolat a plugin **Relay kapcsolat** beállítási lapján ellenőrizhető. A telepítés által provisionált cím és token ott nem szerkeszthető. Viewer és névtelen látogató a dashboardokat olvashatja és az **Adatexport** oldalt használhatja; az agentek, a jelkatalógus és a gépek dashboardjainak módosításához a **KFGyR kezelők** csapat Viewer tagsága vagy szervezeti **Admin** jog szükséges (miközben a kezelők Grafana szerepe Viewer marad, így nem szerkeszthetik a Grafana dashboardjait). A **Jogosultságkezelés** és a kapcsolatbeállítások továbbra is Admin jogot igényelnek.
 
 ## API integráció ellenőrzése a 0.3.0 kiadáshoz
 

@@ -1,59 +1,68 @@
-# A repository tervezett szerkezete
+# A repository szerkezete
 
-A monitoring rendszer egy Git-repositoryban marad. Az önállóan buildelhető és kiadható komponensek külön alkönyvtárat kapnak. A plugin, a runner, a telepítési Compose és a kiadási workflow-k már megvalósultak; a következő fa a további könyvtárak tervezett helyét is jelzi.
+A monitoring rendszer egy Git-repositoryban található. Az önállóan buildelhető és kiadható komponensek külön alkönyvtárat kaptak.
 
 ```text
 kfgyr-monitoring/
   plugins/
     kfgyr-monitoring-app/
       README.md
-      src/                 # React/TypeScript frontend és plugin.json
-      pkg/                 # Go backend
+      CHANGELOG.md
+      src/                    # React/TypeScript frontend, plugin.json, pages/, components/, navigation/, fleet/
+      pkg/                    # Go backend (jogosultság-ellenőrzés és runner API proxy)
+      Magefile.go             # Grafana plugin SDK Go build célok
       package.json
       package-lock.json
       go.mod
       go.sum
-      webpack.config.cjs
+      tsconfig.json
+      docker-compose.yaml     # Helyi pluginfejlesztői Compose
   services/
-    relay-runner/          # Relay indítóprogram és saját relay image buildje
+    relay-runner/             # Python/FastAPI relay-felügyelet, PostgreSQL séma/dashboard API és Dockerfile
   deploy/
-    compose.yaml          # A teljes monitoring rendszer telepítése
-    .env.example
-    grafana/
-      provisioning/       # Automatizált Grafana beállítások
-  dashboards/             # Verziózott dashboard JSON-források
-  examples/               # Publikálható MTConnect konfigurációs példák
-  docs/
+    compose.relay.yaml        # Adatgyűjtési stack (TimescaleDB + relay-runner)
+    compose.grafana.yaml      # Megjelenítési stack (monitoring-assets init + Grafana + provisioning)
+    compose.yaml              # Korábbi, egyprojektes telepítési sablon
+    .env.example              # Környezeti változók sablonja
+    install-monitoring-assets.py  # Plugin ZIP letöltése/SHA-256 ellenőrzése és dashboard-telepítés
+    install-management.py     # KFGyR kezelők csapat létrehozása és opcionális régi Demo-takarítás
+    seed-config.py            # Példakonfiguráció betöltése és ellenőrzése
+    grafana-reader.psql       # Csak olvasó grafana_reader PostgreSQL-szerep inicializálása
+    history-lookup-index.psql # Összetett raw.history index az utolsó minta lekérdezéséhez
+    README.md
+  dashboards/
+    build-managed-dashboards.py   # A kezelt dashboardok JSON-generátora
+    managed/                  # Provisionált Grafana dashboardok (home.json, fleet.json, machine-monitoring.json)
+    build-export-dashboard.py # Korábbi natív export dashboard generátora
+    export-dashboard.json
+  examples/                   # Publikálható MTConnect és demó dashboard példák
+  docs/                       # Műszaki dokumentáció
   .github/
-    workflows/            # Komponensenkénti build és kiadás
+    workflows/                # Komponensenkénti CI build és tag-alapú kiadás (plugin.yml, relay-runner.yml)
   README.md
 ```
 
 ## Plugin mint külön fejlesztési egység
 
-A pluginprojekt teljes egészében a `plugins/kfgyr-monitoring-app/` könyvtárban található. A pluginon belül marad a frontend, a backend, a függőségek és a build konfigurációja. A fejlesztői parancsokat ebben a könyvtárban futtatjuk. A kimeneti `dist/` buildtermék, nem Gitben tárolt forrás.
+A pluginprojekt teljes egészében a `plugins/kfgyr-monitoring-app/` könyvtárban található. A pluginon belül marad a frontend, a két beágyazott panel plugin (`src/navigation/` és `src/fleet/`), a Go backend, a függőségek és a build konfigurációja. A fejlesztői parancsokat ebben a könyvtárban futtatjuk. A kimeneti `dist/` buildtermék, nem Gitben tárolt forrás.
 
-A frontend és a Go backend együtt alkot egy plugint, ezért közös verzióval és egy ZIP-csomagban kerülnek kiadásra. A ZIP tartalmazza a pluginleírót, a frontend fájlokat és a támogatott célplatformok backend binárisait. A csomag pontos gyökérkönyvtárát a Grafana plugin csomagolási szabályai szerint kell kialakítani.
+A fő app plugin (`kfgyr-monitoring-app`), a két beágyazott panel plugin (`kfgyr-navigation-panel`, `kfgyr-fleet-panel`) és a Go backend együtt alkot egy kiadási csomagot, ezért közös verzióval és egy ZIP-ben kerülnek kiadásra. A ZIP tartalmazza a pluginleírókat, a frontend fájlokat és a támogatott célplatformok (`linux/amd64`, `linux/arm64`) backend binárisait.
 
-A GitHub Actions workflow-k a repo gyökerének `.github/workflows/` könyvtárába kerülnek, a pluginbuild munkakönyvtára viszont a plugin alkönyvtára. A későbbi ellenőrzések útvonalszűréssel indulhatnak a plugin vagy annak workflow-ja változásakor. A kiadási workflow külön tag alapján fut; a tag indítást és az útvonalszűrést nem kell összekeverni.
+A GitHub Actions workflow-k a repo gyökerének `.github/workflows/` könyvtárába kerülnek (`plugin.yml`, `relay-runner.yml`), a pluginbuild munkakönyvtára viszont a plugin alkönyvtára. Az ellenőrzések útvonalszűréssel indulnak a komponensek vagy a workflow-k változásakor; a kiadás külön verziótagra fut le (`plugin-v*` és `relay-runner-v*`).
 
 ## Önálló verziók és kiadások
 
-Példák a tervezett tagnevekre:
+Tagformátumok:
 
-- `plugin-v0.1.0`: csak a Grafana plugin kiadása;
-- `relay-runner-v0.1.0`: csak a relay indítóprogram kiadása.
+- `plugin-vX.Y.Z`: a Grafana app plugin és beágyazott panel pluginok kiadása (például `kfgyr-monitoring-app-0.4.37.zip` és `SHA256SUMS`);
+- `relay-runner-vX.Y.Z`: a relay indítóprogram Docker image kiadása (`ghcr.io/kolosmile/kfgyr-relay-runner:X.Y.Z`).
 
-A plugin release ZIP-je például `kfgyr-monitoring-app-0.1.0.zip` néven jelenik meg. A plugin belső verziója `0.1.0`; a `plugin-` előtag a Git-tagben különbözteti meg a komponenseket.
+A `deploy/compose.grafana.yaml` rögzített Grafana image-verziót használ, és a `monitoring-assets` init konténerrel (`deploy/install-monitoring-assets.py`) tölti le a plugin ZIP-et a GitHub Releases API-ról SHA-256 ellenőrzéssel (alapértelmezetten a legfrissebb kiadást, `KFGYR_PLUGIN_RELEASE` változóval konkrét tagre rögzíthetően). Az unsigned pluginok betöltési listája (`GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS`) és az app provisioningje a Grafana Compose része.
 
-A `deploy/compose.yaml` rögzített Grafana image-verziót és rögzített plugin release URL-t használ. A `GF_PLUGINS_PREINSTALL_SYNC` a ZIP-ből telepíti a plugint a hivatalos Grafana konténer indulásakor. A szükséges aláírási beállítások és az app provisioningje a telepítés része.
-
-Pluginfrissítéshez a plugin buildje és kiadása, majd a telepítésben a pluginverzió módosítása szükséges. Grafana-frissítéshez a hivatalos image verzióját módosítjuk, és ellenőrizzük a plugin kompatibilitását. Dashboard-módosítás önmagában nem igényel pluginbuildet, ha a dashboard a külön provisioningből származik.
+Pluginfrissítéshez a plugin buildje és kiadása, majd a Grafana stack újralétrehozása (vagy `KFGYR_PLUGIN_RELEASE` átállítása) szükséges. Grafana-frissítéshez a hivatalos image verzióját módosítjuk, és ellenőrizzük a plugin kompatibilitását. A gyári dashboardok módosítása a `dashboards/build-managed-dashboards.py` futtatásával kerül a `dashboards/managed/` mappába.
 
 ## Telepítés és futás közbeni beállítások
 
-A `deploy/compose.yaml` fogja össze az egész monitoring rendszert és a komponensek kapcsolatait. A plugin saját helyi fejlesztői Compose-környezet később a plugin alkönyvtárába kerülhet.
+A telepítés két önálló Compose fájlra oszlik (`deploy/compose.relay.yaml` és `deploy/compose.grafana.yaml`), így a Grafana frissítése közben is zavartalanul fut az adatgyűjtés. A plugin saját helyi fejlesztői Compose-környezete a `plugins/kfgyr-monitoring-app/docker-compose.yaml` fájlban található.
 
-A gépek/agentek üzemi konfigurációja a tartós konfigurációs kötetben él. A monitoring admin ezt a Grafana plugin felületén módosítja; az agentlista változása nem forráskódkiadás. A repository csak publikálható példát tartalmaz.
-
-A kezdeti megvalósításkor nincs szükség külön Git-repositoryra, Git submodule-ra vagy közös JavaScript workspace-re. A plugin kinyerhető külön repositoryba, ha később saját csapatot, hozzáférési határt vagy több projekt által használt önálló életciklust kap.
+A gépek/agentek üzemi konfigurációja a tartós konfigurációs kötetben (`relay-config`), a jelkatalógus, sémák, megjelenítési egységek és gépenkénti dashboardok pedig a PostgreSQL `kfgyr.*` tábláiban élnek. A kezelők és adminok ezeket a Grafana plugin felületén módosítják; a változás nem igényel forráskódkiadást. A repository csak publikálható példát tartalmaz.

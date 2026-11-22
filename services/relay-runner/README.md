@@ -1,10 +1,10 @@
-# Relay runner 0.3.0
+# Relay runner
 
-A gyári `ladder99/relay:0.11.7` image alkalmazását használó Python felügyelő. A relay forrását nem módosítja és nem másolja a repositoryba. A Docker build az upstream image `/usr/app` könyvtárát függőségeivel együtt Debian 12 / Node.js 22 futtatókörnyezetbe emeli át, mert a gyári Debian 11 csomagarchívumainak egy része már nem elérhető.
+A gyári `ladder99/relay:0.11.7` image alkalmazását használó Python felügyelő és konfigurációs API. A relay forrását nem módosítja és nem másolja a repositoryba. A Docker build az upstream image `/usr/app` könyvtárát függőségeivel együtt Debian 12 / Node.js 22 futtatókörnyezetbe emeli át, mert a gyári Debian 11 csomagarchívumainak egy része már nem elérhető.
 
-A `KFGYR_CONFIG_DIR` saját tartós kötetén olvassa a `desired.json` manifestet és a `revisions/<revision>.yaml` konfigurációt, ellenőrzi a SHA-256 értéket és a gyári YAML parserrel a szintaxist. A relay privát futásidejű mappából olvas; a tartós kötetben nincs részlegesen írt aktív YAML.
+A `KFGYR_CONFIG_DIR` saját tartós kötetén olvassa a `desired.json` manifestet és a `revisions/<revision>.yaml` konfigurációt, ellenőrzi a SHA-256 értéket és a gyári YAML parserrel a szintaxist. A relay privát futásidejű mappából olvas; a tartós kötetben nincs részlegesen írt aktív YAML. Emellett (ha a `KFGYR_MONITORING_DB_ENABLED=1` aktív) végrehajtja a PostgreSQL `kfgyr.*` monitoring táblák (`signal_catalog`, `display_units`, `machine_schemas`, `schema_mappings`, `machine_schema_assignments`, `machine_dashboards`) migrációit, valamint kiszolgálja azok REST végpontjait.
 
-Változáskor a relay folyamatcsoportját SIGTERM jelzéssel leállítja, 15 másodperc után szükség esetén SIGKILL következik. A validált új konfigurációval indít. A korai kilépés sikertelen alkalmazást jelent, ekkor visszaállhat az utolsó stabilan futó verzióra. A `status.json` az alkalmazott és kért verziót külön jelzi. Hibás verziót nem próbál újra minden másodpercben; új konfigurációverzió szükséges.
+Változáskor a relay folyamatcsoportját SIGTERM jelzéssel leállítja, 15 másodperc után szükség esetén SIGKILL következik. A validált új konfigurációval indít. A korai kilépés sikertelen alkalmazást jelent, ekkor visszaállhat az utolsó stabilan futó verzióra. A `status.json` az alkalmazott és kért verziót külön jelzi. Hibás verziót nem próbál újra minden másodpercben; új konfigurációverzió szükséges. A jelkatalógus, a sémák, a megjelenítési egységek és a dashboardok módosítása nem indítja újra a relayt.
 
 A futó állapot csak élő folyamatot igazol. Agent-elérhetőséget és sikeres adatbázisírást nem garantál. A relay induláskori current/sample viselkedése miatt az újraindítás alatti teljes történet pótlása nem garantált.
 
@@ -20,8 +20,10 @@ A Python FastAPI API és a relay folyamatfelügyelete egy konténerben fut. A Gr
 - `KFGYR_HOST_ROUTES_FILE`: a host útvonaltáblájának csak olvasható csatolása.
 - `KFGYR_AGENT_ALLOWED_HOSTS`, `KFGYR_AGENT_ALLOWED_NETWORKS`: kézi agentcímek engedélyezése.
 - `KFGYR_DISCOVERY_NETWORKS`: a felismert LAN mellett külön engedélyezett IPv4 keresési hálózatok.
+- `KFGYR_MONITORING_DB_ENABLED`: `1` esetén induláskor futtatja a `kfgyr.*` táblák migrációját, és mentéskor validálja/szinkronizálja a gépek séma-hozzárendelését.
+- `FETCH_INTERVAL`, `FETCH_COUNT`: a relay MTConnect lekérdezési periódusa (ms) és egyszerre lekért mintaszáma (például `2000`, `1000`).
 
-A PostgreSQL és FETCH változókat továbbadja a relaynek. A Compose nem publikálja az API-portot a hoston.
+A PostgreSQL (`PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`) és FETCH változókat továbbadja a relaynek. A Compose nem publikálja az API-portot a hoston.
 
 Fejlesztéshez Python 3.11+, `pip install -r requirements-dev.txt`, majd `python -m unittest -v`. Az API Windows alatt is fejleszthető; a teljes folyamatfelügyelet Linuxot és az upstream Node alkalmazást igényli. Docker integráció: `sudo python3 smoke_test.py <image>`.
 
