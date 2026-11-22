@@ -49,8 +49,9 @@ export function AccessPage({ teamId, teamName }: { teamId?: number; teamName: st
     return () => { active = false; };
   }, [teamId]);
 
-  const members = team?.members ?? [];
-  const available = team?.users.filter((user) => user.role === 'Viewer' && !members.some((member) => member.userId === user.userId)) ?? [];
+  const viewers = team?.users.filter((user) => user.role === 'Viewer') ?? [];
+  const members = team?.members.filter((member) => viewers.some((user) => user.userId === member.userId)) ?? [];
+  const available = viewers.filter((user) => !members.some((member) => member.userId === user.userId));
 
   async function changeMember(userId: number, remove: boolean) {
     if (!teamId || saving) {

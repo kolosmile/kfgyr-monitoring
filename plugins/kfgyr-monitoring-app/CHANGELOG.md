@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.28 — 2026-11-22
+
+- List only Viewer accounts as KFGyR operators on the access management page.
+
 ## 0.4.27 — 2026-11-22
 
 - Allow Grafana Viewer accounts in the configured operator team to manage KFGyR settings.
