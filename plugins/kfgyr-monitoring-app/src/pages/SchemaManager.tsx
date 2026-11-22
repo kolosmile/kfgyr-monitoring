@@ -3,12 +3,12 @@ import { Alert, Button, Combobox, ConfirmModal, Field, Icon, Input, Modal, Spinn
 import { api } from '../api';
 import { getStyles } from '../components/styles';
 import { errorText, SchemaOption, Signal } from '../types';
-import { signalCatalogIcon } from '../navigation/menu';
 
 type Machine = { id: string; label: string; schema_id?: string };
 type DataItem = { id: string; path: string; units: string; category: string; type: string; subType: string };
 type Mapping = { signal_id: string; signal_name: string; signal_units: string; endpoint: string | null };
 type MappingResponse = { mappings: Mapping[] };
+type MappingState = { schemaId: string; mappings?: Mapping[]; failed?: boolean };
 type CatalogResponse = { signals: Signal[] };
 type SchemaResponse = { schemas: SchemaOption[] };
 type MachinesResponse = { machines: Machine[] };
@@ -24,6 +24,7 @@ type SignalEditor = {
 };
 type SchemaEditor = { id?: string; name: string };
 type MappingEditor = { signalId: string; source: 'manual' | 'machine'; machine: string; endpoint: string };
+const emptyMappings: Mapping[] = [];
 
 function suggestId(path: string) {
   return path.replace(/^\/+/, '').toLowerCase().replace(/\[([^\]]+)\]/g, '_$1')
@@ -50,7 +51,7 @@ export function SchemaManager() {
   const [schemas, setSchemas] = useState<SchemaOption[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [selectedSchema, setSelectedSchema] = useState('');
-  const [mappings, setMappings] = useState<Mapping[]>([]);
+  const [mappingState, setMappingState] = useState<MappingState>();
   const [machineItems, setMachineItems] = useState<DataItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -82,13 +83,20 @@ export function SchemaManager() {
 
   async function loadMappings(schemaId: string) {
     const request = ++mappingRequest.current;
-    setMappings([]);
+    setMappingState({ schemaId });
     if (!schemaId) {
       return;
     }
-    const result = await api<MappingResponse>(`schemas/${encodeURIComponent(schemaId)}/mappings`);
-    if (request === mappingRequest.current) {
-      setMappings(result.mappings);
+    try {
+      const result = await api<MappingResponse>(`schemas/${encodeURIComponent(schemaId)}/mappings`);
+      if (request === mappingRequest.current) {
+        setMappingState({ schemaId, mappings: result.mappings });
+      }
+    } catch (err) {
+      if (request === mappingRequest.current) {
+        setMappingState({ schemaId, failed: true });
+        throw err;
+      }
     }
   }
 
@@ -127,6 +135,10 @@ export function SchemaManager() {
     return () => { active = false; };
   }, [activeMachine]);
 
+  const schema = schemas.find((item) => item.id === selectedSchema);
+  const currentMappingState = mappingState?.schemaId === selectedSchema ? mappingState : undefined;
+  const mappings = currentMappingState?.mappings ?? emptyMappings;
+  const mappingsReady = Boolean(currentMappingState?.mappings);
   const mappingBySignal = useMemo(() => new Map(mappings.map((item) => [item.signal_id, item])), [mappings]);
   const usedEndpoints = useMemo(() => new Set(mappings
     .filter((item) => item.endpoint && item.signal_id !== mappingEditor?.signalId)
@@ -168,8 +180,8 @@ export function SchemaManager() {
         : 'A jel bekerült a katalógusba. A séma-hozzárendelés külön adható meg.');
       await reload(selectedSchema);
     } catch (err) {
-      setError(errorText(err));
       await reload(selectedSchema).catch(() => undefined);
+      setError(errorText(err));
     } finally {
       setSaving(false);
     }
@@ -284,6 +296,14 @@ export function SchemaManager() {
     setMappingEditor({ signalId, source: 'manual', machine: '', endpoint: current?.endpoint || '' });
   }
 
+  function openSignalEditor(mode: SignalEditor['mode'], signal?: Signal) {
+    setSubmitted(false);
+    setSignalEditor({
+      mode, originalId: signal?.id, id: signal?.id ?? '', name: signal?.name ?? '', units: signal?.units ?? '',
+      machine: '', pointId: '', endpoint: '',
+    });
+  }
+
   const mappingSignal = mappingEditor && signals.find((item) => item.id === mappingEditor.signalId);
   const selectedDataItem = mappingEditor && machineItems.find((item) => item.path === mappingEditor.endpoint);
   const unitMismatch = !!selectedDataItem && mappingSignal?.units !== selectedDataItem.units;
@@ -297,109 +317,111 @@ export function SchemaManager() {
       {error && <Alert severity="error" title="A művelet sikertelen">{error}</Alert>}
       {notice && <Alert severity="success" title={notice} />}
       <div className={styles.schemaColumns}>
-        <section className={styles.formCard}>
-          <div className={styles.formFooter}>
-            <div>
-              <h3 className={styles.actions}><Icon name={signalCatalogIcon} aria-hidden /> Jelkatalógus</h3>
-              <p className={styles.muted}>A magyar nevek és egységek közös listája.</p>
-            </div>
-            <Button type="button" icon="plus" disabled={saving} onClick={() => {
-              setSubmitted(false);
-              setSignalEditor({ mode: 'catalog', id: '', name: '', units: '', machine: '', pointId: '', endpoint: '' });
-            }}>Jel hozzáadása</Button>
-          </div>
-          {!signals.length && <p className={styles.muted}>A katalógus még üres.</p>}
-          <div className={styles.schemaList}>
-            {signals.map((signal) => (
-              <div className={styles.schemaRow} key={signal.id}>
-                <div className={styles.schemaRowText}>
-                  <strong>{signal.name}</strong>
-                  <small>{signal.id} · {signal.units || 'Nincs megadott egység'}</small>
-                </div>
-                <div className={styles.schemaActions}>
-                  <Button type="button" size="sm" variant="secondary" icon="pen" aria-label={`${signal.name} módosítása`}
-                    disabled={saving} onClick={() => {
-                      setSubmitted(false);
-                      setSignalEditor({ mode: 'catalog', originalId: signal.id, id: signal.id,
-                        name: signal.name, units: signal.units, machine: '', pointId: '', endpoint: '' });
-                    }} />
-                  <Button type="button" size="sm" variant="destructive" fill="outline" icon="trash-alt" aria-label={`${signal.name} törlése`}
-                    disabled={saving} onClick={() => setDeleteSignal(signal)} />
-                </div>
-              </div>
-            ))}
-          </div>
+        <section className={styles.formCard} aria-label="Jelek és adatpontok">
+          <table className={styles.schemaTable} aria-label="Jelek és a sémához rendelt adatpontok">
+            <colgroup><col /><col className={styles.schemaConnectorColumn} /><col /></colgroup>
+            <thead>
+              <tr><th scope="col">Jelek</th><td aria-hidden /><th scope="col">Adatpontok</th></tr>
+            </thead>
+            <tbody className={styles.schemaAddRows}>
+              <tr>
+                <td>
+                  <button type="button" className={styles.schemaAdd} disabled={saving}
+                    onClick={() => openSignalEditor('catalog')}>
+                    <Icon name="plus" aria-hidden /> Jel hozzáadása
+                  </button>
+                </td>
+                <td aria-hidden />
+                <td>
+                  <button type="button" className={styles.schemaAdd} disabled={saving || !mappingsReady}
+                    onClick={() => openSignalEditor('machine')}>
+                    <Icon name="plus" aria-hidden /> Új jel gépadatpontból
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+            <tbody className={styles.schemaRows} aria-busy={Boolean(schema && !mappingsReady && !currentMappingState?.failed)}>
+              {signals.map((signal) => {
+                const mapping = mappingBySignal.get(signal.id);
+                return (
+                  <tr key={signal.id}>
+                    <th scope="row">
+                      <div className={styles.schemaCell}>
+                        <div className={styles.schemaRowText}>
+                          <strong>{signal.name}</strong>
+                          <small>{signal.id} · {signal.units || 'Nincs megadott egység'}</small>
+                        </div>
+                        <div className={styles.schemaActions}>
+                          <Button type="button" size="sm" variant="secondary" icon="pen" aria-label={`${signal.name} módosítása`}
+                            tooltip="Jel módosítása" disabled={saving} onClick={() => openSignalEditor('catalog', signal)} />
+                          <Button type="button" size="sm" variant="destructive" fill="outline" icon="trash-alt"
+                            aria-label={`${signal.name} törlése`} tooltip="Jel törlése" disabled={saving} onClick={() => setDeleteSignal(signal)} />
+                        </div>
+                      </div>
+                    </th>
+                    <td className={styles.schemaConnector} aria-hidden>
+                      {mapping?.endpoint && <Icon name="arrow-right" size="sm" />}
+                    </td>
+                    <td>
+                      {mapping?.endpoint && schema ? (
+                        <div className={styles.schemaCell}>
+                          <code className={styles.schemaPath}>{mapping.endpoint}</code>
+                          <div className={styles.schemaActions}>
+                            <Button type="button" size="sm" variant="secondary" icon="pen" tooltip="Hozzárendelés módosítása"
+                              aria-label={`${signal.name} hozzárendelésének módosítása`} disabled={saving}
+                              onClick={() => openMapping(signal.id)} />
+                            <Button type="button" size="sm" variant="destructive" fill="outline" icon="trash-alt"
+                              aria-label={`${signal.name} hozzárendelésének törlése`} tooltip="Hozzárendelés törlése"
+                              disabled={saving} onClick={() => setDeleteMapping({ schema, mapping })} />
+                          </div>
+                        </div>
+                      ) : mappingsReady ? (
+                        <button type="button" className={styles.schemaAdd} disabled={saving}
+                          aria-label={`${signal.name} adatpontjának hozzárendelése`} onClick={() => openMapping(signal.id)}>
+                          <Icon name="plus" aria-hidden /> Adatpont hozzárendelése
+                        </button>
+                      ) : <span aria-label="Az adatpont nem jeleníthető meg">–</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {!signals.length && <p className={styles.muted}>A jelkatalógus még üres.</p>}
         </section>
 
-        <section className={styles.formCard}>
-          <div className={styles.formFooter}>
-            <div><h3>Sémák és végpontok</h3><p className={styles.muted}>A séma gépen belüli útvonalakat rendel a jelekhez.</p></div>
-            <Button type="button" icon="plus" disabled={saving} onClick={() => {
-              setSubmitted(false);
-              setSchemaEditor({ name: '' });
-            }}>Séma hozzáadása</Button>
-          </div>
-          <Field label="Séma" htmlFor="schema-select">
-            <Combobox id="schema-select" value={selectedSchema || null}
-              placeholder="Válassz sémát" options={schemas.map((schema) => ({ value: schema.id, label: schema.name }))}
+        <section className={`${styles.formCard} ${styles.schemaSettings}`} aria-labelledby="schema-settings-title">
+          <h3 id="schema-settings-title">Sémák</h3>
+          <Field label="Aktív séma" htmlFor="schema-select">
+            <Combobox id="schema-select" value={selectedSchema || null} disabled={saving}
+              placeholder="Válassz sémát" options={schemas.map((item) => ({ value: item.id, label: item.name }))}
               onChange={async ({ value }) => {
                 setSelectedSchema(value || '');
                 setError('');
+                setNotice('');
                 try { await loadMappings(value || ''); } catch (err) { setError(errorText(err)); }
               }} />
           </Field>
-          {selectedSchema && (
-            <>
-              <div className={styles.actions}>
+          <div className={styles.schemaActions}>
+            <Button type="button" icon="plus" disabled={saving} onClick={() => {
+              setSubmitted(false);
+              setSchemaEditor({ name: '' });
+            }}>Új séma</Button>
+            {schema && (
+              <>
                 <Button type="button" variant="secondary" icon="pen" disabled={saving}
                   onClick={() => {
                     setSubmitted(false);
-                    setSchemaEditor({ id: selectedSchema, name: schemas.find((item) => item.id === selectedSchema)?.name || '' });
-                  }}>
-                  Séma átnevezése
-                </Button>
-                <Button type="button" variant="secondary" icon="plus" disabled={saving}
-                  onClick={() => {
-                    setSubmitted(false);
-                    setSignalEditor({ mode: 'machine', id: '', name: '', units: '', machine: '', pointId: '', endpoint: '' });
-                  }}>
-                  Új jel gépadatpontból
-                </Button>
+                    setSchemaEditor({ id: schema.id, name: schema.name });
+                  }}>Átnevezés</Button>
                 <Button type="button" variant="destructive" fill="outline" icon="trash-alt" disabled={saving}
-                  onClick={() => setDeleteSchema(schemas.find((item) => item.id === selectedSchema))}>
-                  Séma törlése
-                </Button>
-              </div>
-              {!signals.length && <p className={styles.muted}>Előbb vegyél fel legalább egy jelet a katalógusba.</p>}
-              <div className={styles.schemaList}>
-                {mappings.map((mapping) => (
-                  <div className={styles.schemaRow} key={mapping.signal_id}>
-                    <div className={styles.schemaRowText}>
-                      <strong>{mapping.signal_name}</strong>
-                      <small>{mapping.signal_id} · {mapping.signal_units || 'Nincs megadott egység'}</small>
-                      <div className={styles.schemaPath}>{mapping.endpoint || 'Nincs hozzárendelve ebben a sémában'}</div>
-                    </div>
-                    <div className={styles.schemaActions}>
-                      <Button type="button" size="sm" variant="secondary" icon={mapping.endpoint ? 'pen' : 'plus'}
-                        aria-label={`${mapping.signal_name} hozzárendelése`} disabled={saving}
-                        onClick={() => openMapping(mapping.signal_id)}>
-                        {mapping.endpoint ? 'Módosítás' : 'Hozzárendelés'}
-                      </Button>
-                      {mapping.endpoint && <Button type="button" size="sm" variant="destructive" fill="outline" icon="trash-alt"
-                        aria-label={`${mapping.signal_name} hozzárendelés törlése`} disabled={saving}
-                        onClick={() => {
-                          const schema = schemas.find((item) => item.id === selectedSchema);
-                          if (schema) {
-                            setDeleteMapping({ schema, mapping });
-                          }
-                        }} />}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-          {!schemas.length && <p className={styles.muted}>Hozz létre sémát, majd rendelj hozzá katalógusjeleket.</p>}
+                  onClick={() => setDeleteSchema(schema)}>Törlés</Button>
+              </>
+            )}
+          </div>
+          {!schemas.length && <p className={styles.muted}>Hozz létre sémát a hozzárendelésekhez.</p>}
+          {schema && !mappingsReady && !currentMappingState?.failed &&
+            <p className={styles.muted} role="status"><Spinner /> Adatpontok betöltése…</p>}
         </section>
       </div>
 

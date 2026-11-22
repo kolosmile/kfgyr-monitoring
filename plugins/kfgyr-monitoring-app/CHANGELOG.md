@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.29 — 2026-11-22
+
+- Show signals and schema data points in one table, with inline mapping controls and separate schema settings.
+- Place the dashboard editor link below Home in the signal catalog.
+
 ## 0.4.28 — 2026-11-22
 
 - List only Viewer accounts as KFGyR operators on the access management page.

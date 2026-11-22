@@ -14,7 +14,7 @@ export function SchemasPage({ onBack }: { onBack?: () => void } = {}) {
     <PluginPage pageNav={menu.schemas} renderTitle={() => null}>
       <div className={styles.page}>
         <MenuPageTitle item={menu.schemas} />
-        <div className={styles.cardNavigation}>
+        <div className={styles.schemaNavigation}>
           <HomeLink />
           {onBack ? (
             <Button type="button" variant="secondary" icon="arrow-left" onClick={onBack}>
