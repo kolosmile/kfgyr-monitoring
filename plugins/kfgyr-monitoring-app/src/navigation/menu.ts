@@ -10,6 +10,7 @@ export const menu = {
   agents: { text: 'Agentek és gépek', icon: 'plug', path: app + '/agents' },
   dashboard: { text: 'Dashboard szerkesztő', icon: 'sliders-v-alt', path: app + '/profiles' },
   schemas: { text: 'Jelkatalógus', icon: 'sitemap', path: app + '/schemas' },
+  access: { text: 'Jogosultságkezelés', icon: 'users-alt', path: app + '/access-management' },
   guide: { text: 'Használati útmutató', icon: 'book-open', path: app + '/guide' },
 } satisfies Record<string, MenuItem>;
 

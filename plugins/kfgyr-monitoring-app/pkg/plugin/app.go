@@ -42,6 +42,7 @@ type App struct {
 	token       string
 	client      *http.Client
 	configError string
+	operators   operatorAccess
 }
 
 func New(_ context.Context, settings backend.AppInstanceSettings) (instancemgmt.Instance, error) {
@@ -59,6 +60,7 @@ func New(_ context.Context, settings backend.AppInstanceSettings) (instancemgmt.
 		config.AdminOrgID = 1
 	}
 	a.orgID = config.AdminOrgID
+	a.operators = newOperatorAccess()
 	a.token = settings.DecryptedSecureJSONData["runnerToken"]
 	u, err := url.Parse(config.RunnerURL)
 	if err != nil || u.Hostname() == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil || u.RawQuery != "" || u.Fragment != "" || len(a.token) < 32 {
@@ -69,6 +71,7 @@ func New(_ context.Context, settings backend.AppInstanceSettings) (instancemgmt.
 	return a, nil
 }
 func (a *App) Dispose() {
+	a.operators.close()
 	if a.client != nil {
 		a.client.CloseIdleConnections()
 	}
@@ -108,13 +111,25 @@ func allowed(path, method string) bool {
 func (a *App) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
 	user := req.PluginContext.User
 	path := strings.Trim(req.Path, "/")
-	viewerAvailability := availabilityPath.MatchString(path) && req.Method == "GET" &&
-		user != nil && (user.Role == "Viewer" || user.Role == "Editor" || user.Role == "Admin")
-	if user == nil || (!viewerAvailability && user.Role != "Admin") || req.PluginContext.OrgID != a.orgID {
-		return message(sender, 403, "Ehhez a művelethez a monitoring szervezet Admin jogosultsága szükséges.")
+	if user == nil || req.PluginContext.OrgID != a.orgID {
+		return message(sender, 403, "Ehhez a művelethez a monitoring szervezethez kell tartoznod.")
+	}
+	if path == "access" && req.Method == "GET" {
+		return a.sendAccess(ctx, sender, user)
 	}
 	if len(req.Body) > maxBody {
 		return message(sender, 413, "Túl nagy kérés.")
+	}
+	viewerAvailability := availabilityPath.MatchString(path) && req.Method == "GET" &&
+		(user.Role == "Viewer" || user.Role == "Editor" || user.Role == "Admin")
+	if !viewerAvailability && user.Role != "Admin" {
+		member, err := a.operators.isMember(ctx, a.orgID, user)
+		if err != nil {
+			return message(sender, 503, "A kezelői jogosultság nem ellenőrizhető.")
+		}
+		if !member {
+			return message(sender, 403, "Ehhez a művelethez KFGyR kezelői jogosultság szükséges.")
+		}
 	}
 	if !allowed(path, req.Method) {
 		return message(sender, 404, "Ismeretlen végpont vagy nem támogatott művelet.")

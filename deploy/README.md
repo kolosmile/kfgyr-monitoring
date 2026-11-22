@@ -11,6 +11,22 @@ Külön gépeken a Grafana hoston hozd létre a Grafana Compose által külsők�
 
 ## Provisioning és kiadás
 
+### KFGyR kezelők
+
+A Grafana regisztráció nyitott. Az új fiókok Viewer szerepet kapnak, így elérik a Monitoringot és az Adatexportot. A normál Grafana Admin fiók a KFGyR **Jogosultságkezelés** oldalán vehet fel és távolíthat el kezelőket. A kezelők Grafana szerepe Viewer marad; a KFGyR saját beállításait használhatják, a Grafana dashboardjait nem szerkeszthetik.
+
+Az első Grafana indítás után futtasd a management telepítőt a repó gyökeréből:
+
+```sh
+python deploy/install-management.py --url http://127.0.0.1:3000
+```
+
+A telepítő a meglévő Grafana adminjelszót interaktívan kéri be. Az indítási környezetben a `KFGYR_OPERATOR_TEAM_NAME` és a `KFGYR_ADMIN_ORG_ID` értéke egyezzen a Grafana Compose beállításával. Az alapértelmezett csapat neve **KFGyR kezelők**. A plugin az ugyanabban a konténerben lévő Grafana SQLite adatbázisból, olvasási módban ellenőrzi a csapattagságot. Más SQLite fájl használatakor a `KFGYR_GRAFANA_DB_PATH` adja meg az útvonalat.
+
+Az éles szerveren megmaradt régi **KFGyR Demo** mappát a telepítő `--remove-demo` kapcsolója mentés után távolítja el. A mentés az `artifacts` mappába kerül, hacsak a `--backup-dir` nem ad meg más helyet.
+
+### Grafana és relay kiadások
+
 - A `monitoring-assets` konténer az `install-monitoring-assets.py` szkripttel kiválasztja a GitHub legfrissebb pluginkiadását, ellenőrzi a ZIP SHA-256 összegét, és stabil útvonalra telepíti a csomagot. Új verzióhoz telepítsd újra a Grafana stacket. Helyben futtasd a `docker compose -f compose.grafana.yaml up -d --force-recreate` parancsot, így a telepítő újra lefut, és a Grafana az új csomagot tölti be. Visszaállításhoz a `KFGYR_PLUGIN_RELEASE` változóban adj meg egy konkrét `plugin-vX.Y.Z` taget.
 - Az app, a `timescaledb` UID-jú olvasási adatforrás és a kezelt **KFGyR** mappa a Grafana Compose-ból jön. A dashboardok forrása a `dashboards/managed` mappa. Újragenerálás a repó gyökeréből: `python dashboards/build-managed-dashboards.py`. A gyári dashboardok mentése a UI-ban tiltott. Saját nézethez használj külön dashboardot.
 - A Kezdőlap a Grafana szerver alapértelmezett Home dashboardja. Meglévő szervezeti, csapat- vagy személyes Home választás elsőbbséget élvezhet.

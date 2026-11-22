@@ -6,6 +6,7 @@ import { Badge, Combobox, LinkButton, useStyles2 } from '@grafana/ui';
 import { lastValueFrom } from 'rxjs';
 import { HomeLink } from '../components/HomeLink';
 import { menu } from './menu';
+import { useAccess } from '../access';
 
 type Row = {
   machine: string;
@@ -51,6 +52,7 @@ const getStyles = (theme: GrafanaTheme2) => ({
 
 export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
   const styles = useStyles2(getStyles);
+  const { access } = useAccess();
   const [availability, setAvailability] = useState<'checking' | 'online' | 'offline' | 'unknown'>('checking');
   const params = new URLSearchParams(useSyncExternalStore(subscribeToLocation, getLocationSearch));
   // Grafana can update its template variables after the URL changes.
@@ -114,7 +116,7 @@ export function MonitoringMenu({ data, replaceVariables }: PanelProps) {
       <div className={styles.controls}>
         <div className={styles.homeActions}>
           <HomeLink />
-          {(currentDashboard || canCreateDashboard) && (
+          {access?.manage_plugin && (currentDashboard || canCreateDashboard) && (
             <LinkButton href={dashboardEditorUrl + (currentDashboard ? `&dashboard=${encodeURIComponent(currentDashboard.dashboard)}` : '&create=1')}
               icon={currentDashboard ? 'pen' : 'plus'} variant="secondary">
               {currentDashboard ? 'Dashboard szerkesztése' : 'Dashboard hozzáadása'}

@@ -12,31 +12,31 @@
       "name": "Agentek és gépek",
       "icon": "plug",
       "path": "/a/kfgyr-monitoring-app/agents",
-      "addToNav": true,
-      "defaultNav": true,
-      "role": "Admin"
+      "addToNav": false,
+      "role": "Viewer"
     },
     {
       "type": "page",
       "name": "Dashboard szerkesztő",
       "icon": "sliders-v-alt",
       "path": "/a/kfgyr-monitoring-app/profiles",
-      "addToNav": true,
-      "role": "Admin"
+      "addToNav": false,
+      "role": "Viewer"
     },
     {
       "type": "page",
       "name": "Jelkatalógus",
       "icon": "sitemap",
       "path": "/a/kfgyr-monitoring-app/schemas",
-      "addToNav": true,
-      "role": "Admin"
+      "addToNav": false,
+      "role": "Viewer"
     },
     {
       "type": "page",
       "name": "Adatexport",
       "icon": "download-alt",
       "path": "/a/kfgyr-monitoring-app/export",
+      "defaultNav": true,
       "addToNav": true,
       "role": "Viewer"
     },
@@ -45,8 +45,16 @@
       "name": "Használati útmutató",
       "icon": "book-open",
       "path": "/a/kfgyr-monitoring-app/guide",
-      "addToNav": true,
+      "addToNav": false,
       "role": "Viewer"
+    },
+    {
+      "type": "page",
+      "name": "Jogosultságkezelés",
+      "icon": "users-alt",
+      "path": "/a/kfgyr-monitoring-app/access-management",
+      "addToNav": false,
+      "role": "Admin"
     }
   ],
   "info": {
@@ -69,8 +77,8 @@
         "url": "https://github.com/kolosmile/kfgyr-monitoring"
       }
     ],
-    "version": "0.4.26",
-    "updated": "2026-11-20"
+    "version": "0.4.27",
+    "updated": "2026-11-22"
   },
   "dependencies": {
     "grafanaDependency": ">=13.0.2",

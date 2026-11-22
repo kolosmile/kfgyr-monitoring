@@ -4,12 +4,7 @@ import { GrafanaTheme2 } from '@grafana/data';
 import { config } from '@grafana/runtime';
 import { Icon, useStyles2 } from '@grafana/ui';
 import { menu } from './menu';
-
-const groups = [
-  { title: 'Eszközök', accent: 'tools', items: [menu.monitoring, menu.export] },
-  { title: 'Beállítások', accent: 'settings', items: [menu.agents, menu.dashboard, menu.schemas], adminOnly: true },
-  { title: 'Dokumentáció', accent: 'docs', items: [menu.guide] },
-] as const;
+import { useAccess } from '../access';
 
 const getStyles = (theme: GrafanaTheme2) => ({
   container: css({ height: '100%', overflow: 'auto' }),
@@ -78,13 +73,19 @@ const getStyles = (theme: GrafanaTheme2) => ({
 
 export function NavigationPanel() {
   const styles = useStyles2(getStyles);
-  const isAdmin = config.bootData.user.isSignedIn && config.bootData.user.orgRole === 'Admin';
+  const { access } = useAccess();
+  const groups = [
+    { title: 'Eszközök', accent: 'tools', items: [menu.monitoring, menu.export] },
+    { title: 'Beállítások', accent: 'settings', items: access?.manage_plugin
+      ? [menu.agents, menu.dashboard, menu.schemas, ...(access.manage_access ? [menu.access] : [])] : [] },
+    { title: 'Dokumentáció', accent: 'docs', items: access?.manage_plugin ? [menu.guide] : [] },
+  ] as const;
 
   return (
     <nav aria-label="KFGyR főmenü" className={styles.container}>
       <div className={styles.list}>
         <h1 className={styles.title}>Gyártórendszer Monitoring</h1>
-        {groups.filter((group) => !('adminOnly' in group) || isAdmin).map(({ title, accent, items }) => (
+        {groups.filter(({ items }) => items.length > 0).map(({ title, accent, items }) => (
           <section key={accent} aria-labelledby={`kfgyr-menu-${accent}`} className={styles[accent]}>
             <h2 id={`kfgyr-menu-${accent}`} className={styles.heading}>{title}</h2>
             <div className={styles.cards}>

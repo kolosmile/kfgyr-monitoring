@@ -27,11 +27,17 @@ services:
       GF_AUTH_ANONYMOUS_ORG_NAME: ${KFGYR_VIEWER_ORG_NAME:-Main Org.}
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/kfgyr-dashboards/home.json
       GF_USERS_DEFAULT_THEME: dark
+      GF_USERS_ALLOW_SIGN_UP: "true"
+      GF_USERS_ALLOW_ORG_CREATE: "false"
+      GF_USERS_AUTO_ASSIGN_ORG: "true"
+      GF_USERS_AUTO_ASSIGN_ORG_ID: ${KFGYR_ADMIN_ORG_ID:-1}
+      GF_USERS_AUTO_ASSIGN_ORG_ROLE: Viewer
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: kfgyr-monitoring-app,kfgyr-navigation-panel
       GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:?}
       KFGYR_RUNNER_API_TOKEN: ${KFGYR_RUNNER_API_TOKEN:?}
       KFGYR_ADMIN_ORG_ID: ${KFGYR_ADMIN_ORG_ID:-1}
+      KFGYR_OPERATOR_TEAM_NAME: ${KFGYR_OPERATOR_TEAM_NAME:-KFGyR kezelők}
     volumes:
       - grafana-data:/var/lib/grafana
       - ./runtime/grafana-plugin/kfgyr-monitoring-app:/var/lib/grafana/plugins/kfgyr-monitoring-app:ro

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.27 — 2026-11-22
+
+- Allow Grafana Viewer accounts in the configured operator team to manage KFGyR settings.
+- Add an administrator page for managing membership of the operator team.
+- Keep Monitoring and Data Export accessible to viewers.
+
 ## 0.4.26 — 2026-11-20
 
 - Update the Monitoring dashboard action immediately when switching machines.
