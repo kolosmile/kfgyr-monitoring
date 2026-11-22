@@ -13,7 +13,7 @@ Külön gépeken a Grafana hoston hozd létre a Grafana Compose által külsők�
 
 ### KFGyR kezelők
 
-A Grafana regisztráció nyitott. Az új fiókok Viewer szerepet kapnak, így elérik a Monitoringot és az Adatexportot. A normál Grafana Admin fiók a KFGyR **Jogosultságkezelés** oldalán vehet fel és távolíthat el kezelőket. A kezelők Grafana szerepe Viewer marad; a KFGyR saját beállításait használhatják, a Grafana dashboardjait nem szerkeszthetik.
+A Grafana regisztráció nyitott. Az új fiókok Viewer szerepet kapnak, így elérik a Monitoringot és az Adatexportot. A szervezeti Admin fiók a KFGyR **Jogosultságkezelés** oldalán vehet fel és távolíthat el kezelőket. A kezelők Grafana szerepe Viewer marad. A KFGyR saját beállításait használhatják, a Grafana dashboardjait nem szerkeszthetik.
 
 Az első Grafana indítás után futtasd a management telepítőt a repó gyökeréből:
 

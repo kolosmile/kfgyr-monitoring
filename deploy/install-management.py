@@ -71,6 +71,8 @@ def remove_demo_folder(request, backup_root):
             raise RuntimeError(f"Unexpected dashboard ownership: {uid}")
         (backup / f"{uid}.json").write_text(json.dumps(dashboard, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Demo folder backup: {backup}", flush=True)
+    for item in contents:
+        request(f'dashboards/uid/{item["uid"]}', "DELETE")
     request(folder_path, "DELETE")
     if request(folder_path, missing=True) is not None:
         raise RuntimeError("The Demo folder is still present")
