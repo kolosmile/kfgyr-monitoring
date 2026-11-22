@@ -12,7 +12,7 @@ A repository tartalmazza a Grafana app plugint (a két beágyazott panel pluginn
 
 - **Grafana app és panel pluginok:** a `kfgyr-monitoring-app` csomag adja az alkalmazásoldalakat (**Agentek és gépek**, **Dashboard szerkesztő**, **Jelkatalógus**, **Adatexport**, **Használati útmutató**, **Jogosultságkezelés**) és két beágyazott panel plugint: a szerepkör-tudatos **KFGyR navigáció** (`kfgyr-navigation-panel`) és a **KFGyR gépáttekintő** (`kfgyr-fleet-panel`) panelt.
 - **Háromszintű jogosultságmodell:**
-  - *Viewer / névtelen látogató:* elérheti a **Kezdőlap**, **Géppark** és **KFGyR · Monitoring** dashboardokat, valamint az **Adatexport** oldalt.
+  - *Viewer / névtelen látogató:* elérheti a **Kezdőlap**, **Géppark** és **KFGyR · Monitoring** dashboardokat, az **Adatexport** oldalt, valamint a szerepköréhez igazodó **Használati útmutató** oldalt.
   - *KFGyR kezelők:* a konfigurált Grafana csapat (alapértelmezetten `KFGyR kezelők`) aktív `Viewer` tagjai. Grafana szerepük `Viewer` marad (nem szerkeszthetnek natív Grafana dashboardokat), ugyanakkor kezelhetik az agenteket, a jelkatalógust, a sémákat és a gépek monitoring dashboardjait. A Go backend a csapattagságot olvasási módban ellenőrzi a Grafana SQLite adatbázisából.
   - *Grafana Admin:* teljes jogosultság, beleértve a **Jogosultságkezelés** oldalt és a plugin kapcsolatbeállításait.
 - **Tartós konfiguráció és adatbázis-sémák:** verziózott `setup.yaml` külön kötetben, a Compose-ba ágyazott tartalom helyett. A közös magyar jelkatalógust, a gép-/gépcsalád-sémákat, a megjelenítési egységeket és a gépenkénti több dashboardot a PostgreSQL `kfgyr.*` táblái tárolják.
@@ -28,6 +28,7 @@ A kiadott telepítés két önálló Compose projektből áll. A relay projekt (
 ## Dokumentáció
 
 - [Jelkatalógus, sémák, megjelenítési egységek és kezelt dashboardok](docs/signal-catalog-and-dashboards.md)
+- [A Használati útmutató tervezési elvei és forrásai](docs/user-guide-design.md)
 - [Gépadatok CSV-exportja a Grafana appból](docs/data-export.md)
 - [A dashboardok, profilok és telepítés architekturális döntései](docs/monitoring-decisions.md)
 - [A Grafana app plugin felépítése és telepítése](docs/grafana-app.md)

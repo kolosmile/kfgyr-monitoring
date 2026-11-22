@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.38 — 2026-11-22
+
+- Add a role-aware, wiki-style User Guide with annotated UI visuals and search.
+- Make the User Guide accessible to Viewer and anonymous users with role-filtered content.
+
 ## 0.4.37 — 2026-11-22
 
 - Add the Fleet dashboard and a compact machine overview panel using default dashboard order.

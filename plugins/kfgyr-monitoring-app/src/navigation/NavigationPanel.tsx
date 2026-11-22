@@ -78,7 +78,7 @@ export function NavigationPanel() {
     { title: 'Eszközök', accent: 'tools', items: [menu.monitoring, menu.fleet, menu.export] },
     { title: 'Beállítások', accent: 'settings', items: access?.manage_plugin
       ? [menu.agents, menu.dashboard, menu.schemas, ...(access.manage_access ? [menu.access] : [])] : [] },
-    { title: 'Dokumentáció', accent: 'docs', items: access?.manage_plugin ? [menu.guide] : [] },
+    { title: 'Dokumentáció', accent: 'docs', items: [menu.guide] },
   ] as const;
 
   return (

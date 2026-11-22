@@ -25,7 +25,7 @@ A generátor működő keretet készít. Az MTConnect-kezelést és a relay-konf
 
 ## Saját működés
 
-1. A Go backend minden kérésnél ellenőrzi a Grafanától kapott szervezetet (`KFGYR_ADMIN_ORG_ID`) és a jogosultságot. A konfigurációs végpontokat az `Admin` szerep mellett a konfigurált kezelői csapat (`KFGYR_OPERATOR_TEAM_NAME`, alapértelmezetten `KFGyR kezelők`) aktív `Viewer` tagjai is hívhatják; a csapattagságot a backend olvasási módban ellenőrzi a Grafana SQLite adatbázisából (`access.go`). A gépek élő elérhetőségét (`availability/{machine}`) a szervezet `Viewer` (és névtelen) szerepköre is lekérdezheti, az **Adatexport** oldal pedig a Grafana olvasási adatforrásán fut. A **Jogosultságkezelés** kizárólag `Admin` joggal érhető el.
+1. A Go backend minden kérésnél ellenőrzi a Grafanától kapott szervezetet (`KFGYR_ADMIN_ORG_ID`) és a jogosultságot. A konfigurációs végpontokat az `Admin` szerep mellett a konfigurált kezelői csapat (`KFGYR_OPERATOR_TEAM_NAME`, alapértelmezetten `KFGyR kezelők`) aktív `Viewer` tagjai is hívhatják; a csapattagságot a backend olvasási módban ellenőrzi a Grafana SQLite adatbázisából (`access.go`). A gépek élő elérhetőségét (`availability/{machine}`) a szervezet `Viewer` (és névtelen) szerepköre is lekérdezheti, a szerepkör-tudatos **Használati útmutató** minden felhasználónak elérhető, az **Adatexport** oldal pedig a Grafana olvasási adatforrásán fut. A **Jogosultságkezelés** kizárólag `Admin` joggal érhető el.
 2. A frontend a Grafana resource API-t hívja, a Go backend pedig a runner hitelesített HTTP API-ját.
 3. A runner validálja és verziózza az agentkonfigurációt, lekérdezi az MTConnect eszközleírásokat, felügyeli a relay folyamatát, és kezeli a PostgreSQL `kfgyr.*` konfigurációs tábláit (jelkatalógus, sémák, megjelenítési egységek, gépenkénti dashboardok).
 4. A runner saját LAN-ján aszinkron, megszakítható keresés indítható, a találatokból agent szerkeszthető.
@@ -79,7 +79,7 @@ A plugin hat alkalmazásoldalt ad:
 - **Dashboard szerkesztő** (`/a/kfgyr-monitoring-app/profiles`): gépenkénti több monitoring dashboard, panelkategóriák, állapotidősorok és másolás kezelése.
 - **Jelkatalógus** (`/a/kfgyr-monitoring-app/schemas`): közös magyar jelkatalógus, séma-hozzárendelések és megjelenítési mértékegységek karbantartása.
 - **Adatexport** (`/a/kfgyr-monitoring-app/export`): közvetlen CSV-letöltés a `timescaledb` adatforrásról ([részletek](data-export.md)).
-- **Használati útmutató** (`/a/kfgyr-monitoring-app/guide`): beépített dokumentációs oldal a kezelőknek.
+- **Használati útmutató** (`/a/kfgyr-monitoring-app/guide`): beépített, wiki-szerű felhasználói dokumentáció jelölt UI-illusztrációkkal; minden felhasználó számára elérhető, és a fejezeteket dinamikusan a saját szerepköréhez igazítja (tervezési elvek: [Használati útmutató tervezése](user-guide-design.md)).
 - **Jogosultságkezelés** (`/a/kfgyr-monitoring-app/access-management`): a `KFGyR kezelők` csapat tagjainak kezelése, kizárólag Grafana **Admin** szerepkörrel.
 
 A három gyári dashboard (**Kezdőlap**, **Géppark**, **KFGyR · Monitoring**) a repó `dashboards/managed/` mappájából kerül provisionálásra, a beágyazott `kfgyr-navigation-panel` és `kfgyr-fleet-panel` panelekkel. A jelkatalógus, a sémák, a megjelenítési egységek és a kezelt dashboardok felépítését a [jelkatalógus és dashboardok dokumentuma](signal-catalog-and-dashboards.md), az architekturális indokokat a [döntési dokumentum](monitoring-decisions.md) írja le.

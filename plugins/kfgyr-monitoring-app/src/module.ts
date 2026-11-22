@@ -31,6 +31,9 @@ function AppRoot() {
   if (!access) {
     return createElement(PluginPage, { children: createElement(Spinner) });
   }
+  if (route === 'guide') {
+    return createElement(GuidePage, { access });
+  }
   if (!access.manage_plugin || (route === 'access-management' && !access.manage_access)) {
     return createElement(PluginPage, { children: [
       createElement(Alert, { key: 'status', severity: failed ? 'error' : 'warning', title: failed
