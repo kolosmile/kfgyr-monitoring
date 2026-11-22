@@ -199,12 +199,20 @@ export const getStyles = (t: GrafanaTheme2) => ({
     display: 'flex', flexWrap: 'wrap', gap: 8,
     '& > button': { flex: '1 0 auto', justifyContent: 'center' },
   }),
+  schemaScroll: css({
+    '@media (min-width: 951px)': {
+      maxHeight: 'max(320px, calc(100dvh - 240px))',
+      overflowY: 'auto',
+      '& thead': { position: 'sticky', top: 0, zIndex: 1, background: t.colors.background.primary },
+    },
+  }),
   schemaTable: css({
-    width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse',
+    width: '100%', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0,
     '& th, & td': { textAlign: 'left', verticalAlign: 'middle', padding: 0 },
     '& thead th': { fontSize: 16, fontWeight: 600, paddingBottom: 10 },
     '& tbody th': { fontWeight: 'normal' },
   }),
+  schemaSearch: css({ marginTop: 8, fontWeight: 'normal' }),
   schemaConnectorColumn: css({ width: 32, '@media (max-width: 520px)': { width: 20 } }),
   schemaConnector: css({
     position: 'relative',

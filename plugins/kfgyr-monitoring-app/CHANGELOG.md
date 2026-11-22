@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.31 — 2026-11-22
+
+- Add separate searches for signals and data points in the catalog.
+- Keep column headers and add controls visible while scrolling the desktop catalog.
+
 ## 0.4.30 — 2026-11-22
 
 - Truncate long signal labels and data point paths to fit their catalog cells.
