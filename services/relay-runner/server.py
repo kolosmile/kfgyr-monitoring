@@ -22,7 +22,7 @@ from discovery import Discovery, Policy, probe
 import monitoring
 from runner import Runner, healthcheck, read_json
 
-VERSION = "0.4.9"
+VERSION = "0.4.10"
 logger = logging.getLogger("kfgyr.runner")
 
 
@@ -139,6 +139,14 @@ def create_app(directory=None, token=None, policy=None, supervise=True):
     @app.get("/v1/signals")
     def signals():
         return monitoring.list_signals()
+
+    @app.get("/v1/display-units")
+    def display_units():
+        return monitoring.list_display_units()
+
+    @app.put("/v1/display-units")
+    def update_display_units(body: monitoring.DisplayUnitsUpdate):
+        return monitoring.save_display_units(body)
 
     @app.post("/v1/signals")
     def create_signal(body: monitoring.SignalCreate, user=Depends(actor)):

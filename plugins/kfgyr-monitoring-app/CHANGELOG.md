@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.32 — 2026-11-22
+
+- Edit MTConnect display labels in the catalog and use them in Monitoring.
+
 ## 0.4.31 — 2026-11-22
 
 - Add separate searches for signals and data points in the catalog.

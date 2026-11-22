@@ -3,15 +3,36 @@ import json
 from pathlib import Path
 import re
 import uuid
-from typing import Literal
+from typing import Annotated, Literal
 
 import psycopg
 from psycopg.types.json import Jsonb
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from configuration import Problem
 
 DEFAULTS = json.loads(Path(__file__).with_name("profiles.json").read_text(encoding="utf-8"))
+# MTConnect 2.5 Device Information Model, section 6.1.1, UnitEnum.
+MTCONNECT_UNITS = frozenset("""
+AMPERE CELSIUS COULOMB COUNT COUNT/SECOND CUBIC_METER CUBIC_MILLIMETER
+CUBIC_MILLIMETER/SECOND CUBIC_MILLIMETER/SECOND2 DECIBEL DEGREE DEGREE/SECOND
+DEGREE/SECOND2 DEGREE_3D GRAM GRAM/CUBIC_METER HERTZ JOULE KILOGRAM LITER
+LITER/SECOND METER/SECOND2 MICRO_RADIAN MILLIGRAM MILLIGRAM/CUBIC_MILLIMETER
+MILLILITER MILLIMETER MILLIMETER/REVOLUTION MILLIMETER/SECOND MILLIMETER/SECOND2
+MILLIMETER_3D NEWTON NEWTON_METER OHM OHM_METER PASCAL PASCAL/SECOND PASCAL_SECOND
+PERCENT PH REVOLUTION/MINUTE REVOLUTION/SECOND REVOLUTION/SECOND2 SECOND
+SIEMENS/METER SQUARE_MILLIMETER UNIT_VECTOR_3D VOLT VOLT_AMPERE
+VOLT_AMPERE_REACTIVE WATT WATT_SECOND
+""".split())
+INITIAL_UNIT_LABELS = {
+    "MILLIMETER": "mm",
+    "MILLIMETER/SECOND": "mm/s",
+    "REVOLUTION/MINUTE": "rpm",
+    "DEGREE": "°",
+    "DEGREE/SECOND": "°/s",
+    "CELSIUS": "°C",
+    "PERCENT": "%",
+}
 SIGNAL_ID = re.compile(r"^[a-zA-Z0-9_.:-]{1,128}$")
 ENDPOINT = re.compile(r"^/(?:[^/?#\\]+/)*[^/?#\\]+$")
 MACHINE = """
@@ -107,6 +128,20 @@ class SignalUpdate(BaseModel):
     units: str = Field(default="", max_length=80)
 
 
+class DisplayUnitsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    labels: dict[str, Annotated[str, Field(max_length=40)]] = Field(max_length=len(MTCONNECT_UNITS))
+
+    @field_validator("labels")
+    @classmethod
+    def check_unit_codes(cls, labels):
+        if labels.keys() - MTCONNECT_UNITS:
+            raise ValueError("Ismeretlen MTConnect-mértékegység.")
+        if any("\x00" in label for label in labels.values()):
+            raise ValueError("Érvénytelen megjelenítési mértékegység.")
+        return {code: label.strip() for code, label in labels.items()}
+
+
 class SchemaCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     name: str = Field(min_length=1, max_length=120)
@@ -163,6 +198,17 @@ def migrate():
             )
         """)
         db.execute("""
+            CREATE TABLE IF NOT EXISTS kfgyr.display_units (
+                code text PRIMARY KEY,
+                label text NOT NULL CHECK (length(label) <= 40)
+            )
+        """)
+        with db.cursor() as cursor:
+            cursor.executemany("""
+                INSERT INTO kfgyr.display_units (code, label)
+                VALUES (%s, %s) ON CONFLICT (code) DO NOTHING
+            """, INITIAL_UNIT_LABELS.items())
+        db.execute("""
             CREATE TABLE IF NOT EXISTS kfgyr.machine_schemas (
                 id text PRIMARY KEY,
                 name text NOT NULL UNIQUE CHECK (length(btrim(name)) > 0),
@@ -215,7 +261,27 @@ def migrate():
             db.execute("GRANT USAGE ON SCHEMA kfgyr TO grafana_reader")
             db.execute("GRANT SELECT ON kfgyr.machine_monitoring, kfgyr.machine_dashboards, "
                        "kfgyr.signal_catalog, kfgyr.machine_schemas, kfgyr.schema_mappings, "
-                       "kfgyr.machine_schema_assignments TO grafana_reader")
+                       "kfgyr.machine_schema_assignments, kfgyr.display_units TO grafana_reader")
+
+
+def display_units(db):
+    labels = dict(db.execute("SELECT code, label FROM kfgyr.display_units").fetchall())
+    return {"units": [{"code": code, "label": labels.get(code, "")} for code in sorted(MTCONNECT_UNITS)]}
+
+
+def list_display_units():
+    with psycopg.connect(connect_timeout=5) as db:
+        return display_units(db)
+
+
+def save_display_units(body):
+    with psycopg.connect(connect_timeout=5) as db:
+        with db.cursor() as cursor:
+            cursor.executemany("""
+                INSERT INTO kfgyr.display_units (code, label) VALUES (%s, %s)
+                ON CONFLICT (code) DO UPDATE SET label=EXCLUDED.label
+            """, sorted(body.labels.items()))
+        return display_units(db)
 
 
 def list_signals():

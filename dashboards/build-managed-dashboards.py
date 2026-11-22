@@ -47,19 +47,7 @@ LEGACY_CATALOG = """VALUES
  ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'),
  ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció')
 """
-def unit_label(units):
-    return f"""
-      CASE {units}
-        WHEN 'MILLIMETER' THEN 'mm'
-        WHEN 'MILLIMETER/SECOND' THEN 'mm/s'
-        WHEN 'REVOLUTION/MINUTE' THEN 'rpm'
-        WHEN 'DEGREE' THEN '°'
-        WHEN 'DEGREE/SECOND' THEN '°/s'
-        WHEN 'CELSIUS' THEN '°C'
-        WHEN 'PERCENT' THEN '%'
-        ELSE nullif({units}, '')
-      END
-    """
+MAPPED_UNIT = "coalesce(nullif(n.props->>'units', ''), nullif(s.units, ''))"
 
 
 MAPPED = f"""
@@ -67,7 +55,7 @@ WITH machine AS ({MACHINE}), catalog(profile, slot, label) AS ({LEGACY_CATALOG})
 SELECT m.node_id AS device, n.node_id AS signal, p.position,
  coalesce(nullif(p.name, ''), s.name, n.props->>'path') AS name,
  coalesce(p.view, 'chart') AS view, p.minimum, p.maximum, p.color,
- {unit_label("coalesce(nullif(n.props->>'units', ''), s.units)")} AS units
+ coalesce(nullif(u.label, ''), {MAPPED_UNIT}) AS units
 FROM machine m
 CROSS JOIN LATERAL (
  SELECT item->>'name' AS name, item->>'signal_id' AS signal_id,
@@ -89,6 +77,7 @@ JOIN raw.nodes n ON n.props->>'node_type'='DataItem'
  AND ((p.point IS NOT NULL AND n.node_id::text=p.point) OR
       (p.signal_id IS NOT NULL AND sm.endpoint IS NOT NULL AND
        n.props->>'path'=(rtrim(m.props->>'path', '/') || sm.endpoint)))
+LEFT JOIN kfgyr.display_units u ON u.code={MAPPED_UNIT}
 """
 home = dashboard("kfgyr-home", "KFGyR · Kezdőlap", [
     {**panel(1, "", "kfgyr-navigation-panel", 0, 0, 24, 20), "transparent": True},
@@ -229,7 +218,7 @@ views = [("state", "stat"), ("value", "stat"), ("gauge", "gauge"), ("chart", "ti
 quick_points = panel(6, "Gyors adatpontnézegető", "table", 0, 0, 24, 10, sql=f"""
 WITH machine AS ({MACHINE})
 SELECT coalesce(s.name, '') AS "Jel", n.props->>'path' AS "Adatpont", latest.value #>> '{{}}' AS "Érték",
-       {unit_label("n.props->>'units'")} AS "Egység", latest.time AS "Utolsó minta"
+        coalesce(nullif(u.label, ''), nullif(n.props->>'units', '')) AS "Egység", latest.time AS "Utolsó minta"
 FROM machine m
 JOIN raw.nodes n ON n.props->>'node_type'='DataItem'
  AND n.props->>'agentAlias'=m.props->>'agentAlias'
@@ -237,6 +226,7 @@ JOIN raw.nodes n ON n.props->>'node_type'='DataItem'
 LEFT JOIN kfgyr.schema_mappings sm ON sm.schema_id=m.schema_id
  AND n.props->>'path'=(rtrim(m.props->>'path', '/') || sm.endpoint)
 LEFT JOIN kfgyr.signal_catalog s ON s.id=sm.signal_id
+ LEFT JOIN kfgyr.display_units u ON u.code=n.props->>'units'
 LEFT JOIN LATERAL (
  SELECT h.value, h.time FROM raw.history h
  WHERE h.node_id=m.node_id AND h.dataitem_id=n.node_id AND $__timeFilter(h.time)

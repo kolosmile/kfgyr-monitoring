@@ -79,7 +79,7 @@ func (a *App) Dispose() {
 
 func allowed(path, method string) bool {
 	switch path {
-	case "config":
+	case "config", "display-units":
 		return method == "GET" || method == "PUT"
 	case "machine-monitoring":
 		return method == "PUT"

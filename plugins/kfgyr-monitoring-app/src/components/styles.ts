@@ -185,12 +185,13 @@ export const getStyles = (t: GrafanaTheme2) => ({
     gap: 16,
     alignItems: 'start',
     '@media (max-width: 950px)': { gridTemplateColumns: 'minmax(0, 1fr)' },
-    '@media (max-width: 520px)': { '& > section': { padding: 12 } },
+    '@media (max-width: 520px)': { '& section': { padding: 12 } },
   }),
-  schemaSettings: css({
-    display: 'grid', gap: 10,
+  schemaSidebar: css({
+    display: 'grid', gap: 10, minWidth: 0,
     '@media (max-width: 950px)': { gridRow: 1 },
   }),
+  schemaSettings: css({ display: 'grid', gap: 10 }),
   schemaSettingsHeader: css({
     display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8,
     '& > h3': { margin: 0 },
@@ -247,6 +248,20 @@ export const getStyles = (t: GrafanaTheme2) => ({
   schemaTruncated: css({ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }),
   schemaPath: css({ fontFamily: t.typography.fontFamilyMonospace, fontSize: 12, color: t.colors.text.secondary }),
   schemaActions: css({ display: 'flex', gap: 4, alignItems: 'center' }),
+  displayUnitsButton: css({ minWidth: 0, whiteSpace: 'normal', justifyContent: 'center' }),
+  displayUnitBadgeText: css({
+    display: 'block', maxWidth: 76, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+    '@media (max-width: 520px)': { maxWidth: 47 },
+  }),
+  displayUnitsModal: css({ width: 'min(620px, calc(100vw - 32px))' }),
+  displayUnitsScroll: css({ maxHeight: 'min(55dvh, 460px)', overflow: 'auto' }),
+  displayUnitsTable: css({
+    width: '100%', tableLayout: 'fixed', borderSpacing: 0,
+    '& th, & td': { textAlign: 'left', padding: '6px 8px' },
+    '& thead': { position: 'sticky', top: 0, zIndex: 1, background: t.colors.background.primary },
+    '& tbody th': { fontFamily: t.typography.fontFamilyMonospace, fontWeight: 'normal', overflowWrap: 'anywhere' },
+    '& tbody th, & tbody td': { borderTop: `1px solid ${t.colors.border.weak}` },
+  }),
   schemaModalFields: css({ display: 'grid', gap: 14, minWidth: 'min(520px, calc(100vw - 80px))' }),
   agent: css({
     border: `1px solid ${t.colors.border.weak}`,
