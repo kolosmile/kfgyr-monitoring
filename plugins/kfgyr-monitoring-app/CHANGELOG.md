@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.37 — 2026-11-22
+
+- Add the Fleet dashboard and a compact machine overview panel using default dashboard order.
+
 ## 0.4.36 — 2026-11-22
 
 - Add optional state timelines beneath current state panels.

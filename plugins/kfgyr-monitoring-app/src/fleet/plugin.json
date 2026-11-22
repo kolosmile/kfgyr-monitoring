@@ -1,0 +1,14 @@
+{
+  "type": "panel",
+  "name": "KFGyR gépáttekintő",
+  "id": "kfgyr-fleet-panel",
+  "info": {
+    "description": "Kompakt állapot- és műszeráttekintő gépenként",
+    "author": { "name": "KFGyR" },
+    "version": "0.4.37"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=13.0.2",
+    "plugins": []
+  }
+}

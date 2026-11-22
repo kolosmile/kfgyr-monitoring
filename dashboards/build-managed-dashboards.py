@@ -50,8 +50,10 @@ LEGACY_CATALOG = """VALUES
 MAPPED_UNIT = "coalesce(nullif(n.props->>'units', ''), nullif(s.units, ''))"
 
 
-MAPPED = f"""
-WITH machine AS ({MACHINE}), catalog(profile, slot, label) AS ({LEGACY_CATALOG})
+def mapped_signals(machine_query, *, include_unresolved=False):
+    join = "LEFT JOIN" if include_unresolved else "JOIN"
+    return f"""
+WITH machine AS ({machine_query}), catalog(profile, slot, label) AS ({LEGACY_CATALOG})
 SELECT m.node_id AS device, n.node_id AS signal, p.position,
  coalesce(nullif(p.name, ''), s.name, n.props->>'path') AS name,
  coalesce(p.view, 'chart') AS view, p.minimum, p.maximum, p.color,
@@ -73,13 +75,16 @@ CROSS JOIN LATERAL (
 ) p
 LEFT JOIN kfgyr.signal_catalog s ON s.id=p.signal_id
 LEFT JOIN kfgyr.schema_mappings sm ON sm.schema_id=m.schema_id AND sm.signal_id=p.signal_id
-JOIN raw.nodes n ON n.props->>'node_type'='DataItem'
+{join} raw.nodes n ON n.props->>'node_type'='DataItem'
  AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'
  AND ((p.point IS NOT NULL AND n.node_id::text=p.point) OR
       (p.signal_id IS NOT NULL AND sm.endpoint IS NOT NULL AND
        n.props->>'path'=(rtrim(m.props->>'path', '/') || sm.endpoint)))
 LEFT JOIN kfgyr.display_units u ON u.code={MAPPED_UNIT}
 """
+
+
+MAPPED = mapped_signals(MACHINE)
 home = dashboard("kfgyr-home", "KFGyR · Kezdőlap", [
     {**panel(1, "", "kfgyr-navigation-panel", 0, 0, 24, 20), "transparent": True},
 ])
@@ -363,7 +368,59 @@ ORDER BY m.is_default DESC, lower(m.name), m.id
     },
 }
 
+FLEET_MACHINE = """
+SELECT d.node_id, d.props, m.id AS dashboard_id, m.profile, m.signals, a.schema_id
+FROM raw.nodes d LEFT JOIN kfgyr.machine_dashboards m
+  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId' AND m.is_default
+LEFT JOIN kfgyr.machine_schema_assignments a
+  ON a.agent_alias=d.props->>'agentAlias' AND a.device_id=d.props->>'deviceId'
+WHERE d.props->>'node_type'='Device' AND d.node_id::text=${fleet_machine:sqlstring}
+"""
+FLEET_NAME = "coalesce(nullif(props->>'deviceAlias', ''), props->>'deviceId', node_id::text)"
+fleet_card = panel(1, "", "kfgyr-fleet-panel", 0, 0, 6, 6, sql=f"""
+WITH fleet_machine AS ({FLEET_MACHINE}),
+mapped AS ({mapped_signals("SELECT * FROM fleet_machine", include_unresolved=True)}),
+ranked AS (
+ SELECT *, row_number() OVER (PARTITION BY view ORDER BY position) AS panel_rank
+ FROM mapped WHERE view IN ('state', 'gauge')
+), readings AS (
+ SELECT m.*, h.value #>> '{{}}' AS state_value, {NUMBER} AS gauge_value
+ FROM ranked m {LATEST}
+ WHERE (m.view='state' AND m.panel_rank <= 6) OR (m.view='gauge' AND m.panel_rank <= 3)
+)
+SELECT node_id::text AS machine_id, dashboard_id::text, props->>'agentAlias' AS agent,
+       {FLEET_NAME} AS machine_name,
+       coalesce(jsonb_agg(jsonb_build_object('name', r.name, 'value', r.state_value) ORDER BY r.position)
+                FILTER (WHERE r.view='state'), '[]'::jsonb)::text AS states,
+       coalesce(jsonb_agg(jsonb_build_object('name', r.name, 'value', r.gauge_value, 'min', r.minimum,
+                                            'max', r.maximum, 'unit', r.units) ORDER BY r.position)
+                FILTER (WHERE r.view='gauge'), '[]'::jsonb)::text AS gauges
+FROM fleet_machine LEFT JOIN readings r ON r.device=fleet_machine.node_id
+GROUP BY node_id, dashboard_id, props
+""")
+fleet_dashboard = {
+    "apiVersion": "dashboard.grafana.app/v2",
+    "kind": "Dashboard",
+    "metadata": {"name": "kfgyr-fleet"},
+    "spec": {
+        "title": "Géppark", "editable": False, "tags": ["KFGyR"],
+        "annotations": [], "cursorSync": "Off", "links": [],
+        "timeSettings": {**monitoring["spec"]["timeSettings"], "hideTimepicker": True},
+        "elements": {"panel-1": panel_resource(fleet_card)},
+        "layout": resource("AutoGridLayout", maxColumnCount=5, columnWidthMode="custom", columnWidth=246,
+                           rowHeightMode="custom", rowHeight=224, fillScreen=False, items=[
+                               resource("AutoGridLayoutItem", element={"kind": "ElementReference", "name": "panel-1"},
+                                        repeat={"mode": "variable", "value": "fleet_machine"}),
+                           ]),
+        "variables": [query_variable("fleet_machine", f"""
+SELECT node_id::text AS __value, concat_ws(' / ', props->>'agentAlias', {FLEET_NAME}, node_id::text) AS __text
+FROM raw.nodes WHERE props->>'node_type'='Device'
+ORDER BY lower(props->>'agentAlias'), props->>'agentAlias', lower({FLEET_NAME}), node_id
+""", repeat=True)],
+    },
+}
+
 if __name__ == "__main__":
     OUTPUT.mkdir(exist_ok=True)
-    for filename, model in [("home.json", home), ("machine-monitoring.json", monitoring)]:
+    for filename, model in [("home.json", home), ("machine-monitoring.json", monitoring), ("fleet.json", fleet_dashboard)]:
         (OUTPUT / filename).write_text(json.dumps(model, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

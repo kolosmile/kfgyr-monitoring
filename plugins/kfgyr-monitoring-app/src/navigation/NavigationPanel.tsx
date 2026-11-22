@@ -75,7 +75,7 @@ export function NavigationPanel() {
   const styles = useStyles2(getStyles);
   const { access } = useAccess();
   const groups = [
-    { title: 'Eszközök', accent: 'tools', items: [menu.monitoring, menu.export] },
+    { title: 'Eszközök', accent: 'tools', items: [menu.monitoring, menu.fleet, menu.export] },
     { title: 'Beállítások', accent: 'settings', items: access?.manage_plugin
       ? [menu.agents, menu.dashboard, menu.schemas, ...(access.manage_access ? [menu.access] : [])] : [] },
     { title: 'Dokumentáció', accent: 'docs', items: access?.manage_plugin ? [menu.guide] : [] },

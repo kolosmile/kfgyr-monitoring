@@ -17,6 +17,7 @@ REPOSITORY = "kolosmile/kfgyr-monitoring"
 RELEASES = f"https://api.github.com/repos/{REPOSITORY}/releases"
 RAW = f"https://raw.githubusercontent.com/{REPOSITORY}"
 PLUGIN = "kfgyr-monitoring-app"
+FLEET_VERSION = (0, 4, 37)
 DASHBOARDS = {
     "home.json": ("55d75adada483a4a1ac53f63741960be64756a11/dashboards/managed/home.json", "kfgyr-home"),
     "mazak-digital-twin.json": (
@@ -39,9 +40,20 @@ def plugin_version(path):
     app = json.loads(manifest.read_text(encoding="utf-8"))
     navigation = json.loads(panel.read_text(encoding="utf-8"))
     version = app["info"]["version"]
+    if version_tuple(version) >= FLEET_VERSION:
+        fleet = path / "fleet" / "plugin.json"
+        if not fleet.is_file() or not (path / "fleet" / "module.js").is_file():
+            return None
+        metadata = json.loads(fleet.read_text(encoding="utf-8"))
+        if metadata["id"] != "kfgyr-fleet-panel" or metadata["info"]["version"] != version:
+            return None
     if app["id"] == PLUGIN and navigation["id"] == "kfgyr-navigation-panel" and navigation["info"]["version"] == version:
         return version
     return None
+
+
+def version_tuple(version):
+    return tuple(map(int, version.split(".")))
 
 
 def install_plugin(root, requested):
@@ -111,22 +123,22 @@ def install_dashboards(directory):
                 os.replace(stage / name, directory / name)
 
 
-def install_monitoring_dashboard(directory, release_tag):
+def install_release_dashboard(directory, release_tag, filename, uid):
     directory.mkdir(parents=True, exist_ok=True)
-    dashboard = directory / "machine-monitoring.json"
-    marker = directory.parent / ".machine-monitoring-release"
+    dashboard = directory / filename
+    marker = directory.parent / f".{dashboard.stem}-release"
     if dashboard.is_file() and marker.is_file() and marker.read_text().strip() == release_tag:
         return
     content = download(f"{RAW}/{release_tag}/dashboards/managed/{dashboard.name}")
     model = json.loads(content)
-    if model.get("uid", model.get("metadata", {}).get("name")) != "kfgyr-machine-monitoring":
-        raise RuntimeError("Unexpected Monitoring dashboard UID")
+    if model.get("uid", model.get("metadata", {}).get("name")) != uid:
+        raise RuntimeError(f"Unexpected dashboard UID: {filename}")
     with tempfile.TemporaryDirectory(dir=directory) as temporary:
         staged = Path(temporary) / dashboard.name
         staged.write_bytes(content)
         os.replace(staged, dashboard)
     marker.write_text(release_tag + "\n", encoding="utf-8")
-    print(f"Installed Monitoring dashboard from {release_tag}", flush=True)
+    print(f"Installed {filename} from {release_tag}", flush=True)
 
 
 def main():
@@ -137,7 +149,9 @@ def main():
     release_tag = install_plugin(args.plugin_dir, os.environ.get("KFGYR_PLUGIN_RELEASE") or "latest")
     if args.dashboard_dir:
         install_dashboards(args.dashboard_dir)
-        install_monitoring_dashboard(args.dashboard_dir, release_tag)
+        install_release_dashboard(args.dashboard_dir, release_tag, "machine-monitoring.json", "kfgyr-machine-monitoring")
+        if version_tuple(release_tag.removeprefix("plugin-v")) >= FLEET_VERSION:
+            install_release_dashboard(args.dashboard_dir, release_tag, "fleet.json", "kfgyr-fleet")
 
 
 if __name__ == "__main__":

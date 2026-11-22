@@ -1,0 +1,149 @@
+{
+  "apiVersion": "dashboard.grafana.app/v2",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "kfgyr-fleet"
+  },
+  "spec": {
+    "title": "Géppark",
+    "editable": false,
+    "tags": [
+      "KFGyR"
+    ],
+    "annotations": [],
+    "cursorSync": "Off",
+    "links": [],
+    "timeSettings": {
+      "timezone": "Europe/Budapest",
+      "from": "now-5m",
+      "to": "now",
+      "autoRefresh": "5s",
+      "autoRefreshIntervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m"
+      ],
+      "hideTimepicker": true,
+      "fiscalYearStartMonth": 0
+    },
+    "elements": {
+      "panel-1": {
+        "kind": "Panel",
+        "spec": {
+          "id": 1,
+          "title": "",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "spec": {
+                        "rawSql": "\nWITH fleet_machine AS (\nSELECT d.node_id, d.props, m.id AS dashboard_id, m.profile, m.signals, a.schema_id\nFROM raw.nodes d LEFT JOIN kfgyr.machine_dashboards m\n  ON m.agent_alias=d.props->>'agentAlias' AND m.device_id=d.props->>'deviceId' AND m.is_default\nLEFT JOIN kfgyr.machine_schema_assignments a\n  ON a.agent_alias=d.props->>'agentAlias' AND a.device_id=d.props->>'deviceId'\nWHERE d.props->>'node_type'='Device' AND d.node_id::text=${fleet_machine:sqlstring}\n),\nmapped AS (\nWITH machine AS (SELECT * FROM fleet_machine), catalog(profile, slot, label) AS (VALUES\n ('generic', 'execution', 'Végrehajtási állapot'), ('generic', 'feedrate', 'Előtolás'),\n ('mill', 'spindle', 'Orsófordulat'), ('mill', 'feedrate', 'Előtolás'),\n ('mill', 'x', 'X pozíció'), ('mill', 'y', 'Y pozíció'), ('mill', 'z', 'Z pozíció'),\n ('lathe', 'spindle', 'Orsófordulat'), ('lathe', 'x', 'X pozíció'),\n ('lathe', 'z', 'Z pozíció'), ('lathe', 'turret', 'Revolverpozíció')\n)\nSELECT m.node_id AS device, n.node_id AS signal, p.position,\n coalesce(nullif(p.name, ''), s.name, n.props->>'path') AS name,\n coalesce(p.view, 'chart') AS view, p.minimum, p.maximum, p.color,\n p.show_timeline,\n coalesce(nullif(u.label, ''), coalesce(nullif(n.props->>'units', ''), nullif(s.units, ''))) AS units\nFROM machine m\nCROSS JOIN LATERAL (\n SELECT item->>'name' AS name, item->>'signal_id' AS signal_id,\n        item->>'point' AS point, item->>'view' AS view,\n        (item->>'minimum')::double precision AS minimum,\n        (item->>'maximum')::double precision AS maximum,\n        item->>'color' AS color, item->'show_timeline' = 'true'::jsonb AS show_timeline, ord AS position\n FROM jsonb_array_elements(CASE WHEN jsonb_typeof(m.signals)='array' THEN m.signals ELSE '[]'::jsonb END)\n      WITH ORDINALITY AS items(item, ord)\n UNION ALL\n SELECT c.label, NULL, m.signals->>c.slot, CASE WHEN c.slot='execution' THEN 'state' ELSE 'chart' END,\n        NULL, NULL, NULL, false, row_number() OVER (ORDER BY c.slot)\n FROM catalog c WHERE c.profile=m.profile AND jsonb_typeof(m.signals)='object'\n) p\nLEFT JOIN kfgyr.signal_catalog s ON s.id=p.signal_id\nLEFT JOIN kfgyr.schema_mappings sm ON sm.schema_id=m.schema_id AND sm.signal_id=p.signal_id\nLEFT JOIN raw.nodes n ON n.props->>'node_type'='DataItem'\n AND n.props->>'agentAlias'=m.props->>'agentAlias' AND n.props->>'deviceId'=m.props->>'deviceId'\n AND ((p.point IS NOT NULL AND n.node_id::text=p.point) OR\n      (p.signal_id IS NOT NULL AND sm.endpoint IS NOT NULL AND\n       n.props->>'path'=(rtrim(m.props->>'path', '/') || sm.endpoint)))\nLEFT JOIN kfgyr.display_units u ON u.code=coalesce(nullif(n.props->>'units', ''), nullif(s.units, ''))\n),\nranked AS (\n SELECT *, row_number() OVER (PARTITION BY view ORDER BY position) AS panel_rank\n FROM mapped WHERE view IN ('state', 'gauge')\n), readings AS (\n SELECT m.*, h.value #>> '{}' AS state_value, \nCASE WHEN (h.value #>> '{}') ~ '^[+-]?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$'\n     THEN (h.value #>> '{}')::double precision END\n AS gauge_value\n FROM ranked m \nLEFT JOIN LATERAL (\n SELECT time, value FROM raw.history WHERE node_id=m.device AND dataitem_id=m.signal\n ORDER BY time DESC LIMIT 1\n) h ON true\n\n WHERE (m.view='state' AND m.panel_rank <= 6) OR (m.view='gauge' AND m.panel_rank <= 3)\n)\nSELECT node_id::text AS machine_id, dashboard_id::text, props->>'agentAlias' AS agent,\n       coalesce(nullif(props->>'deviceAlias', ''), props->>'deviceId', node_id::text) AS machine_name,\n       coalesce(jsonb_agg(jsonb_build_object('name', r.name, 'value', r.state_value) ORDER BY r.position)\n                FILTER (WHERE r.view='state'), '[]'::jsonb)::text AS states,\n       coalesce(jsonb_agg(jsonb_build_object('name', r.name, 'value', r.gauge_value, 'min', r.minimum,\n                                            'max', r.maximum, 'unit', r.units) ORDER BY r.position)\n                FILTER (WHERE r.view='gauge'), '[]'::jsonb)::text AS gauges\nFROM fleet_machine LEFT JOIN readings r ON r.device=fleet_machine.node_id\nGROUP BY node_id, dashboard_id, props\n",
+                        "format": "table",
+                        "rawQuery": true,
+                        "editorMode": "code"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "timescaledb"
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "spec": {
+              "options": {},
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            },
+            "group": "kfgyr-fleet-panel",
+            "version": ""
+          }
+        }
+      }
+    },
+    "layout": {
+      "kind": "AutoGridLayout",
+      "spec": {
+        "maxColumnCount": 5,
+        "columnWidthMode": "custom",
+        "columnWidth": 246,
+        "rowHeightMode": "custom",
+        "rowHeight": 224,
+        "fillScreen": false,
+        "items": [
+          {
+            "kind": "AutoGridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-1"
+              },
+              "repeat": {
+                "mode": "variable",
+                "value": "fleet_machine"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "variables": [
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "fleet_machine",
+          "label": "fleet_machine",
+          "query": {
+            "kind": "DataQuery",
+            "spec": {
+              "__legacyStringValue": "\nSELECT node_id::text AS __value, concat_ws(' / ', props->>'agentAlias', coalesce(nullif(props->>'deviceAlias', ''), props->>'deviceId', node_id::text), node_id::text) AS __text\nFROM raw.nodes WHERE props->>'node_type'='Device'\nORDER BY lower(props->>'agentAlias'), props->>'agentAlias', lower(coalesce(nullif(props->>'deviceAlias', ''), props->>'deviceId', node_id::text)), node_id\n"
+            },
+            "group": "grafana-postgresql-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "timescaledb"
+            }
+          },
+          "definition": "\nSELECT node_id::text AS __value, concat_ws(' / ', props->>'agentAlias', coalesce(nullif(props->>'deviceAlias', ''), props->>'deviceId', node_id::text), node_id::text) AS __text\nFROM raw.nodes WHERE props->>'node_type'='Device'\nORDER BY lower(props->>'agentAlias'), props->>'agentAlias', lower(coalesce(nullif(props->>'deviceAlias', ''), props->>'deviceId', node_id::text)), node_id\n",
+          "current": {
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "options": [],
+          "regex": "",
+          "sort": "disabled",
+          "refresh": "onDashboardLoad",
+          "hide": "hideVariable",
+          "skipUrlSync": true,
+          "multi": true,
+          "includeAll": true,
+          "allowCustomValue": false
+        }
+      }
+    ]
+  }
+}

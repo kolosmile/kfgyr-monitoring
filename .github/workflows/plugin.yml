@@ -57,8 +57,9 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           PANEL_VERSION=$(node -p "require('./dist/navigation/plugin.json').info.version")
-          if [[ "$PANEL_VERSION" != "$VERSION" ]]; then
-            echo 'Navigation panel version must match package version'; exit 1
+          FLEET_VERSION=$(node -p "require('./dist/fleet/plugin.json').info.version")
+          if [[ "$PANEL_VERSION" != "$VERSION" || "$FLEET_VERSION" != "$VERSION" || ! -f dist/fleet/module.js ]]; then
+            echo 'Both panel bundles must match the package version'; exit 1
           fi
           if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF_NAME" != "plugin-v$VERSION" ]]; then
             echo 'Tag must match package version'; exit 1
