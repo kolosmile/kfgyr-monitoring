@@ -191,6 +191,14 @@ export const getStyles = (t: GrafanaTheme2) => ({
     display: 'grid', gap: 10,
     '@media (max-width: 950px)': { gridRow: 1 },
   }),
+  schemaSettingsHeader: css({
+    display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+    '& > h3': { margin: 0 },
+  }),
+  schemaSettingsActions: css({
+    display: 'flex', flexWrap: 'wrap', gap: 8,
+    '& > button': { flex: '1 0 auto', justifyContent: 'center' },
+  }),
   schemaTable: css({
     width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse',
     '& th, & td': { textAlign: 'left', verticalAlign: 'middle', padding: 0 },
@@ -213,8 +221,8 @@ export const getStyles = (t: GrafanaTheme2) => ({
   schemaRows: css({ '& > tr > th, & > tr > td': { borderTop: `1px solid ${t.colors.border.weak}`, paddingBlock: 9 } }),
   schemaCell: css({
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap',
-    minHeight: 36, gap: '5px 10px',
-    '& > :first-child': { flex: '1 1 120px' },
+    minHeight: 36, minWidth: 0, gap: '3px 8px',
+    '& > :first-child': { flex: '1 1 120px', minWidth: 0 },
     '& > :last-child': { marginLeft: 'auto' },
   }),
   schemaAdd: css({
@@ -227,9 +235,10 @@ export const getStyles = (t: GrafanaTheme2) => ({
     '&:hover:not(:disabled), &:focus-visible': { borderColor: t.colors.primary.border, background: t.colors.action.hover, color: t.colors.text.primary },
     '&:disabled': { opacity: 0.5, cursor: 'default' },
   }),
-  schemaRowText: css({ minWidth: 0, overflowWrap: 'anywhere', strong: { display: 'block' }, small: { color: t.colors.text.secondary } }),
-  schemaPath: css({ fontFamily: t.typography.fontFamilyMonospace, fontSize: 12, color: t.colors.text.secondary, overflowWrap: 'anywhere' }),
-  schemaActions: css({ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }),
+  schemaRowText: css({ small: { color: t.colors.text.secondary } }),
+  schemaTruncated: css({ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }),
+  schemaPath: css({ fontFamily: t.typography.fontFamilyMonospace, fontSize: 12, color: t.colors.text.secondary }),
+  schemaActions: css({ display: 'flex', gap: 4, alignItems: 'center' }),
   schemaModalFields: css({ display: 'grid', gap: 14, minWidth: 'min(520px, calc(100vw - 80px))' }),
   agent: css({
     border: `1px solid ${t.colors.border.weak}`,

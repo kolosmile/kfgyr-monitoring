@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Combobox, ConfirmModal, Field, Icon, Input, Modal, Spinner, useStyles2 } from '@grafana/ui';
+import { Alert, Button, Combobox, ConfirmModal, Field, Icon, IconButton, Input, Modal, Spinner, useStyles2 } from '@grafana/ui';
 import { api } from '../api';
 import { getStyles } from '../components/styles';
 import { errorText, SchemaOption, Signal } from '../types';
@@ -348,13 +348,15 @@ export function SchemaManager() {
                     <th scope="row">
                       <div className={styles.schemaCell}>
                         <div className={styles.schemaRowText}>
-                          <strong>{signal.name}</strong>
-                          <small>{signal.id} · {signal.units || 'Nincs megadott egység'}</small>
+                          <strong className={styles.schemaTruncated} title={signal.name}>{signal.name}</strong>
+                          <small className={styles.schemaTruncated} title={`${signal.id} · ${signal.units || 'Nincs megadott egység'}`}>
+                            {signal.id} · {signal.units || 'Nincs megadott egység'}
+                          </small>
                         </div>
                         <div className={styles.schemaActions}>
-                          <Button type="button" size="sm" variant="secondary" icon="pen" aria-label={`${signal.name} módosítása`}
+                          <IconButton type="button" name="pen" aria-label={`${signal.name} módosítása`}
                             tooltip="Jel módosítása" disabled={saving} onClick={() => openSignalEditor('catalog', signal)} />
-                          <Button type="button" size="sm" variant="destructive" fill="outline" icon="trash-alt"
+                          <IconButton type="button" variant="destructive" name="trash-alt"
                             aria-label={`${signal.name} törlése`} tooltip="Jel törlése" disabled={saving} onClick={() => setDeleteSignal(signal)} />
                         </div>
                       </div>
@@ -365,12 +367,14 @@ export function SchemaManager() {
                     <td>
                       {mapping?.endpoint && schema ? (
                         <div className={styles.schemaCell}>
-                          <code className={styles.schemaPath}>{mapping.endpoint}</code>
+                          <span className={`${styles.schemaPath} ${styles.schemaTruncated}`} title={mapping.endpoint}>
+                            {mapping.endpoint}
+                          </span>
                           <div className={styles.schemaActions}>
-                            <Button type="button" size="sm" variant="secondary" icon="pen" tooltip="Hozzárendelés módosítása"
+                            <IconButton type="button" name="pen" tooltip="Hozzárendelés módosítása"
                               aria-label={`${signal.name} hozzárendelésének módosítása`} disabled={saving}
                               onClick={() => openMapping(signal.id)} />
-                            <Button type="button" size="sm" variant="destructive" fill="outline" icon="trash-alt"
+                            <IconButton type="button" variant="destructive" name="trash-alt"
                               aria-label={`${signal.name} hozzárendelésének törlése`} tooltip="Hozzárendelés törlése"
                               disabled={saving} onClick={() => setDeleteMapping({ schema, mapping })} />
                           </div>
@@ -391,8 +395,14 @@ export function SchemaManager() {
         </section>
 
         <section className={`${styles.formCard} ${styles.schemaSettings}`} aria-labelledby="schema-settings-title">
-          <h3 id="schema-settings-title">Sémák</h3>
-          <Field label="Aktív séma" htmlFor="schema-select">
+          <div className={styles.schemaSettingsHeader}>
+            <h3 id="schema-settings-title">Sémák</h3>
+            <Button type="button" size="sm" icon="plus" disabled={saving} onClick={() => {
+              setSubmitted(false);
+              setSchemaEditor({ name: '' });
+            }}>Új séma</Button>
+          </div>
+          <Field label="Aktív séma" htmlFor="schema-select" noMargin>
             <Combobox id="schema-select" value={selectedSchema || null} disabled={saving}
               placeholder="Válassz sémát" options={schemas.map((item) => ({ value: item.id, label: item.name }))}
               onChange={async ({ value }) => {
@@ -402,23 +412,17 @@ export function SchemaManager() {
                 try { await loadMappings(value || ''); } catch (err) { setError(errorText(err)); }
               }} />
           </Field>
-          <div className={styles.schemaActions}>
-            <Button type="button" icon="plus" disabled={saving} onClick={() => {
-              setSubmitted(false);
-              setSchemaEditor({ name: '' });
-            }}>Új séma</Button>
-            {schema && (
-              <>
-                <Button type="button" variant="secondary" icon="pen" disabled={saving}
-                  onClick={() => {
-                    setSubmitted(false);
-                    setSchemaEditor({ id: schema.id, name: schema.name });
-                  }}>Átnevezés</Button>
-                <Button type="button" variant="destructive" fill="outline" icon="trash-alt" disabled={saving}
-                  onClick={() => setDeleteSchema(schema)}>Törlés</Button>
-              </>
-            )}
-          </div>
+          {schema && (
+            <div className={styles.schemaSettingsActions}>
+              <Button type="button" size="sm" variant="secondary" icon="pen" disabled={saving}
+                onClick={() => {
+                  setSubmitted(false);
+                  setSchemaEditor({ id: schema.id, name: schema.name });
+                }}>Átnevezés</Button>
+              <Button type="button" size="sm" variant="destructive" fill="outline" icon="trash-alt" disabled={saving}
+                onClick={() => setDeleteSchema(schema)}>Törlés</Button>
+            </div>
+          )}
           {!schemas.length && <p className={styles.muted}>Hozz létre sémát a hozzárendelésekhez.</p>}
           {schema && !mappingsReady && !currentMappingState?.failed &&
             <p className={styles.muted} role="status"><Spinner /> Adatpontok betöltése…</p>}

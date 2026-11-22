@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.30 — 2026-11-22
+
+- Truncate long signal labels and data point paths to fit their catalog cells.
+- Simplify inline catalog actions and reorganize schema settings controls.
+
 ## 0.4.29 — 2026-11-22
 
 - Show signals and schema data points in one table, with inline mapping controls and separate schema settings.
