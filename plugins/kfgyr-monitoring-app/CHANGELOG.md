@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.43 — 2026-11-23
+
+- Style the Fleet Home link like the other navigation buttons and remove internal scrolling.
+
 ## 0.4.42 — 2026-11-23
 
 - Rewrite User Guide text in impersonal style and update Fleet card description.

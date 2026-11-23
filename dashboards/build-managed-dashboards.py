@@ -402,8 +402,12 @@ fleet_home = panel(2, "", "text", 0, 0, 24, 2)
 fleet_home["options"] = {
     "mode": "html",
     "content": (
-        '<a href="/d/kfgyr-home" style="display:inline-block;padding:4px 12px;'
-        'border:1px solid currentColor;border-radius:4px;text-decoration:none">Kezdőlap</a>'
+        '<a href="/d/kfgyr-home" style="display:inline-flex;vertical-align:top;align-items:center;gap:8px;'
+        'height:32px;box-sizing:border-box;padding:0 15px;font-weight:500;color:inherit;'
+        'background:color-mix(in srgb,currentColor 14%,transparent);'
+        'border:1px solid color-mix(in srgb,currentColor 8%,transparent);'
+        'border-radius:4px;text-decoration:none">'
+        '<span aria-hidden="true" style="font-size:18px;line-height:1">⌂</span>Kezdőlap</a>'
     ),
 }
 fleet_home["transparent"] = True
@@ -419,7 +423,7 @@ fleet_dashboard = {
         "layout": resource("RowsLayout", rows=[
             resource("RowsLayoutRow", hideHeader=True, layout=resource(
                 "AutoGridLayout", maxColumnCount=1, columnWidthMode="standard", rowHeightMode="custom",
-                rowHeight=48, fillScreen=False, items=[
+                rowHeight=52, fillScreen=False, items=[
                     resource("AutoGridLayoutItem", element={"kind": "ElementReference", "name": "panel-2"}),
                 ])),
             resource("RowsLayoutRow", hideHeader=True, layout=resource(
