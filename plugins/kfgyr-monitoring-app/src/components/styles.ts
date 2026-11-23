@@ -116,6 +116,7 @@ export const getStyles = (t: GrafanaTheme2) => ({
   }),
   dashboardStar: css({ position: 'absolute', insetInlineEnd: 10, top: '50%', transform: 'translateY(-50%)' }),
   dashboardStarIcon: css({
+    minWidth: 32, minHeight: 32,
     '& svg': { color: t.colors.text.secondary },
     '&[aria-pressed="true"] svg': { color: t.isDark ? '#f5c451' : '#9b6b00' },
   }),

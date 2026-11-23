@@ -491,8 +491,7 @@ export function ProfilesPage() {
                       <div className={styles.dashboardStar}>
                         <IconButton type="button" className={styles.dashboardStarIcon} disabled={saving}
                           name={item.is_default ? 'favorite' : 'star'} aria-pressed={item.is_default}
-                          aria-label={`${item.name} alapértelmezett dashboard`}
-                          tooltip={item.is_default ? 'Alapértelmezett dashboard' : 'Beállítás alapértelmezettként'}
+                          tooltip={`${item.name} – alapértelmezett dashboard`}
                           onClick={() => setDefaultDashboard(item)} />
                       </div>
                     </div>

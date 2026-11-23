@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.47 — 2026-11-23
+
+- Give dashboard stars distinct accessible names and larger touch targets.
+
 ## 0.4.46 — 2026-11-23
 
 - Choose each machine's default dashboard from the dashboard cards.
