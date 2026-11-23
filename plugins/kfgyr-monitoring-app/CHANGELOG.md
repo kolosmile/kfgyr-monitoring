@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.44 — 2026-11-23
+
+- Remove the house symbol from the Fleet Home button.
+
 ## 0.4.43 — 2026-11-23
 
 - Style the Fleet Home link like the other navigation buttons and remove internal scrolling.

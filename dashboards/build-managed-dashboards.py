@@ -402,12 +402,11 @@ fleet_home = panel(2, "", "text", 0, 0, 24, 2)
 fleet_home["options"] = {
     "mode": "html",
     "content": (
-        '<a href="/d/kfgyr-home" style="display:inline-flex;vertical-align:top;align-items:center;gap:8px;'
+        '<a href="/d/kfgyr-home" style="display:inline-flex;vertical-align:top;align-items:center;'
         'height:32px;box-sizing:border-box;padding:0 15px;font-weight:500;color:inherit;'
         'background:color-mix(in srgb,currentColor 14%,transparent);'
         'border:1px solid color-mix(in srgb,currentColor 8%,transparent);'
-        'border-radius:4px;text-decoration:none">'
-        '<span aria-hidden="true" style="font-size:18px;line-height:1">⌂</span>Kezdőlap</a>'
+        'border-radius:4px;text-decoration:none">Kezdőlap</a>'
     ),
 }
 fleet_home["transparent"] = True
