@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.50 — 2026-11-23
+## 0.4.51 — 2026-11-23
 
 - Flag panels whose data points are unavailable after a schema change and allow other panels to be saved.
 - Open the signal catalog on the selected machine's schema from the dashboard editor.
