@@ -35,13 +35,3 @@ export function canSeeRole(role: GuideRole, access: Access): boolean {
   }
   return access.manage_access;
 }
-
-export function currentRoleLabel(access: Access): string {
-  if (access.manage_access) {
-    return 'Adminisztrátor';
-  }
-  if (access.manage_plugin) {
-    return 'KFGyR kezelő';
-  }
-  return 'Megtekintő (Viewer / vendég)';
-}

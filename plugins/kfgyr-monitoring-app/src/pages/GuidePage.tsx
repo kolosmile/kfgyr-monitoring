@@ -2,35 +2,40 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { css } from '@emotion/css';
 import type { GrafanaTheme2 } from '@grafana/data';
 import { PluginPage } from '@grafana/runtime';
-import { Badge, Button, Icon, Input, useStyles2 } from '@grafana/ui';
+import { Button, Icon, Input, useStyles2 } from '@grafana/ui';
 import type { Access } from '../access';
 import { HomeLink } from '../components/HomeLink';
 import { MenuPageTitle } from '../components/MenuPageTitle';
 import { useMobileLayout } from '../components/useMobileLayout';
 import { menu } from '../navigation/menu';
 import { visibleChapters } from './guide/guideContent';
-import { currentRoleLabel, guideGroupOrder } from './guide/guideTypes';
+import { guideGroupOrder } from './guide/guideTypes';
 
 const viewerFallback: Access = { manage_plugin: false, manage_access: false };
 
 const getStyles = (theme: GrafanaTheme2) => ({
-  page: css({ maxWidth: 1180, margin: '0 auto', paddingBottom: 32, color: theme.colors.text.primary }),
+  page: css({
+    maxWidth: 1180,
+    width: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box',
+    margin: '0 auto',
+    paddingBottom: 32,
+    color: theme.colors.text.primary,
+  }),
   topBar: css({
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 16,
+    marginBottom: 20,
   }),
   layout: css({
     display: 'grid',
-    gridTemplateColumns: 'minmax(240px, 280px) minmax(0, 1fr)',
-    gap: 20,
+    gridTemplateColumns: 'minmax(240px, 270px) minmax(0, 1fr)',
+    gap: 28,
     alignItems: 'start',
+    width: '100%',
+    minWidth: 0,
     '@media (max-width: 860px)': {
       gridTemplateColumns: 'minmax(0, 1fr)',
-      gap: 14,
+      gap: 16,
     },
   }),
   sidebar: css({
@@ -40,18 +45,39 @@ const getStyles = (theme: GrafanaTheme2) => ({
     padding: 14,
     display: 'grid',
     gap: 12,
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
     position: 'sticky',
-    top: 16,
-    maxHeight: 'calc(100dvh - 48px)',
+    top: 64,
+    maxHeight: 'calc(100dvh - 80px)',
     overflowY: 'auto',
     '@media (max-width: 860px)': {
       position: 'static',
       maxHeight: 'none',
     },
   }),
-  group: css({ display: 'grid', gap: 4 }),
+  searchWrap: css({
+    width: '100%',
+    minWidth: 0,
+    maxWidth: '100%',
+    overflow: 'hidden',
+    '& > div, & div': {
+      width: '100%',
+      minWidth: 0,
+      maxWidth: '100%',
+      boxSizing: 'border-box',
+    },
+    '& input': {
+      minWidth: 0,
+      width: '100%',
+      maxWidth: '100%',
+      boxSizing: 'border-box',
+    },
+  }),
+  group: css({ display: 'grid', gap: 3, minWidth: 0 }),
   groupTitle: css({
-    margin: '4px 4px 2px',
+    margin: '6px 6px 2px',
     fontSize: 11,
     fontWeight: 700,
     textTransform: 'uppercase',
@@ -63,6 +89,8 @@ const getStyles = (theme: GrafanaTheme2) => ({
     alignItems: 'center',
     gap: 8,
     width: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box',
     textAlign: 'left',
     padding: '7px 10px',
     border: '1px solid transparent',
@@ -73,6 +101,7 @@ const getStyles = (theme: GrafanaTheme2) => ({
     fontWeight: 500,
     cursor: 'pointer',
     '& > svg': { flexShrink: 0, color: theme.colors.text.secondary },
+    '& > span': { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
     '&:hover': { background: theme.colors.action.hover },
     '&:focus-visible': { outline: `2px solid ${theme.colors.primary.main}`, outlineOffset: 1 },
   }),
@@ -83,17 +112,18 @@ const getStyles = (theme: GrafanaTheme2) => ({
     '& > svg': { color: theme.colors.primary.text },
   }),
   article: css({
-    border: `1px solid ${theme.colors.border.weak}`,
-    borderRadius: 8,
-    background: theme.colors.background.primary,
-    padding: '24px 28px',
+    border: 'none',
+    background: 'transparent',
+    padding: '4px 8px 16px',
     minWidth: 0,
-    '@media (max-width: 600px)': { padding: '18px 16px' },
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+    '@media (max-width: 860px)': { padding: '4px 0 16px' },
   }),
   articleInner: css({
-    maxWidth: 780,
+    maxWidth: 740,
     display: 'grid',
-    gap: 16,
+    gap: 18,
   }),
   articleHeader: css({
     borderBottom: `1px solid ${theme.colors.border.weak}`,
@@ -132,6 +162,10 @@ const getStyles = (theme: GrafanaTheme2) => ({
     gap: 10,
   }),
   mobileDetails: css({
+    width: '100%',
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
     border: `1px solid ${theme.colors.border.weak}`,
     borderRadius: 8,
     background: theme.colors.background.primary,
@@ -152,6 +186,10 @@ const getStyles = (theme: GrafanaTheme2) => ({
     marginTop: 12,
     display: 'grid',
     gap: 10,
+    width: '100%',
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
   }),
   muted: css({ margin: 0, fontSize: 13, color: theme.colors.text.secondary }),
 });
@@ -208,20 +246,23 @@ export function GuidePage({ access = viewerFallback }: { access?: Access }) {
     );
   }, [chapters, normalized]);
 
-  const currentIndex = Math.max(0, chapters.findIndex((c) => c.id === activeId));
+  const matchedIndex = chapters.findIndex((c) => c.id === activeId);
+  const currentIndex = matchedIndex >= 0 ? matchedIndex : 0;
   const current = chapters[currentIndex] ?? chapters[0];
   const prev = currentIndex > 0 ? chapters[currentIndex - 1] : undefined;
   const next = currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : undefined;
 
   const tocContent = (
     <>
-      <Input
-        aria-label="Keresés az útmutatóban"
-        placeholder="Keresés a fejezetekben…"
-        prefix={<Icon name="search" />}
-        value={query}
-        onChange={(event) => setQuery(event.currentTarget.value)}
-      />
+      <div className={s.searchWrap}>
+        <Input
+          aria-label="Keresés az útmutatóban"
+          placeholder="Keresés a fejezetekben…"
+          prefix={<Icon name="search" />}
+          value={query}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+        />
+      </div>
       {guideGroupOrder.map((group) => {
         const items = filtered.filter((c) => c.group === group);
         if (!items.length) {
@@ -258,7 +299,6 @@ export function GuidePage({ access = viewerFallback }: { access?: Access }) {
         <MenuPageTitle item={menu.guide} />
         <div className={s.topBar}>
           <HomeLink />
-          <Badge color="blue" text={`Szerepkör: ${currentRoleLabel(access)}`} />
         </div>
 
         <div className={s.layout}>

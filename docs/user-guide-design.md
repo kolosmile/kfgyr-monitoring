@@ -9,12 +9,12 @@ A Grafana app `/a/kfgyr-monitoring-app/guide` oldala kifejezetten a végfelhaszn
    - Követelmény az egységes, a felülettel szó szerint egyező terminológia, a világos feladatfelosztás, a figyelmeztetések kiemelése és a szoftververzióval szinkronban tartott felülvizsgálat.
 2. **Diátaxis dokumentációs keretrendszer (Daniele Procida):**
    - A tartalom szigorúan elkülöníti a műfajokat a felhasználói szándék szerint: gyors áttekintés (*Első lépések*), lépésről lépésre szóló feladatleírások (*Hogyan csináljam* és oldalszintű munkafolyamatok), valamint pontos felületi jelmagyarázat (*Referencia*).
-3. **Feladat-orientált szerkesztés és vizuális jelölések:**
-   - Sorszámozott lépéssorok, lépésenként egy művelet, félkövér UI-feliratok (például **Mentés és alkalmazás**, **CSV letöltése**).
-   - Egységes figyelmeztető és tájékoztató dobozok (**Tipp**, **Megjegyzés**, **Figyelmeztetés**).
-   - Jelölt képernyőrészletek számozott hívójelekkel (`1`, `2`, `3`…) és kiemelő keretekkel, közvetlenül alatta lévő számozott magyarázattal, a Grafana aktív világos vagy sötét témájához igazodva.
+3. **Feladat-orientált szerkesztés és áttekinthető felületi jelölések:**
+   - Sorszámozott lépéssorok, lépésenként egy művelet, a felülettel megegyező gomb- és menüjelölések (ikonos inline címkék, valamint valódi állapotjelzők a Géppark és Monitoring nézeteknél).
+   - Egységes, letisztult tájékoztató és figyelmeztető kiemelések (**Tipp**, **Megjegyzés**, **Figyelmeztetés**).
+   - Kétoszlopos wiki-elrendezés keretezett oldalsó tartalomjegyzékkel és keret nélküli, kényelmesen olvasható tartalommal a Grafana aktív világos vagy sötét témájához igazodva.
 4. **Szerepkör-alapú láthatóság:**
-   - A wiki bal oldali tartalomjegyzéke, keresője, fejezetlépkedése és cikkbeli jelölései dinamikusan igazodnak a bejelentkezett (vagy névtelen) felhasználó jogosultságához (`Viewer` / `KFGyR kezelők` / `Admin`), így senki nem találkozik olyan beállítási leírással vagy gombbal, amelyhez nincs hozzáférése.
+   - A wiki bal oldali tartalomjegyzéke, keresője, fejezetlépkedése és oldalreferenciái csendben, automatikusan igazodnak a felhasználó jogosultságához (`Viewer` / `KFGyR kezelők` / `Admin`), így mindenki csak az általa elérhető funkciók leírását látja.
 
 ## Hivatkozott források
 

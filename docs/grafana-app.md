@@ -79,7 +79,7 @@ A plugin hat alkalmazásoldalt ad:
 - **Dashboard szerkesztő** (`/a/kfgyr-monitoring-app/profiles`): gépenkénti több monitoring dashboard, panelkategóriák, állapotidősorok és másolás kezelése.
 - **Jelkatalógus** (`/a/kfgyr-monitoring-app/schemas`): közös magyar jelkatalógus, séma-hozzárendelések és megjelenítési mértékegységek karbantartása.
 - **Adatexport** (`/a/kfgyr-monitoring-app/export`): közvetlen CSV-letöltés a `timescaledb` adatforrásról ([részletek](data-export.md)).
-- **Használati útmutató** (`/a/kfgyr-monitoring-app/guide`): beépített, wiki-szerű felhasználói dokumentáció jelölt UI-illusztrációkkal; minden felhasználó számára elérhető, és a fejezeteket dinamikusan a saját szerepköréhez igazítja (tervezési elvek: [Használati útmutató tervezése](user-guide-design.md)).
+- **Használati útmutató** (`/a/kfgyr-monitoring-app/guide`): beépített, wiki-szerű felhasználói dokumentáció felületi gomb- és állapot-referenciákkal; minden felhasználó számára elérhető, és a fejezeteket csendben a saját szerepköréhez szűri (tervezési elvek: [Használati útmutató tervezése](user-guide-design.md)).
 - **Jogosultságkezelés** (`/a/kfgyr-monitoring-app/access-management`): a `KFGyR kezelők` csapat tagjainak kezelése, kizárólag Grafana **Admin** szerepkörrel.
 
 A három gyári dashboard (**Kezdőlap**, **Géppark**, **KFGyR · Monitoring**) a repó `dashboards/managed/` mappájából kerül provisionálásra, a beágyazott `kfgyr-navigation-panel` és `kfgyr-fleet-panel` panelekkel. A jelkatalógus, a sémák, a megjelenítési egységek és a kezelt dashboardok felépítését a [jelkatalógus és dashboardok dokumentuma](signal-catalog-and-dashboards.md), az architekturális indokokat a [döntési dokumentum](monitoring-decisions.md) írja le.

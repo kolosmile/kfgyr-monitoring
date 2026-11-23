@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.39 — 2026-11-23
+
+- Simplify User Guide layout and typography, removing synthetic UI mockups and redundant role banners.
+- Fix sticky sidebar offset below Grafana navbar on desktop and search input horizontal overflow on mobile.
+
 ## 0.4.38 — 2026-11-22
 
 - Add a role-aware, wiki-style User Guide with annotated UI visuals and search.
