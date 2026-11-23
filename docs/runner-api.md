@@ -48,7 +48,7 @@ A sikeres mentés nem azonos a sikeres adatgyűjtéssel. A runner az indulási i
 - `GET /v1/schemas`, `POST /v1/schemas`, `PUT /v1/schemas/{id}`, `DELETE /v1/schemas/{id}` a gépsémákat kezeli. A `POST /v1/schemas` opcionális `source_schema_id` paraméterrel meglévő séma és hozzárendelései klónozását is támogatja.
 - `GET/PUT /v1/schemas/{id}/mappings` egy séma jel-végpont hozzárendeléseit olvassa vagy menti.
 - `DELETE /v1/schemas/{id}/mappings/{signal_id}` egy hozzárendelést töröl.
-- `GET /v1/machines/{machine}/dataitems` visszaadja a gép relatív adatpontútvonalait és egységeit.
+- `GET /v1/machines/{machine}/dataitems` visszaadja a gép relatív adatpontútvonalait, egységeit és az agent által közölt `name` mezőt. A `name` hiányzó gépi névnél üres karakterlánc. A sémához a relatív `path` értéket kell menteni.
 - `GET /v1/availability/{machine}` a géphez tartozó agent `/probe` válaszával ellenőrzi a gép élő elérhetőségét (`online`, `offline` vagy `unknown`).
 - `GET /v1/machines/{machine}/dashboards` felsorolja a gép dashboardjait és az azonos sémájú másolható forrásdashboardokat.
 - `POST /v1/dashboards` új, üres vagy meglévő azonos sémájú dashboardból (`source_dashboard_id`) másolt dashboardot hoz létre.

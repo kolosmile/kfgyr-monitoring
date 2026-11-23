@@ -6,7 +6,7 @@ import { errorText, SchemaOption, Signal } from '../types';
 import { DisplayUnitsSettings } from './DisplayUnitsSettings';
 
 type Machine = { id: string; label: string; schema_id?: string };
-type DataItem = { id: string; path: string; units: string; category: string; type: string; subType: string };
+type DataItem = { id: string; path: string; name?: string; units: string; category: string; type: string; subType: string };
 type Mapping = { signal_id: string; signal_name: string; signal_units: string; endpoint: string | null };
 type MappingResponse = { mappings: Mapping[] };
 type MappingState = { schemaId: string; mappings?: Mapping[]; failed?: boolean };
@@ -26,6 +26,10 @@ type SignalEditor = {
 type SchemaEditor = { id?: string; name: string; sourceSchemaId?: string };
 type MappingEditor = { signalId: string; source: 'manual' | 'machine'; machine: string; endpoint: string };
 const emptyMappings: Mapping[] = [];
+
+function dataItemLabel(item: DataItem) {
+  return [item.path, item.name?.trim(), item.units].filter(Boolean).join(' · ');
+}
 
 function suggestId(path: string) {
   return path.replace(/^\/+/, '').toLowerCase().replace(/\[([^\]]+)\]/g, '_$1')
@@ -483,7 +487,7 @@ export function SchemaManager({ machine }: { machine?: string }) {
                 </Field>
                 <Field label="Még fel nem használt adatpont" htmlFor="new-signal-point">
                   <Combobox id="new-signal-point" value={signalEditor.pointId || null} placeholder="Válassz adatpontot"
-                    options={availableMachineItems.map((item) => ({ value: item.id, label: `${item.path}${item.units ? ` (${item.units})` : ''}` }))}
+                    options={availableMachineItems.map((item) => ({ value: item.id, label: dataItemLabel(item) }))}
                     onChange={({ value }) => {
                       const item = machineItems.find((entry) => entry.id === value);
                       setSignalEditor({ ...signalEditor, pointId: value || '', endpoint: item?.path || '',
@@ -567,7 +571,7 @@ export function SchemaManager({ machine }: { machine?: string }) {
                 </Field>
                 <Field label="A sémában még nem használt adatpont" htmlFor="mapping-endpoint-select">
                   <Combobox id="mapping-endpoint-select" value={mappingEditor.endpoint || null} placeholder="Válassz adatpontot"
-                    options={availableMachineItems.map((item) => ({ value: item.path, label: `${item.path}${item.units ? ` (${item.units})` : ''}` }))}
+                    options={availableMachineItems.map((item) => ({ value: item.path, label: dataItemLabel(item) }))}
                     onChange={({ value }) => setMappingEditor({ ...mappingEditor, endpoint: value || '' })} />
                 </Field>
                 <Field label="A jel mentett mértékegysége" htmlFor="mapping-signal-units">

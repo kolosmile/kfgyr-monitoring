@@ -1,6 +1,6 @@
 {
   "name": "kfgyr-monitoring-app",
-  "version": "0.4.51",
+  "version": "0.4.52",
   "scripts": {
     "build": "webpack -c ./.config/webpack/webpack.config.ts --env production",
     "dev": "webpack -w -c ./.config/webpack/webpack.config.ts --env development",

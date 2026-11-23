@@ -14,6 +14,8 @@ A **Jelkatalógus** oldal egyetlen táblázatban mutatja a katalógusjeleket és
 
 Új jel vagy hozzárendelés felvehető kézzel, illetve egy már beolvasott gép még fel nem használt adatpontjából választva. Ha a kiválasztott gépadatpont nyers egysége eltér a katalógusjel mentett egységétől, a felület figyelmeztet, de nem írja felül a katalógusjel egységét.
 
+A gépadatpont-választó legördülő lista a relatív útvonal mellett a gép által közölt MTConnect-nevet is megjeleníti, ha van ilyen. A listában az útvonalra és a névre egyaránt lehet keresni, például az `Srpm` névre. A séma táblázatában a relatív útvonal látszik, és sémamásoláskor is ez kerül át. Ha a relay az ütköző útvonalakat szögletes zárójeles utótaggal különbözteti meg (például `Load[Sload]`), az utótag a mentett útvonal része.
+
 ## Megjelenítési mértékegységek (`kfgyr.display_units`)
 
 Az MTConnect-eszközök az egységeket szabványos kódokkal (például `MILLIMETER`, `REVOLUTION/MINUTE`, `CELSIUS`) közlik. A **Jelkatalógus** oldalsávjában elérhető **Megjelenítési mértékegységek** párbeszédablakban az MTConnect 2.5 `UnitEnum` kódjaihoz rövid magyar vagy műszaki megjelenítési címke adható meg (például `mm`, `rpm`, `°C`). Üresen hagyott címke esetén az eredeti MTConnect-kód jelenik meg. A beállított címkéket a Jelkatalógus, a **Géppark** és a **KFGyR · Monitoring** dashboardok közösen használják.

@@ -43,7 +43,7 @@ WHERE node_id::text = %s AND props->>'node_type' = 'Device'
 SIGNALS = """
 SELECT node_id::text, props->>'path', coalesce(props->>'units', ''),
        coalesce(props->>'category', ''), coalesce(props->>'type', ''),
-       coalesce(props->>'subType', '')
+       coalesce(props->>'subType', ''), coalesce(props->>'name', '')
 FROM raw.nodes
 WHERE props->>'node_type'='DataItem'
   AND props->>'agentAlias'=%s AND props->>'deviceId'=%s
@@ -356,13 +356,13 @@ def machine_dataitems(machine):
         rows = db.execute(SIGNALS, (agent, device)).fetchall()
         items = []
         prefix = device_path.rstrip("/")
-        for point_id, full_path, units, category, kind, subtype in rows:
+        for point_id, full_path, units, category, kind, subtype, name in rows:
             if not full_path:
                 continue
             endpoint = full_path[len(prefix):] if full_path.startswith(prefix) else full_path
             if not endpoint.startswith("/"):
                 endpoint = "/" + endpoint
-            items.append({"id": point_id, "path": endpoint, "full_path": full_path,
+            items.append({"id": point_id, "path": endpoint, "full_path": full_path, "name": name,
                           "units": units, "category": category, "type": kind, "subType": subtype})
         return {"machine": machine, "agent": agent, "device": device,
                 "device_path": device_path, "dataitems": items}

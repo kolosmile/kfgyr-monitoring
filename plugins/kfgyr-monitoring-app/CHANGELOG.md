@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.52 — 2026-11-23
+
+- Show and search MTConnect data item names in the machine data item pickers.
+
 ## 0.4.51 — 2026-11-23
 
 - Flag panels whose data points are unavailable after a schema change and allow other panels to be saved.

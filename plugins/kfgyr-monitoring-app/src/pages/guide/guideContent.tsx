@@ -446,6 +446,8 @@ function CatalogSection() {
       </ol>
 
       <h3>Jelek és adatpontok összekötése</h3>
+      <p>A gépadatpontok legördülő listájában útvonalra és gépi névre (például <code>Srpm</code>) is kereshetsz.
+        A sématáblázatban a hozzárendelt útvonal jelenik meg.</p>
       <ul>
         <li>
           <strong>Meglévő jel.</strong> Az aktív sémában a jel sorának jobb oldalán az{' '}

@@ -95,6 +95,23 @@ class APITests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()["config"]["relay"]["agents"][0]["devices"][0]["alias"], "Renamed")
 
+    def test_machine_dataitems_return_name_separately_from_path(self):
+        db = MagicMock()
+        db.execute.return_value.fetchall.return_value = [
+            ("4342", "Mazak/CV5/Axes/Rotary[C]/RotaryVelocityActual", "REVOLUTION/MINUTE",
+             "SAMPLE", "ROTARY_VELOCITY", "ACTUAL", "Srpm"),
+            ("4390", "Mazak/CV5/Controller/Path/ProgramEdit", "", "EVENT", "PROGRAM_EDIT", "", ""),
+        ]
+        with patch("monitoring.psycopg.connect") as connect, \
+             patch("monitoring.machine_info", return_value=("Mazak", "d1", "Mazak/CV5")):
+            connect.return_value.__enter__.return_value = db
+            response = self.client.get("/v1/machines/4295/dataitems")
+        self.assertEqual(response.status_code, 200, response.text)
+        first, second = response.json()["dataitems"]
+        self.assertEqual(first["name"], "Srpm")
+        self.assertEqual(first["path"], "/Axes/Rotary[C]/RotaryVelocityActual")
+        self.assertEqual(second["name"], "")
+
     def test_dashboard_routes_dispatch_and_require_authentication(self):
         with patch("monitoring.list_dashboards", return_value={"dashboards": []}) as listing:
             response = self.client.get("/v1/machines/123/dashboards")
