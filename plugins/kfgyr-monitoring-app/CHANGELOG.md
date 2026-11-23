@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.42 — 2026-11-23
+
+- Rewrite User Guide text in impersonal style and update Fleet card description.
+
 ## 0.4.41 — 2026-11-23
 
 - Add signal captions and a Home link to Fleet.

@@ -128,8 +128,8 @@ function IntroSection({ access, goTo }: { access: Access; goTo: (id: string) => 
   return (
     <div className={s.body}>
       <p>
-        A <strong>KFGyR Monitoring</strong> felületen a gyártórendszer gépeinek aktuális állapotát, mért értékeit és
-        múltbeli adatait követheted egy helyen, asztali böngészőből és telefonról is.
+        A <strong>KFGyR Monitoring</strong> felületen a gyártórendszer gépeinek aktuális állapota, mért értékei és
+        múltbeli adatai követhetők egy helyen, asztali böngészőből és telefonról is.
       </p>
 
       <h3>Oldalak áttekintése</h3>
@@ -181,8 +181,8 @@ function IntroSection({ access, goTo }: { access: Access; goTo: (id: string) => 
       </div>
 
       <Callout kind="tip" title="Gyors keresés">
-        A mindennapi műveletekhez összefoglalt lépéssorokat a{' '}
-        <ChapterLink id="gyakori-feladatok" label="Gyakori feladatok" goTo={goTo} /> fejezetben találod.
+        A mindennapi műveletekhez összefoglalt lépéssorok a{' '}
+        <ChapterLink id="gyakori-feladatok" label="Gyakori feladatok" goTo={goTo} /> fejezetben találhatók.
       </Callout>
     </div>
   );
@@ -193,8 +193,8 @@ function HomeSection({ access }: { access: Access }) {
   return (
     <div className={s.body}>
       <p>
-        A <strong>KFGyR · Kezdőlap</strong> a rendszer központi kiindulópontja: az elérhető nézeteket és beállítási
-        oldalakat kártyákba csoportosítva jeleníti meg.
+        A <strong>KFGyR · Kezdőlap</strong> a rendszer központi kiindulópontja: az elérhető nézetek és beállítási
+        oldalak kártyákba csoportosítva jelennek meg rajta, és a megfelelő kártyára kattintva nyithatók meg.
       </p>
 
       <h3>A főmenü csoportjai</h3>
@@ -224,14 +224,14 @@ function HomeSection({ access }: { access: Access }) {
 
       <h3>Visszalépés a főmenüre</h3>
       <p>
-        Minden belső oldal és a Monitoring tetején megtalálod a <UiTag icon="home-alt" label="Kezdőlap" /> gombot,
-        amellyel bármikor visszatérhetsz ide.
+        Minden belső oldal és a Monitoring tetején megtalálható a <UiTag icon="home-alt" label="Kezdőlap" /> gomb,
+        amelyre kattintva bármikor vissza lehet térni a főmenüre.
       </p>
 
       {access.manage_plugin && (
         <Callout kind="note" title="Nem mentett módosítások">
-          Ha az <strong>Agentek és gépek</strong> vagy a <strong>Dashboard szerkesztő</strong> oldalon elkezdett
-          módosításod van, a böngésző figyelmeztet, mielőtt elhagynád az oldalt.
+          Az <strong>Agentek és gépek</strong> vagy a <strong>Dashboard szerkesztő</strong> oldalon elkezdett, még nem
+          mentett módosítás esetén a böngésző az oldal elhagyása előtt figyelmeztetést jelenít meg.
         </Callout>
       )}
     </div>
@@ -249,12 +249,15 @@ function FleetSection({ goTo }: { goTo: (id: string) => void }) {
 
       <h3>Egy gépkártya felépítése</h3>
       <ul>
-        <li>Felül az adatgyűjtő (<Badge color="blue" text="Agent" />) és a gép neve látható.</li>
+        <li>Felül az adatgyűjtő (agent) elérhetőség szerint színezett címkéje és a gép neve látható.</li>
         <li>
-          A kártya jobb felső sarkában lévő <UiTag icon="external-link-alt" label="Megnyitás a Monitoringban" /> ikonra
-          kattintva rögtön az adott gép részletes oldalára ugorhatsz.
+          A középső rész legfeljebb 6 állapotot, az alsó sor legfeljebb 3 félköríves műszert mutat a jelnevekkel
+          együtt, a gép alapértelmezett dashboardjáról.
         </li>
-        <li>A középső rész legfeljebb 6 állapotot, az alsó sor legfeljebb 3 félköríves műszert mutat a gép alapértelmezett dashboardjáról.</li>
+        <li>
+          A kártya jobb alsó sarkában lévő <UiTag icon="external-link-alt" label="Megnyitás a Monitoringban" /> ikonra
+          kattintva közvetlenül az adott gép részletes oldala nyitható meg.
+        </li>
       </ul>
 
       <h3>Állapotok színjelzése</h3>
@@ -265,8 +268,8 @@ function FleetSection({ goTo }: { goTo: (id: string) => void }) {
       </div>
 
       <Callout kind="tip" title="Részletes trendek">
-        Múltbeli grafikonokhoz és a teljes adatpont-listához nyisd meg a{' '}
-        <ChapterLink id="monitoring" label="Monitoring" goTo={goTo} /> oldalt.
+        Múltbeli grafikonokhoz és a teljes adatpont-listához a{' '}
+        <ChapterLink id="monitoring" label="Monitoring" goTo={goTo} /> oldal nyitható meg.
       </Callout>
     </div>
   );
@@ -283,9 +286,9 @@ function MonitoringSection({ access }: { access: Access }) {
 
       <h3>Gép és dashboard kiválasztása</h3>
       <ol>
-        <li>A felső navigációs sávban válassz <strong>Agent</strong>-et, majd <strong>Gép</strong>-et.</li>
-        <li>Ha a géphez több nézet is készült, a <strong>Dashboard</strong> választóban válthatsz közöttük.</li>
-        <li>Mobilon a felső választógombbal nyitható meg a gép- és dashboard-lista.</li>
+        <li>A felső navigációs sávban először az <strong>Agent</strong>, majd a <strong>Gép</strong> választható ki.</li>
+        <li>Ha a géphez több nézet is készült, a <strong>Dashboard</strong> választóban lehet váltani közöttük.</li>
+        <li>Mobilon a felső választógombra kattintva nyitható meg a gép- és dashboard-lista.</li>
       </ol>
 
       <h3>Agent-elérhetőség jelzése</h3>
@@ -301,7 +304,7 @@ function MonitoringSection({ access }: { access: Access }) {
 
       <h3>Időszak és paneltípusok</h3>
       <ul>
-        <li>A jobb felső időválasztóval bármilyen korábbi időszakra visszanézhetsz, és az automatikus frissítés is itt állítható.</li>
+        <li>A jobb felső időválasztóval bármilyen korábbi időszakra vissza lehet tekinteni, és az automatikus frissítés is itt állítható.</li>
         <li><strong>Állapot:</strong> nagy szöveges kártya; ha engedélyezve van, alatta színes idővonal mutatja az állapotváltásokat.</li>
         <li><strong>Aktuális érték:</strong> az utoljára mért számérték a beállított mértékegységgel.</li>
         <li><strong>Műszer:</strong> félköríves skála a megadott minimum és maximum tartományban.</li>
@@ -315,8 +318,8 @@ function MonitoringSection({ access }: { access: Access }) {
       {access.manage_plugin && (
         <Callout kind="tip" title="Közvetlen szerkesztés">
           A felső sávban lévő <UiTag icon="pen" label="Dashboard szerkesztése" /> (vagy új gépnél{' '}
-          <UiTag icon="plus" label="Dashboard hozzáadása" />) gombbal közvetlenül az aktuális gép paneljeinek
-          szerkesztőjébe léphetsz.
+          <UiTag icon="plus" label="Dashboard hozzáadása" />) gombra kattintva közvetlenül az aktuális gép paneljeinek
+          szerkesztőjébe lehet lépni.
         </Callout>
       )}
     </div>
@@ -328,32 +331,32 @@ function ExportSection() {
   return (
     <div className={s.body}>
       <p>
-        Az <strong>Adatexport</strong> oldalon táblázatos CSV-fájlként töltheted le a gépek korábbi méréseit saját
+        Az <strong>Adatexport</strong> oldalon táblázatos CSV-fájlként tölthetők le a gépek korábbi mérései saját
         elemzéshez vagy Excel-táblázathoz.
       </p>
 
       <h3>Letöltés lépései</h3>
       <ol>
-        <li>A <strong>Gépek</strong> listában válassz ki egy vagy több gépet (gépeléssel szűrhetsz).</li>
+        <li>A <strong>Gépek</strong> listában egy vagy több gép jelölhető ki (gépeléssel a lista szűrhető).</li>
         <li>
-          Az <strong>Adatpontok</strong> mezőben jelöld ki a kívánt jeleket, vagy használd az{' '}
-          <UiTag label="Összes adatpont kijelölése" /> gombot.
+          Az <strong>Adatpontok</strong> mezőben a kívánt jelek választhatók ki, vagy az{' '}
+          <UiTag label="Összes adatpont kijelölése" /> gombra kattintva az összes jel megjelölhető.
         </li>
-        <li>Add meg a <strong>Kezdőidő</strong>-t és a <strong>Végidő</strong>-t a saját helyi időzónádban.</li>
+        <li>A <strong>Kezdőidő</strong> és a <strong>Végidő</strong> a helyi időzónában adható meg.</li>
         <li>
-          Válassz <strong>Sorkorlát</strong>-ot (legfeljebb 100 000 sor) és <strong>Formátum</strong>-ot:
+          A <strong>Sorkorlát</strong> (legfeljebb 100 000 sor) és a <strong>Formátum</strong> kiválasztása:
           <ul>
             <li><strong>CSV (vesszővel):</strong> általános adatfeldolgozáshoz.</li>
             <li><strong>Excelhez formázott CSV (pontosvesszővel):</strong> magyar Excelben közvetlenül oszlopokra bontva nyílik meg.</li>
           </ul>
         </li>
-        <li>Kattints a <UiTag icon="download-alt" label="CSV letöltése" /> gombra.</li>
+        <li>A <UiTag icon="download-alt" label="CSV letöltése" /> gombra kattintva indul el a fájl letöltése.</li>
       </ol>
 
       <Callout kind="note" title="Időbélyegek és részleges export">
         A letöltött fájlban az időbélyegek UTC-ben szerepelnek. Ha a kért időszak több sort tartalmaz a sorkorlátnál, a
-        felület jelzi, hogy <strong>részleges export</strong> készült (az időben első N sorral); ilyenkor bontsd kisebb
-        időszakokra a letöltést.
+        felület jelzi, hogy <strong>részleges export</strong> készült (az időben első N sorral); ilyenkor a letöltést
+        érdemes kisebb időszakokra bontani.
       </Callout>
     </div>
   );
@@ -364,44 +367,47 @@ function AgentsSection({ goTo }: { goTo: (id: string) => void }) {
   return (
     <div className={s.body}>
       <p>
-        Az <strong>Agentek és gépek</strong> oldalon kötheted be a gépek adatgyűjtő kapcsolatait (agenteket), adhatsz
-        megjelenítési nevet a gépeknek, és itt szüneteltetheted a gyűjtést.
+        Az <strong>Agentek és gépek</strong> oldalon köthetők be a gépek adatgyűjtő kapcsolatai (agentjei), itt adható
+        megjelenítési név a gépeknek, és itt szüneteltethető a gyűjtés.
       </p>
 
       <h3>Új agent és gép felvétele</h3>
       <ol>
         <li>
-          <strong>Automatikusan:</strong> kattints a <UiTag icon="search" label="Hálózati keresés" /> gombra, válaszd ki
-          a helyi hálózatot, majd a talált eszköznél nyomd meg az <UiTag label="Agent beállítása" /> gombot.
+          <strong>Automatikusan:</strong> a <UiTag icon="search" label="Hálózati keresés" /> gombra kattintva
+          kiválasztható a helyi hálózat, majd a talált eszköznél az <UiTag label="Agent beállítása" /> gombra
+          kattintva folytatható a felvétel.
         </li>
         <li>
-          <strong>Kézzel:</strong> kattints az <UiTag icon="plus" label="Agent hozzáadása" /> gombra, és add meg az
-          egyedi nevet, valamint az agent hálózati címét (URL / IP és port).
+          <strong>Kézzel:</strong> az <UiTag icon="plus" label="Agent hozzáadása" /> gombra kattintva megadható az
+          egyedi név, valamint az agent hálózati címe (URL / IP és port).
         </li>
-        <li>Használd a <UiTag icon="search" label="Kapcsolat és eszközkeresés" /> gombot a gépek lekérdezéséhez.</li>
-        <li>Minden megtalált gépnél adj meg egy <strong>Megjelenítési név</strong>-et, és válassz egy <strong>Séma</strong>-t.</li>
-        <li>Kattints a <UiTag icon="check" label="Hozzáadás a listához" /> gombra.</li>
-        <li>Végül a lap alján megjelenő sávban kattints a <UiTag label="Mentés és alkalmazás" /> gombra.</li>
+        <li>A <UiTag icon="search" label="Kapcsolat és eszközkeresés" /> gombra kattintva lekérdezhetők a gép adatai.</li>
+        <li>Minden megtalált gépnél megadható egy <strong>Megjelenítési név</strong>, és kiválasztható egy <strong>Séma</strong>.</li>
+        <li>A <UiTag icon="check" label="Hozzáadás a listához" /> gombra kattintva előkészíthető a módosítás.</li>
+        <li>Végül a lap alján megjelenő sávban a <UiTag label="Mentés és alkalmazás" /> gombra kattintva menthető és élesíthető a lista.</li>
       </ol>
 
       <Callout kind="warning" title="Kötelező sémaválasztás">
-        Gép csak kiválasztott sémával menthető. Ha még nincs megfelelő sémád, előbb hozd létre a{' '}
-        <ChapterLink id="jelkatalogus" label="Jelkatalógus" goTo={goTo} /> oldalon.
+        Gép csak kiválasztott sémával menthető. Ha még nincs megfelelő séma, előbb a{' '}
+        <ChapterLink id="jelkatalogus" label="Jelkatalógus" goTo={goTo} /> oldalon kell létrehozni.
       </Callout>
 
       <h3>Szüneteltetés, elvetés és visszaállítás</h3>
       <ul>
         <li>
-          <strong>Szüneteltetés:</strong> a <UiTag icon="pen" label="Szerkesztés" /> ablakban kapcsold ki az{' '}
-          <strong>Agent engedélyezve</strong> kapcsolót, majd ments. A már tárolt múltbeli adatok megmaradnak.
+          <strong>Szüneteltetés:</strong> a <UiTag icon="pen" label="Szerkesztés" /> ablakban az{' '}
+          <strong>Agent engedélyezve</strong> kapcsoló kikapcsolásával, majd mentéssel állítható le az új adatok
+          gyűjtése. A már tárolt múltbeli adatok megmaradnak.
         </li>
         <li>
-          <strong>Elvetés:</strong> mentés előtt az alsó sávban az <UiTag label="Elvetés" /> gombbal visszavonhatod a
-          helyi módosításokat.
+          <strong>Elvetés:</strong> mentés előtt az alsó sávban az <UiTag label="Elvetés" /> gombra kattintva
+          visszavonhatók a helyi módosítások.
         </li>
         <li>
           <strong>Visszaállítás hiba esetén:</strong> ha az alkalmazás után a felső állapotsáv hibát jelez, a{' '}
-          <UiTag label="Visszaállítás a futó konfigurációra" /> gombbal visszatérhetsz a korábbi működő állapothoz.
+          <UiTag label="Visszaállítás a futó konfigurációra" /> gombra kattintva visszaállítható a korábbi működő
+          állapot.
         </li>
       </ul>
 
@@ -428,25 +434,25 @@ function CatalogSection() {
 
       <h3>Séma létrehozása vagy másolása</h3>
       <ol>
-        <li>A jobb oldali <strong>Sémák</strong> panelen kattints az <UiTag icon="plus" label="Új séma" /> gombra.</li>
-        <li>Add meg a séma nevét, majd a <strong>Kiindulás</strong> mezőben válassz üres sémát vagy egy meglévő séma másolását.</li>
-        <li>Kattints a <UiTag label="Létrehozás" /> gombra.</li>
+        <li>A jobb oldali <strong>Sémák</strong> panelen az <UiTag icon="plus" label="Új séma" /> gombra kattintva nyitható meg a létrehozó ablak.</li>
+        <li>A séma nevének megadása után a <strong>Kiindulás</strong> mezőben üres séma vagy egy meglévő séma másolása választható.</li>
+        <li>A <UiTag label="Létrehozás" /> gombra kattintva létrejön az új séma.</li>
       </ol>
 
       <h3>Jelek és adatpontok összekötése</h3>
       <ol>
         <li>
-          <strong>Új jel beolvasott gépből:</strong> válaszd az <UiTag icon="plus" label="Új jel gépadatpontból" /> gombot,
-          jelöld ki a gépet és az adatpontot; a rendszer automatikusan javasol nevet, azonosítót és egységet.
+          <strong>Új jel beolvasott gépből:</strong> az <UiTag icon="plus" label="Új jel gépadatpontból" /> gombra
+          kattintva kijelölhető a gép és az adatpont; a rendszer automatikusan javasol nevet, azonosítót és egységet.
         </li>
         <li>
-          <strong>Kézi felvétel:</strong> a <UiTag icon="plus" label="Jel hozzáadása" /> gombbal előre is felvehetsz
-          közös jeleket. (A <strong>Jelazonosító</strong> létrehozás után nem módosítható.)
+          <strong>Kézi felvétel:</strong> a <UiTag icon="plus" label="Jel hozzáadása" /> gombra kattintva előre is
+          felvehetők közös jelek. (A <strong>Jelazonosító</strong> létrehozás után nem módosítható.)
         </li>
         <li>
-          <strong>Összekötés a sémában:</strong> a jel sorának jobb oldalán kattints az{' '}
-          <UiTag icon="plus" label="Adatpont hozzárendelése" /> gombra, és válassz a gép adatpontjai közül (vagy adj meg
-          <code>/</code>-rel kezdődő útvonalat).
+          <strong>Összekötés a sémában:</strong> a jel sorának jobb oldalán az{' '}
+          <UiTag icon="plus" label="Adatpont hozzárendelése" /> gombra kattintva választható adatpont a gép listájából
+          (vagy <code>/</code>-rel kezdődő útvonal is megadható).
         </li>
       </ol>
 
@@ -454,8 +460,9 @@ function CatalogSection() {
       <ul>
         <li>A jelnevek és útvonalak színe a gép funkcionális ágát jelöli (például tengelyek, vezérlő, rendszerek).</li>
         <li>
-          A <UiTag icon="calculator-alt" label="Megjelenítési mértékegységek" /> ablakban a gép nyers kódjaihoz (pl.{' '}
-          <code>REVOLUTION/MINUTE</code>) megadhatsz rövid, olvasható feliratot (pl. <code>rpm</code>).
+          A <UiTag icon="calculator-alt" label="Megjelenítési mértékegységek" /> gombra kattintva megnyíló ablakban a gép
+          nyers kódjaihoz (pl. <code>REVOLUTION/MINUTE</code>) rövid, olvasható felirat (pl. <code>rpm</code>) adható
+          meg.
         </li>
       </ul>
 
@@ -473,30 +480,30 @@ function EditorSection() {
   return (
     <div className={s.body}>
       <p>
-        A <strong>Dashboard szerkesztő</strong> oldalon állíthatod össze a gépek Monitoring nézeteit. Egy géphez több
+        A <strong>Dashboard szerkesztő</strong> oldalon állíthatók össze a gépek Monitoring nézetei. Egy géphez több
         önálló dashboard is készíthető.
       </p>
 
       <h3>Dashboard létrehozása vagy másolása</h3>
       <ol>
-        <li>Válaszd ki a gépet a listából, majd kattints a <UiTag icon="plus" label="Dashboard hozzáadása" /> gombra.</li>
-        <li>Adj meg nevet, és a <strong>Kiindulás</strong> listában válassz üres dashboardot vagy egy azonos sémájú gép meglévő dashboardját.</li>
+        <li>A listából a kívánt gép kiválasztása után a <UiTag icon="plus" label="Dashboard hozzáadása" /> gombra kattintva hozható létre új nézet.</li>
+        <li>Név megadása után a <strong>Kiindulás</strong> listában üres dashboard vagy egy azonos sémájú gép meglévő dashboardja választható.</li>
       </ol>
 
       <h3>Panelek beállítása és mentése</h3>
       <ol>
-        <li>Nyisd le a kívánt nézetcsoportot (<strong>Állapot</strong>, <strong>Aktuális érték</strong>, <strong>Műszer</strong> vagy <strong>Grafikon</strong>), és kattints a <UiTag icon="plus" label="Panel hozzáadása" /> kártyára.</li>
-        <li>Válassz egy jelet a <strong>Jel a katalógusból</strong> listából, és igény szerint adj neki egyedi nevet.</li>
+        <li>A kívánt nézetcsoport (<strong>Állapot</strong>, <strong>Aktuális érték</strong>, <strong>Műszer</strong> vagy <strong>Grafikon</strong>) lenyitása után a <UiTag icon="plus" label="Panel hozzáadása" /> kártyára kattintva vehető fel új panel.</li>
+        <li>A <strong>Jel a katalógusból</strong> listából kiválasztható a jel, és igény szerint egyedi név is megadható.</li>
         <li>
-          Állítsd be a nézet opcióit:
+          A nézet opcióinak beállítása:
           <ul>
             <li><strong>Állapot:</strong> bekapcsolható az <strong>Állapotidősor megjelenítése</strong> színes idővonala.</li>
             <li><strong>Műszer:</strong> kötelező megadni a <strong>Minimum</strong> és <strong>Maximum</strong> értéket.</li>
             <li><strong>Grafikon:</strong> választható <strong>Vonalszín</strong>.</li>
           </ul>
         </li>
-        <li>A <UiTag label="Módosítások átvétele" /> után a kártyák nyilaival rendezheted a panelek sorrendjét.</li>
-        <li>Mentsd a <UiTag icon="save" label="Dashboard mentése" /> gombbal; az eredményt a <UiTag icon="chart-line" label="Monitoring megnyitása" /> gombbal nézheted meg.</li>
+        <li>A <UiTag label="Módosítások átvétele" /> gombra kattintva a panel bekerül a nézetbe, majd a kártyák nyilaival a panelek sorrendje rendezhető.</li>
+        <li>A <UiTag icon="save" label="Dashboard mentése" /> gombra kattintva menthető a beállítás; az eredmény a <UiTag icon="chart-line" label="Monitoring megnyitása" /> gombra kattintva tekinthető meg.</li>
       </ol>
 
       <Callout kind="tip" title="Folyamatos adatgyűjtés">
@@ -539,9 +546,9 @@ function AccessSection() {
 
       <h3>Kezelő felvétele vagy eltávolítása</h3>
       <ol>
-        <li>A Kezdőlapról nyisd meg a <strong>Jogosultságkezelés</strong> oldalt.</li>
-        <li>A <strong>Felhasználó hozzáadása</strong> listából válassz ki egy meglévő <em>Viewer</em> fiókot.</li>
-        <li>Kattints a <UiTag icon="plus" label="Hozzáadás" /> gombra (vagy eltávolításhoz a név melletti <UiTag icon="trash-alt" label="Eltávolítás" /> gombra).</li>
+        <li>A Kezdőlapról a <strong>Jogosultságkezelés</strong> oldal nyitható meg.</li>
+        <li>A <strong>Felhasználó hozzáadása</strong> listából kiválasztható egy meglévő <em>Viewer</em> fiók.</li>
+        <li>A <UiTag icon="plus" label="Hozzáadás" /> gombra kattintva adható meg a jogosultság (eltávolításhoz a név melletti <UiTag icon="trash-alt" label="Eltávolítás" /> gombra kattintva vonható vissza).</li>
       </ol>
 
       <h3>Relay kapcsolat beállítása</h3>
@@ -560,25 +567,25 @@ function TasksSection({ access, goTo }: { access: Access; goTo: (id: string) => 
       <div className={s.taskBlock}>
         <h4>Korábbi műszak adatainak visszanézése</h4>
         <ol>
-          <li>Nyisd meg a <strong>Monitoring</strong> oldalt, és válaszd ki a gépet.</li>
-          <li>A jobb felső időválasztóban állítsd be a kívánt napot és órát.</li>
-          <li>Kapcsold ki az automatikus frissítést (<em>Off</em>), hogy nézelődés közben ne ugorjon el az ablak.</li>
+          <li>A <strong>Monitoring</strong> oldalon a kívánt gép kiválasztása.</li>
+          <li>A jobb felső időválasztóra kattintva a kívánt nap és óra beállítása.</li>
+          <li>Az automatikus frissítés kikapcsolásával (<em>Off</em>) elkerülhető, hogy az időablak nézelődés közben elmozduljon.</li>
         </ol>
       </div>
 
       <div className={s.taskBlock}>
         <h4>Adatok megnyitása magyar Excelben</h4>
         <ol>
-          <li>Lépj az <ChapterLink id="adatexport" label="Adatexport" goTo={goTo} /> oldalra, válaszd ki a gépet, jeleket és időszakot.</li>
-          <li>Válaszd az <strong>Excelhez formázott CSV (pontosvesszővel)</strong> formátumot, majd kattints a <UiTag icon="download-alt" label="CSV letöltése" /> gombra.</li>
+          <li>Az <ChapterLink id="adatexport" label="Adatexport" goTo={goTo} /> oldalra lépve a gép, a jelek és az időszak kiválasztása.</li>
+          <li>Az <strong>Excelhez formázott CSV (pontosvesszővel)</strong> formátum kiválasztása után a <UiTag icon="download-alt" label="CSV letöltése" /> gombra kattintva indítható a fájl mentése.</li>
         </ol>
       </div>
 
       <div className={s.taskBlock}>
         <h4>„Nincs érték” vagy szaggatott vonal a grafikonon</h4>
         <ul>
-          <li>Ellenőrizd a felső <strong>Agent</strong> jelvényt: ha piros, a gép ki van kapcsolva vagy nem válaszol a hálózaton.</li>
-          <li>Ritkán változó jeleknél növeld az időablakot, vagy nézd meg a lap alján a <strong>Gyors adatpontnézegető</strong> táblázatot.</li>
+          <li>A felső <strong>Agent</strong> jelvény jelzi az állapotot: ha piros, a gép ki van kapcsolva vagy nem válaszol a hálózaton.</li>
+          <li>Ritkán változó jeleknél az időablak bővítésével, vagy a lap alján a <strong>Gyors adatpontnézegető</strong> táblázatban ellenőrizhető a legutóbbi érték.</li>
         </ul>
       </div>
 
@@ -587,26 +594,27 @@ function TasksSection({ access, goTo }: { access: Access; goTo: (id: string) => 
           <div className={s.taskBlock}>
             <h4>Új gép bekötésének ajánlott sorrendje</h4>
             <ol>
-              <li>Új géptípusnál hozz létre sémát a <ChapterLink id="jelkatalogus" label="Jelkatalógus" goTo={goTo} /> oldalon.</li>
-              <li>Az <ChapterLink id="agentek" label="Agentek és gépek" goTo={goTo} /> oldalon vedd fel az agentet, nevezd el a gépet, rendeld hozzá a sémát, majd nyomd meg a <UiTag label="Mentés és alkalmazás" /> gombot.</li>
-              <li>Az első adatok beérkezése után a <strong>Jelkatalógus</strong> oldalon az <UiTag icon="plus" label="Új jel gépadatpontból" /> gombbal kösd össze a gép adatpontjait a magyar jelnevekkel.</li>
-              <li>A <ChapterLink id="dashboard-szerkeszto" label="Dashboard szerkesztő" goTo={goTo} /> oldalon hozd létre a gép dashboardját.</li>
+              <li>Új géptípusnál séma létrehozása a <ChapterLink id="jelkatalogus" label="Jelkatalógus" goTo={goTo} /> oldalon.</li>
+              <li>Az <ChapterLink id="agentek" label="Agentek és gépek" goTo={goTo} /> oldalon az agent felvétele, a gép elnevezése és a séma hozzárendelése után a <UiTag label="Mentés és alkalmazás" /> gombra kattintva véglegesíthető a kapcsolat.</li>
+              <li>Az első adatok beérkezése után a <strong>Jelkatalógus</strong> oldalon az <UiTag icon="plus" label="Új jel gépadatpontból" /> gombra kattintva köthetők össze a gép adatpontjai a magyar jelnevekkel.</li>
+              <li>A <ChapterLink id="dashboard-szerkeszto" label="Dashboard szerkesztő" goTo={goTo} /> oldalon hozható létre a gép dashboardja.</li>
             </ol>
           </div>
 
           <div className={s.taskBlock}>
             <h4>A Hálózati keresés nem találja a gépet</h4>
             <ul>
-              <li>Ellenőrizd, hogy a gép be van-e kapcsolva és azonos helyi hálózaton van-e az adatgyűjtővel.</li>
-              <li>Eltérő port vagy külön útvonal esetén add meg kézzel a portot, vagy használd az <UiTag icon="plus" label="Agent hozzáadása" /> gombot.</li>
+              <li>Ellenőrizendő, hogy a gép be van-e kapcsolva és azonos helyi hálózaton van-e az adatgyűjtővel.</li>
+              <li>Eltérő port vagy külön útvonal esetén kézzel adható meg a port, vagy az <UiTag icon="plus" label="Agent hozzáadása" /> gombra kattintva vehető fel kézzel az eszköz.</li>
             </ul>
           </div>
 
           <div className={s.taskBlock}>
             <h4>Jel vagy séma nem törölhető</h4>
             <p>
-              Jel törlése előtt vedd le az érintett dashboardokról és sémákból; séma törlése előtt válassz másik sémát
-              az <strong>Agentek és gépek</strong> oldalon a hozzá rendelt gépekhez.
+              Jel törlése előtt a hivatkozások eltávolítása szükséges az érintett dashboardokról és sémákból; séma
+              törlése előtt másik sémát kell választani az <strong>Agentek és gépek</strong> oldalon a hozzá rendelt
+              gépekhez.
             </p>
           </div>
         </>
@@ -616,8 +624,8 @@ function TasksSection({ access, goTo }: { access: Access; goTo: (id: string) => 
         <div className={s.taskBlock}>
           <h4>Kezelői jogosultság adása új kollégának</h4>
           <ol>
-            <li>A kolléga először lépjen be saját fiókkal a Grafanába.</li>
-            <li>A <ChapterLink id="jogosultsagok" label="Jogosultságkezelés" goTo={goTo} /> oldalon válaszd ki a nevét, és kattints a <UiTag icon="plus" label="Hozzáadás" /> gombra.</li>
+            <li>A kollégának először be kell lépnie saját fiókkal a Grafanába.</li>
+            <li>A <ChapterLink id="jogosultsagok" label="Jogosultságkezelés" goTo={goTo} /> oldalon a név kiválasztása után a <UiTag icon="plus" label="Hozzáadás" /> gombra kattintva adható meg a jogosultság.</li>
           </ol>
         </div>
       )}
