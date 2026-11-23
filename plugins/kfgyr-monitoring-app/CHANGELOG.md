@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.45 — 2026-11-23
+
+- Left-align wrapped chapter links in the User Guide.
+
 ## 0.4.44 — 2026-11-23
 
 - Remove the house symbol from the Fleet Home button.

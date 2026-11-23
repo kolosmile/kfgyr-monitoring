@@ -5,7 +5,7 @@
   "info": {
     "description": "Kompakt állapot- és műszeráttekintő gépenként",
     "author": { "name": "KFGyR" },
-    "version": "0.4.44"
+    "version": "0.4.45"
   },
   "dependencies": {
     "grafanaDependency": ">=13.0.2",

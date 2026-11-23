@@ -71,6 +71,7 @@ const getStyles = (theme: GrafanaTheme2) => ({
     background: 'none',
     border: 'none',
     padding: 0,
+    textAlign: 'left',
     color: theme.colors.text.link,
     font: 'inherit',
     fontWeight: 600,
