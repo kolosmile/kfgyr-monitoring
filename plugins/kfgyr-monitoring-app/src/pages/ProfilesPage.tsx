@@ -347,6 +347,7 @@ export function ProfilesPage() {
     (panel.signal_id && item.kind === 'signal' && item.id === panel.signal_id) ||
     (panel.point && item.kind === 'point' && item.id === panel.point));
   const panelName = (panel: Panel) => panel.name || panelOption(panel)?.label || 'Névtelen panel';
+  const unavailablePanels = assignment?.panels.filter((panel) => !panelOption(panel)) ?? [];
   const groups = new Map<string, Option[]>();
   for (const item of catalog?.machines ?? []) {
     const agent = machineLabel(item.label).agent || 'Egyéb';
@@ -369,17 +370,14 @@ export function ProfilesPage() {
   }
 
   if (showSchemas) {
-    return <SchemasPage onBack={returnFromSchemas} />;
+    return <SchemasPage machine={machine} onBack={returnFromSchemas}
+      backLabel={assignment ? 'Vissza a panelszerkesztőhöz' : 'Vissza a dashboardokhoz'} />;
   }
 
-  const catalogAction = assignment ? (
+  const catalogAction = (
     <Button type="button" variant="secondary" icon={menu.schemas.icon} disabled={saving} onClick={() => setShowSchemas(true)}>
       {menu.schemas.text}
     </Button>
-  ) : (
-    <LinkButton href={config.appSubUrl + menu.schemas.path} variant="secondary" icon={menu.schemas.icon}>
-      {menu.schemas.text}
-    </LinkButton>
   );
 
   return (
@@ -389,6 +387,13 @@ export function ProfilesPage() {
         <form onSubmit={save} className={styles.form}>
           {error && <Alert severity="error" title="A művelet sikertelen">{error}</Alert>}
           {notice && <Alert severity="success" title={notice} />}
+          {unavailablePanels.length > 0 && (
+            <Alert severity="warning" title="Elérhetetlen adatpontok">
+              {unavailablePanels.map((panel) => panel.name || panel.signal_id || panel.point).join(', ')}.
+              {' '}Ezekhez a panelekhez jelenleg nincs elérhető adatpont. A dashboard menthető,
+              az érintett panelekhez a szerkesztésüknél választhatsz másik jelet.
+            </Alert>
+          )}
           {skippedPanels > 0 && <Alert severity="warning" title={`${skippedPanels} panel kimaradt a másolásból`}>
             Ezekhez a panelekhez a célgépen nem találtunk megfelelő adatpontot.
           </Alert>}

@@ -46,7 +46,7 @@ function suggestName(item: DataItem) {
   return item.path.split('/').filter(Boolean).pop() || item.type || 'Új jel';
 }
 
-export function SchemaManager() {
+export function SchemaManager({ machine }: { machine?: string }) {
   const styles = useStyles2(getStyles);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [schemas, setSchemas] = useState<SchemaOption[]>([]);
@@ -70,7 +70,7 @@ export function SchemaManager() {
   const [submitted, setSubmitted] = useState(false);
   const mappingRequest = useRef(0);
 
-  async function loadBase(preferredSchema = selectedSchema) {
+  async function loadBase(preferredSchema?: string) {
     const [catalog, schemaResult, machineResult] = await Promise.all([
       api<CatalogResponse>('signals'),
       api<SchemaResponse>('schemas'),
@@ -79,8 +79,9 @@ export function SchemaManager() {
     setSignals(catalog.signals);
     setSchemas(schemaResult.schemas);
     setMachines(machineResult.machines);
-    const nextSchema = schemaResult.schemas.some((item) => item.id === preferredSchema)
-      ? preferredSchema : schemaResult.schemas[0]?.id || '';
+    const schemaId = preferredSchema ?? machineResult.machines.find((item) => item.id === machine)?.schema_id;
+    const nextSchema = schemaResult.schemas.find((item) => item.id === schemaId)?.id
+      ?? schemaResult.schemas[0]?.id ?? '';
     setSelectedSchema(nextSchema);
     return nextSchema;
   }
@@ -108,7 +109,7 @@ export function SchemaManager() {
     let active = true;
     (async () => {
       try {
-        const schemaId = await loadBase('');
+        const schemaId = await loadBase();
         if (active) {
           await loadMappings(schemaId);
         }

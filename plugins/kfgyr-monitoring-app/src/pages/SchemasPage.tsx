@@ -7,7 +7,9 @@ import { getStyles } from '../components/styles';
 import { menu } from '../navigation/menu';
 import { SchemaManager } from './SchemaManager';
 
-export function SchemasPage({ onBack }: { onBack?: () => void } = {}) {
+type Props = { machine?: string; onBack?: () => void; backLabel?: string };
+
+export function SchemasPage({ machine, onBack, backLabel }: Props = {}) {
   const styles = useStyles2(getStyles);
 
   return (
@@ -18,7 +20,7 @@ export function SchemasPage({ onBack }: { onBack?: () => void } = {}) {
           <HomeLink />
           {onBack ? (
             <Button type="button" variant="secondary" icon="arrow-left" onClick={onBack}>
-              Vissza a panelszerkesztőhöz
+              {backLabel}
             </Button>
           ) : (
             <LinkButton href={config.appSubUrl + menu.dashboard.path} variant="secondary" icon={menu.dashboard.icon}>
@@ -26,7 +28,7 @@ export function SchemasPage({ onBack }: { onBack?: () => void } = {}) {
             </LinkButton>
           )}
         </div>
-        <SchemaManager />
+        <SchemaManager machine={machine} />
       </div>
     </PluginPage>
   );

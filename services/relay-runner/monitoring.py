@@ -1,4 +1,5 @@
 """Runner-owned monitoring, signal catalog, and MTConnect schema configuration."""
+from collections import Counter
 import json
 from pathlib import Path
 import re
@@ -475,42 +476,54 @@ def get_assignment(machine):
     return read_dashboard(row[0])
 
 
-def validate_dashboard_panels(db, machine, panels):
+def validate_dashboard_panels(db, machine, panels, saved_panels=()):
     agent, device, _ = machine_info(db, machine)
     available = {item["id"] for item in _machine_signal_options(db, machine)
                  if item["kind"] == "signal"}
     points = {row[0] for row in db.execute(SIGNALS, (agent, device))}
+    # A schema change can leave existing references unresolved. Preserve them
+    # without allowing unavailable references to be added or duplicated.
+    saved_signals = Counter(panel.get("signal_id") for panel in saved_panels)
+    saved_points = Counter(panel.get("point") for panel in saved_panels)
     for panel in panels:
         if panel.signal_id and panel.signal_id not in available:
-            raise Problem(422, "A kiválasztott jelhez nincs hozzárendelt adatpont ezen a gépen.")
+            if saved_signals[panel.signal_id] <= 0:
+                raise Problem(422, "A kiválasztott jelhez nincs hozzárendelt adatpont ezen a gépen.")
+            saved_signals[panel.signal_id] -= 1
         if panel.point and panel.point not in points:
-            raise Problem(422, "A kiválasztott adatpont nem ehhez a géphez tartozik.")
+            if saved_points[panel.point] <= 0:
+                raise Problem(422, "A kiválasztott adatpont nem ehhez a géphez tartozik.")
+            saved_points[panel.point] -= 1
 
 
 def save_assignment(body, actor):
     with psycopg.connect(connect_timeout=5) as db:
         agent, device, _ = machine_info(db, body.machine)
         db.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (agent + "/" + device,))
-        validate_dashboard_panels(db, body.machine, body.panels)
-        panels = Jsonb([panel.model_dump(exclude_none=True) for panel in body.panels])
         current = db.execute("""
-            SELECT id FROM kfgyr.machine_dashboards WHERE agent_alias=%s AND device_id=%s
+            SELECT id, profile, signals, revision FROM kfgyr.machine_dashboards
+            WHERE agent_alias=%s AND device_id=%s
             ORDER BY is_default DESC, id LIMIT 1 FOR UPDATE
         """, (agent, device)).fetchone()
-        if not current and body.revision == 0:
+        if body.revision != (current[3] if current else 0):
+            raise Problem(409, "A dashboardot közben módosították. Töltsd újra.")
+        saved_panels = []
+        if current:
+            saved_panels = current[2] if isinstance(current[2], list) else legacy_panels(current[1], current[2])
+        validate_dashboard_panels(db, body.machine, body.panels, saved_panels)
+        panels = Jsonb([panel.model_dump(exclude_none=True) for panel in body.panels])
+        if not current:
             row = db.execute("""
                 INSERT INTO kfgyr.machine_dashboards
                     (agent_alias, device_id, name, signals, updated_by, is_default)
                 VALUES (%s, %s, 'Áttekintés', %s, %s, true) RETURNING revision
             """, (agent, device, panels, actor)).fetchone()
-        elif current:
+        else:
             row = db.execute("""
                 UPDATE kfgyr.machine_dashboards SET profile='generic', signals=%s,
                     updated_by=%s, updated_at=now(), revision=revision+1
                 WHERE id=%s AND revision=%s RETURNING revision
             """, (panels, actor, current[0], body.revision)).fetchone()
-        else:
-            row = None
         if not row:
             raise Problem(409, "A dashboardot közben módosították. Töltsd újra.")
         return {"revision": row[0]}
@@ -598,17 +611,22 @@ def update_dashboard(body, actor):
         raise Problem(422, "Adj nevet a dashboardnak.")
     with psycopg.connect(connect_timeout=5) as db:
         row = db.execute("""
-            SELECT agent_alias, device_id FROM kfgyr.machine_dashboards WHERE id=%s FOR UPDATE
+            SELECT agent_alias, device_id, profile, signals, revision
+            FROM kfgyr.machine_dashboards WHERE id=%s FOR UPDATE
         """, (body.id,)).fetchone()
         if not row:
             raise Problem(404, "A dashboard nem található.")
+        agent, device, profile, signals, revision = row
+        if revision != body.revision:
+            raise Problem(409, "A dashboardot közben módosították. Töltsd újra.")
         machine = db.execute("""
             SELECT node_id::text FROM raw.nodes WHERE props->>'node_type'='Device'
               AND props->>'agentAlias'=%s AND props->>'deviceId'=%s ORDER BY node_id LIMIT 1
-        """, row).fetchone()
+        """, (agent, device)).fetchone()
         if not machine:
             raise Problem(404, "A dashboard gépe nem található.")
-        validate_dashboard_panels(db, machine[0], body.panels)
+        saved_panels = signals if isinstance(signals, list) else legacy_panels(profile, signals)
+        validate_dashboard_panels(db, machine[0], body.panels, saved_panels)
         result = db.execute("""
             UPDATE kfgyr.machine_dashboards SET name=%s, profile='generic', signals=%s,
                 updated_by=%s, updated_at=now(), revision=revision+1

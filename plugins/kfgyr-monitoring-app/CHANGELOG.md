@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.50 — 2026-11-23
+
+- Flag panels whose data points are unavailable after a schema change and allow other panels to be saved.
+- Open the signal catalog on the selected machine's schema from the dashboard editor.
+
 ## 0.4.49 — 2026-11-23
 
 - Replace the standalone User Guide page with an in-place overlay modal offering separate Table of Contents and Chapter views.

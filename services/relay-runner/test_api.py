@@ -7,12 +7,13 @@ import tempfile
 import threading
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
 from configuration import Problem, Store
 from discovery import Discovery, Policy, local_networks, probe
+from monitoring import Panel, validate_dashboard_panels
 from runner import atomic_write
 from server import create_app
 
@@ -20,6 +21,25 @@ TOKEN = "test-token-" + "a" * 40
 CONFIG = {"client": {"name": "Demo", "timezone": "Europe/Budapest"}, "relay": {"agents": [
     {"alias": "Demo", "url": "http://192.168.88.20:5000", "retention": "1week", "devices": [{"id": "d1", "alias": "Mazak"}]}
 ]}, "custom": {"preserve": True}}
+
+
+class DashboardPanelTests(unittest.TestCase):
+    def test_schema_change_keeps_saved_panels_and_allows_new_available_signal(self):
+        db = MagicMock()
+        db.execute.return_value = [("available-point",)]
+        missing = Panel(signal_id="old_spindle", view="chart")
+        old_point = Panel(point="old-point", view="chart")
+        new = Panel(signal_id="tool_number", view="value")
+        saved = [missing.model_dump(), old_point.model_dump()]
+        with patch("monitoring.machine_info", return_value=("Mazak", "d1", "Mazak/CV5")), \
+             patch("monitoring._machine_signal_options", return_value=[{"id": "tool_number", "kind": "signal"}]):
+            validate_dashboard_panels(db, "4295", [new, missing, old_point], saved)
+            validate_dashboard_panels(db, "4295", [new], saved)
+            for panels in ([missing, missing], [old_point, old_point], [Panel(signal_id="unknown", view="value")]):
+                with self.subTest(panels=panels), self.assertRaises(Problem):
+                    validate_dashboard_panels(db, "4295", panels, saved)
+            with self.assertRaises(Problem):
+                validate_dashboard_panels(db, "4295", [missing])
 
 
 class APITests(unittest.TestCase):
@@ -96,6 +116,24 @@ class APITests(unittest.TestCase):
             response = self.client.post("/v1/dashboards/delete", json={"id": 7, "revision": 2})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(delete.call_args.args[0].revision, 2)
+
+    def test_dashboard_save_after_machine_schema_change(self):
+        db = MagicMock()
+        saved_panel = {"signal_id": "old_spindle", "view": "chart"}
+        db.execute.return_value.fetchone.side_effect = [
+            ("Mazak", "d1", "generic", [saved_panel], 3), ("4295",),
+            ("Mazak", "d1", "Mazak/CV5"), (4,),
+        ]
+        panels = [saved_panel, {"signal_id": "tool_number", "view": "value"}]
+        with patch("monitoring.psycopg.connect") as connect, \
+             patch("monitoring._machine_signal_options", return_value=[{"id": "tool_number", "kind": "signal"}]):
+            connect.return_value.__enter__.return_value = db
+            response = self.client.put("/v1/dashboards", json={
+                "id": 7, "name": "Áttekintés", "panels": panels, "revision": 3,
+            })
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json(), {"revision": 4})
+        self.assertEqual(db.execute.call_args.args[1][1].obj, panels)
 
     def test_machine_availability_uses_configured_agent(self):
         self.seed()
