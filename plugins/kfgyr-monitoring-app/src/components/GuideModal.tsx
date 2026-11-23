@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { css, cx } from '@emotion/css';
 import type { GrafanaTheme2 } from '@grafana/data';
 import { Button, Icon, Input, Modal, Spinner, useStyles2 } from '@grafana/ui';
@@ -48,6 +48,7 @@ const getStyles = (theme: GrafanaTheme2) => ({
   toolbar: css({
     flexShrink: 0,
     display: 'flex',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 8,
     paddingBottom: 12,
@@ -76,6 +77,11 @@ const getStyles = (theme: GrafanaTheme2) => ({
       outline: `2px solid ${theme.colors.primary.main}`,
       outlineOffset: 1,
     },
+    [theme.breakpoints.down('sm')]: {
+      gap: 4,
+      padding: '7px 6px',
+      fontSize: 12,
+    },
   }),
   tabBtnActive: css({
     background: theme.colors.action.selected,
@@ -91,6 +97,18 @@ const getStyles = (theme: GrafanaTheme2) => ({
     overflowX: 'hidden',
     paddingRight: 4,
     paddingBottom: 12,
+  }),
+  feedback: css({
+    marginBottom: 14,
+    padding: theme.spacing(1.5, 2),
+    border: `1px solid ${theme.colors.border.weak}`,
+    borderRadius: theme.shape.radius.default,
+    background: theme.colors.background.secondary,
+    fontSize: 13,
+    overflowWrap: 'anywhere',
+    '& p': { margin: 0 },
+    '& p + p': { marginTop: theme.spacing(1) },
+    '& a': { color: theme.colors.primary.text, textDecoration: 'underline' },
   }),
   tocWrap: css({
     display: 'grid',
@@ -248,6 +266,8 @@ function GuideModalInner({
   const [view, setView] = useState<GuideView>(() =>
     initialChapter && chapters.some((c) => c.id === initialChapter) ? 'chapter' : 'toc'
   );
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const feedbackId = useId();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -311,9 +331,33 @@ function GuideModalInner({
           <Icon name="book-open" aria-hidden="true" />
           <span>Fejezet</span>
         </button>
+        <button
+          type="button"
+          aria-expanded={feedbackOpen}
+          aria-controls={feedbackId}
+          className={cx(s.tabBtn, feedbackOpen && s.tabBtnActive)}
+          onClick={() => {
+            if (!feedbackOpen) {
+              scrollRef.current?.scrollTo({ top: 0 });
+            }
+            setFeedbackOpen(!feedbackOpen);
+          }}
+        >
+          <Icon name="info-circle" aria-hidden="true" />
+          <span>Hibajelzés</span>
+        </button>
       </div>
 
       <div ref={scrollRef} className={s.scrollBody}>
+        <section id={feedbackId} className={s.feedback} aria-label="Hibajelzés és kapcsolat" hidden={!feedbackOpen}>
+          <p>Ha hibát találsz a felületen vagy az útmutatóban, jelentsd a GitHubon. Írd le röviden, hol és milyen lépések után jelentkezett.</p>
+          <p>
+            <a href="https://github.com/kolosmile/kfgyr-monitoring/issues/new" target="_blank" rel="noopener noreferrer">
+              Új hibajegy a GitHubon
+            </a>
+          </p>
+          <p><strong>Fejlesztő</strong> · Kolos Mile · <a href="mailto:studio@kolosmile.com">studio@kolosmile.com</a></p>
+        </section>
         {view === 'toc' && (
           <div className={s.tocWrap}>
             <div className={s.searchWrap}>

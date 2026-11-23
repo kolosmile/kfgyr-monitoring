@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.53 — 2026-11-23
+
+- Add a bug-report link and developer contact details to the User Guide.
+
 ## 0.4.52 — 2026-11-23
 
 - Show and search MTConnect data item names in the machine data item pickers.
