@@ -1,9 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { GrafanaTheme2, IconName } from '@grafana/data';
-import { config } from '@grafana/runtime';
 import { css } from '@emotion/css';
 import { Icon, useStyles2 } from '@grafana/ui';
-import { menu } from '../navigation/menu';
+import { GuideModal } from './GuideModal';
 
 const getStyles = (theme: GrafanaTheme2) => ({
   row: css({
@@ -29,11 +28,12 @@ const getStyles = (theme: GrafanaTheme2) => ({
     justifyContent: 'center',
     flexShrink: 0,
     padding: 6,
+    margin: 0,
     borderRadius: theme.shape.radius.default,
     background: 'transparent',
     border: 'none',
     color: theme.colors.text.secondary,
-    textDecoration: 'none',
+    fontFamily: 'inherit',
     cursor: 'pointer',
     transition: 'color 120ms ease',
     '&:hover': {
@@ -50,6 +50,8 @@ const getStyles = (theme: GrafanaTheme2) => ({
 
 export function MenuPageTitle({ item }: { item: { text: string; icon: IconName; guideChapter?: string } }) {
   const styles = useStyles2(getStyles);
+  const [guideOpen, setGuideOpen] = useState(false);
+
   return (
     <div className={styles.row}>
       <h1 className={styles.title}>
@@ -57,14 +59,24 @@ export function MenuPageTitle({ item }: { item: { text: string; icon: IconName; 
         <span>{item.text}</span>
       </h1>
       {item.guideChapter && (
-        <a
-          className={styles.guideLink}
-          href={`${config.appSubUrl}${menu.guide.path}#${item.guideChapter}`}
-          title="Használati útmutató"
-          aria-label={`${item.text} – Használati útmutató`}
-        >
-          <Icon name="info-circle" size="xl" aria-hidden />
-        </a>
+        <>
+          <button
+            type="button"
+            className={styles.guideLink}
+            onClick={() => setGuideOpen(true)}
+            title="Használati útmutató"
+            aria-label={`${item.text} – Használati útmutató`}
+          >
+            <Icon name="info-circle" size="xl" aria-hidden />
+          </button>
+          {guideOpen && (
+            <GuideModal
+              isOpen
+              initialChapter={item.guideChapter}
+              onDismiss={() => setGuideOpen(false)}
+            />
+          )}
+        </>
       )}
     </div>
   );

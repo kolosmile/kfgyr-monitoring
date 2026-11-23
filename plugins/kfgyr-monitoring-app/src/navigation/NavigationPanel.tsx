@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { css } from '@emotion/css';
 import { GrafanaTheme2 } from '@grafana/data';
 import { config } from '@grafana/runtime';
 import { Icon, useStyles2 } from '@grafana/ui';
+import { GuideModal } from '../components/GuideModal';
 import { menu } from './menu';
 import { useAccess } from '../access';
 
@@ -41,6 +42,7 @@ const getStyles = (theme: GrafanaTheme2) => ({
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing(2),
+    width: '100%',
     minHeight: 54,
     padding: theme.spacing(0.75, 2),
     border: `1px solid ${theme.colors.border.medium}`,
@@ -49,7 +51,11 @@ const getStyles = (theme: GrafanaTheme2) => ({
     color: theme.colors.text.primary,
     fontSize: 16,
     fontWeight: theme.typography.fontWeightMedium,
+    fontFamily: 'inherit',
+    lineHeight: 'inherit',
+    textAlign: 'left',
     textDecoration: 'none',
+    cursor: 'pointer',
     '&:hover': {
       background: theme.colors.action.hover,
       borderColor: theme.colors.border.strong,
@@ -74,6 +80,7 @@ const getStyles = (theme: GrafanaTheme2) => ({
 export function NavigationPanel() {
   const styles = useStyles2(getStyles);
   const { access } = useAccess();
+  const [guideOpen, setGuideOpen] = useState(false);
   const groups = [
     { title: 'Eszközök', accent: 'tools', items: [menu.monitoring, menu.fleet, menu.export] },
     { title: 'Beállítások', accent: 'settings', items: access?.manage_plugin
@@ -89,17 +96,26 @@ export function NavigationPanel() {
           <section key={accent} aria-labelledby={`kfgyr-menu-${accent}`} className={styles[accent]}>
             <h2 id={`kfgyr-menu-${accent}`} className={styles.heading}>{title}</h2>
             <div className={styles.cards}>
-              {items.map(({ text, icon, path }) => (
-                <a key={path} className={styles.card} href={config.appSubUrl + path}>
-                  <span className={styles.icon}><Icon name={icon} size="lg" aria-hidden /></span>
-                  <span>{text}</span>
-                  <Icon name="angle-right" className={styles.arrow} aria-hidden />
-                </a>
-              ))}
+              {items.map((item) =>
+                'opensGuide' in item && item.opensGuide ? (
+                  <button key={item.text} type="button" className={styles.card} onClick={() => setGuideOpen(true)}>
+                    <span className={styles.icon}><Icon name={item.icon} size="lg" aria-hidden /></span>
+                    <span>{item.text}</span>
+                    <Icon name="angle-right" className={styles.arrow} aria-hidden />
+                  </button>
+                ) : (
+                  <a key={item.path} className={styles.card} href={config.appSubUrl + item.path}>
+                    <span className={styles.icon}><Icon name={item.icon} size="lg" aria-hidden /></span>
+                    <span>{item.text}</span>
+                    <Icon name="angle-right" className={styles.arrow} aria-hidden />
+                  </a>
+                )
+              )}
             </div>
           </section>
         ))}
       </div>
+      {guideOpen && <GuideModal isOpen access={access} onDismiss={() => setGuideOpen(false)} />}
     </nav>
   );
 }

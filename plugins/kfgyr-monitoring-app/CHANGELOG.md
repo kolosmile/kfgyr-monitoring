@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.49 — 2026-11-23
+
+- Replace the standalone User Guide page with an in-place overlay modal offering separate Table of Contents and Chapter views.
+
 ## 0.4.48 — 2026-11-23
 
 - Add a User Guide info-icon link next to each plugin page heading.
