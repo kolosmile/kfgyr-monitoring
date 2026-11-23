@@ -61,13 +61,6 @@ const getStyles = (theme: GrafanaTheme2) => ({
     width: '100%',
     minWidth: 0,
     maxWidth: '100%',
-    overflow: 'hidden',
-    '& > div, & div': {
-      width: '100%',
-      minWidth: 0,
-      maxWidth: '100%',
-      boxSizing: 'border-box',
-    },
     '& input': {
       minWidth: 0,
       width: '100%',

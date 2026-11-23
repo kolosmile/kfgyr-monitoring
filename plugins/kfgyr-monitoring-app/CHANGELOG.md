@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.40 — 2026-11-23
+
+- Fix search input prefix alignment and box-sizing in the User Guide.
+
 ## 0.4.39 — 2026-11-23
 
 - Simplify User Guide layout and typography, removing synthetic UI mockups and redundant role banners.
