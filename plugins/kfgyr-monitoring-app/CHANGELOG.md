@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.41 — 2026-11-23
+
+- Add signal captions and a Home link to Fleet.
+- Show agent reachability and move Monitoring links to the lower-right corner of machine cards.
+
 ## 0.4.40 — 2026-11-23
 
 - Fix search input prefix alignment and box-sizing in the User Guide.

@@ -215,7 +215,7 @@ def panel_resource(source, defaults=None):
     queries = [
         resource("PanelQuery", refId=target["refId"], hidden=False,
                  query=data_query(**{key: target[key] for key in ("rawSql", "format", "rawQuery", "editorMode")}))
-        for target in source["targets"]
+        for target in source.get("targets", [])
     ]
     transforms = [
         {**resource("Transformation", options=item["options"]), "group": item["id"]}
@@ -398,6 +398,15 @@ SELECT node_id::text AS machine_id, dashboard_id::text, props->>'agentAlias' AS 
 FROM fleet_machine LEFT JOIN readings r ON r.device=fleet_machine.node_id
 GROUP BY node_id, dashboard_id, props
 """)
+fleet_home = panel(2, "", "text", 0, 0, 24, 2)
+fleet_home["options"] = {
+    "mode": "html",
+    "content": (
+        '<a href="/d/kfgyr-home" style="display:inline-block;padding:4px 12px;'
+        'border:1px solid currentColor;border-radius:4px;text-decoration:none">Kezdőlap</a>'
+    ),
+}
+fleet_home["transparent"] = True
 fleet_dashboard = {
     "apiVersion": "dashboard.grafana.app/v2",
     "kind": "Dashboard",
@@ -406,12 +415,20 @@ fleet_dashboard = {
         "title": "Géppark", "editable": False, "tags": ["KFGyR"],
         "annotations": [], "cursorSync": "Off", "links": [],
         "timeSettings": {**monitoring["spec"]["timeSettings"], "hideTimepicker": True},
-        "elements": {"panel-1": panel_resource(fleet_card)},
-        "layout": resource("AutoGridLayout", maxColumnCount=5, columnWidthMode="custom", columnWidth=246,
-                           rowHeightMode="custom", rowHeight=224, fillScreen=False, items=[
-                               resource("AutoGridLayoutItem", element={"kind": "ElementReference", "name": "panel-1"},
-                                        repeat={"mode": "variable", "value": "fleet_machine"}),
-                           ]),
+        "elements": {"panel-1": panel_resource(fleet_card), "panel-2": panel_resource(fleet_home)},
+        "layout": resource("RowsLayout", rows=[
+            resource("RowsLayoutRow", hideHeader=True, layout=resource(
+                "AutoGridLayout", maxColumnCount=1, columnWidthMode="standard", rowHeightMode="custom",
+                rowHeight=48, fillScreen=False, items=[
+                    resource("AutoGridLayoutItem", element={"kind": "ElementReference", "name": "panel-2"}),
+                ])),
+            resource("RowsLayoutRow", hideHeader=True, layout=resource(
+                "AutoGridLayout", maxColumnCount=5, columnWidthMode="custom", columnWidth=246,
+                rowHeightMode="custom", rowHeight=248, fillScreen=False, items=[
+                    resource("AutoGridLayoutItem", element={"kind": "ElementReference", "name": "panel-1"},
+                             repeat={"mode": "variable", "value": "fleet_machine"}),
+                ])),
+        ]),
         "variables": [query_variable("fleet_machine", f"""
 SELECT node_id::text AS __value, concat_ws(' / ', props->>'agentAlias', {FLEET_NAME}, node_id::text) AS __text
 FROM raw.nodes WHERE props->>'node_type'='Device'

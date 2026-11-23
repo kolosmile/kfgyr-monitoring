@@ -79,28 +79,101 @@
             "version": ""
           }
         }
+      },
+      "panel-2": {
+        "kind": "Panel",
+        "spec": {
+          "id": 2,
+          "title": "",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "spec": {
+              "options": {
+                "mode": "html",
+                "content": "<a href=\"/d/kfgyr-home\" style=\"display:inline-block;padding:4px 12px;border:1px solid currentColor;border-radius:4px;text-decoration:none\">Kezdőlap</a>"
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            },
+            "group": "text",
+            "version": ""
+          },
+          "transparent": true
+        }
       }
     },
     "layout": {
-      "kind": "AutoGridLayout",
+      "kind": "RowsLayout",
       "spec": {
-        "maxColumnCount": 5,
-        "columnWidthMode": "custom",
-        "columnWidth": 246,
-        "rowHeightMode": "custom",
-        "rowHeight": 224,
-        "fillScreen": false,
-        "items": [
+        "rows": [
           {
-            "kind": "AutoGridLayoutItem",
+            "kind": "RowsLayoutRow",
             "spec": {
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-1"
-              },
-              "repeat": {
-                "mode": "variable",
-                "value": "fleet_machine"
+              "hideHeader": true,
+              "layout": {
+                "kind": "AutoGridLayout",
+                "spec": {
+                  "maxColumnCount": 1,
+                  "columnWidthMode": "standard",
+                  "rowHeightMode": "custom",
+                  "rowHeight": 48,
+                  "fillScreen": false,
+                  "items": [
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-2"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "hideHeader": true,
+              "layout": {
+                "kind": "AutoGridLayout",
+                "spec": {
+                  "maxColumnCount": 5,
+                  "columnWidthMode": "custom",
+                  "columnWidth": 246,
+                  "rowHeightMode": "custom",
+                  "rowHeight": 248,
+                  "fillScreen": false,
+                  "items": [
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-1"
+                        },
+                        "repeat": {
+                          "mode": "variable",
+                          "value": "fleet_machine"
+                        }
+                      }
+                    }
+                  ]
+                }
               }
             }
           }
