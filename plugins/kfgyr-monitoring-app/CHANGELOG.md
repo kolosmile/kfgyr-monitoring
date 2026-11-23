@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.48 — 2026-11-23
+
+- Add a User Guide info-icon link next to each plugin page heading.
+
 ## 0.4.47 — 2026-11-23
 
 - Give dashboard stars distinct accessible names and larger touch targets.
