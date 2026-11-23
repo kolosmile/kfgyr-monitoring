@@ -232,6 +232,25 @@ export function ProfilesPage() {
     }
   }
 
+  async function setDefaultDashboard(item: Dashboard) {
+    if (saving || item.is_default) {
+      return;
+    }
+    setSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await api<{ id: number }>('dashboards/default', 'PUT', { machine, id: item.id });
+      setDashboards((current) => current?.map((dashboard) => ({ ...dashboard, is_default: dashboard.id === result.id })));
+      setNotice(`A(z) „${item.name}” az alapértelmezett dashboard.`);
+    } catch (err) {
+      setError(errorText(err));
+      setListRevision((revision) => revision + 1);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function changePanels(panels: Panel[]) {
     setAssignment((current) => current && { ...current, panels });
     setNotice('');
@@ -459,15 +478,24 @@ export function ProfilesPage() {
                   <p className={styles.muted}>Nincs a keresésnek megfelelő dashboard.</p>}
                 <div className={styles.dashboardGrid}>
                   {visibleDashboards?.map((item) => (
-                    <button key={item.id} type="button" className={styles.machineCard} onClick={() => {
-                      setError('');
-                      setNotice('');
-                      setDashboardId(item.id);
-                    }}>
-                      <DashboardIcon className={styles.dashboardIcon} />
-                      <span>{item.name}</span>
-                      <Icon name="angle-right" />
-                    </button>
+                    <div className={styles.dashboardCard} key={item.id}>
+                      <button type="button" className={styles.machineCard} disabled={saving} onClick={() => {
+                        setError('');
+                        setNotice('');
+                        setDashboardId(item.id);
+                      }}>
+                        <DashboardIcon className={styles.dashboardIcon} />
+                        <span>{item.name}</span>
+                        <Icon name="angle-right" />
+                      </button>
+                      <div className={styles.dashboardStar}>
+                        <IconButton type="button" className={styles.dashboardStarIcon} disabled={saving}
+                          name={item.is_default ? 'favorite' : 'star'} aria-pressed={item.is_default}
+                          aria-label={`${item.name} alapértelmezett dashboard`}
+                          tooltip={item.is_default ? 'Alapértelmezett dashboard' : 'Beállítás alapértelmezettként'}
+                          onClick={() => setDefaultDashboard(item)} />
+                      </div>
+                    </div>
                   ))}
                 </div>
               </section>

@@ -104,6 +104,12 @@ class DashboardUpdate(BaseModel):
     revision: int = Field(ge=1)
 
 
+class DashboardDefault(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    machine: str = Field(min_length=1, max_length=128)
+    id: int = Field(ge=1)
+
+
 class DashboardDelete(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     id: int = Field(ge=1)
@@ -635,6 +641,25 @@ def delete_dashboard(body):
                           WHERE agent_alias=%s AND device_id=%s ORDER BY id LIMIT 1)
             """, (agent, device))
         return {"deleted": True}
+
+
+def set_default_dashboard(body):
+    with psycopg.connect(connect_timeout=5) as db:
+        agent, device = machine_key(db, body.machine)
+        db.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (agent + "/" + device,))
+        target = db.execute("""
+            SELECT is_default FROM kfgyr.machine_dashboards
+            WHERE id=%s AND agent_alias=%s AND device_id=%s
+        """, (body.id, agent, device)).fetchone()
+        if target is None:
+            raise Problem(404, "A dashboard nem található ennél a gépnél.")
+        if not target[0]:
+            db.execute("""
+                UPDATE kfgyr.machine_dashboards SET is_default=false
+                WHERE agent_alias=%s AND device_id=%s AND is_default
+            """, (agent, device))
+            db.execute("UPDATE kfgyr.machine_dashboards SET is_default=true WHERE id=%s", (body.id,))
+    return {"id": body.id}
 
 
 def create_signal(body):

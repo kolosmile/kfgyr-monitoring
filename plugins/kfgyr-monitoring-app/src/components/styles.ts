@@ -110,6 +110,15 @@ export const getStyles = (t: GrafanaTheme2) => ({
   }),
   dashboardGrid: css({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
     gap: 12, marginTop: 12 }),
+  dashboardCard: css({
+    position: 'relative', display: 'grid', minWidth: 0,
+    '& > button': { paddingInlineEnd: 54 },
+  }),
+  dashboardStar: css({ position: 'absolute', insetInlineEnd: 10, top: '50%', transform: 'translateY(-50%)' }),
+  dashboardStarIcon: css({
+    '& svg': { color: t.colors.text.secondary },
+    '&[aria-pressed="true"] svg': { color: t.isDark ? '#f5c451' : '#9b6b00' },
+  }),
   machineCard: css({
     display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
     minWidth: 0, padding: 18, borderRadius: 8, cursor: 'pointer',

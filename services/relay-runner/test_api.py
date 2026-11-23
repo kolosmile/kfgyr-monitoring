@@ -86,6 +86,12 @@ class APITests(unittest.TestCase):
             response = self.client.post("/v1/dashboards", json={"machine": "123", "name": "Áttekintés"})
             self.assertEqual(response.json(), {"id": 7})
             self.assertEqual(create.call_args.args[0].machine, "123")
+        with patch("monitoring.set_default_dashboard", return_value={"id": 7}) as choose:
+            payload = {"machine": "123", "id": 7}
+            response = self.client.put("/v1/dashboards/default", json=payload)
+            self.assertEqual(response.json(), {"id": 7})
+            self.assertEqual(choose.call_args.args[0].model_dump(), payload)
+            self.assertEqual(self.client.put("/v1/dashboards/default", json={"id": 7}).status_code, 422)
         with patch("monitoring.delete_dashboard", return_value={"deleted": True}) as delete:
             response = self.client.post("/v1/dashboards/delete", json={"id": 7, "revision": 2})
             self.assertEqual(response.status_code, 200)

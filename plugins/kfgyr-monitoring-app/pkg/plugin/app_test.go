@@ -38,6 +38,8 @@ func TestDashboardRoutesAreRestrictedToExpectedMethods(t *testing.T) {
 		{"dashboards/42", "GET", true},
 		{"dashboards", "POST", true},
 		{"dashboards", "PUT", true},
+		{"dashboards/default", "PUT", true},
+		{"dashboards/default", "GET", false},
 		{"dashboards/delete", "POST", true},
 		{"dashboards/42", "DELETE", false},
 		{"dashboards/../../config", "GET", false},

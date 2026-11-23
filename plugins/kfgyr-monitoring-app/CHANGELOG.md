@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.46 — 2026-11-23
+
+- Choose each machine's default dashboard from the dashboard cards.
+- Review the User Guide procedures and add common tasks for signal selection and Fleet configuration.
+
 ## 0.4.45 — 2026-11-23
 
 - Left-align wrapped chapter links in the User Guide.

@@ -91,6 +91,8 @@ func allowed(path, method string) bool {
 		return method == "POST"
 	case "dashboards":
 		return method == "POST" || method == "PUT"
+	case "dashboards/default":
+		return method == "PUT"
 	case "dashboards/delete":
 		return method == "POST"
 	case "discovery":

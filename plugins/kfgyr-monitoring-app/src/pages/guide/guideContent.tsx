@@ -85,7 +85,7 @@ const getStyles = (theme: GrafanaTheme2) => ({
     display: 'grid',
     gap: 8,
     '&:last-child': { borderBottom: 'none', paddingBottom: 0 },
-    '& h4': { margin: 0, fontSize: 15.5, fontWeight: 600 },
+    '& h3': { margin: 0, fontSize: 15.5, fontWeight: 600 },
   }),
 });
 
@@ -149,11 +149,11 @@ function IntroSection({ access, goTo }: { access: Access; goTo: (id: string) => 
             </tr>
             <tr>
               <td><ChapterLink id="monitoring" label="Monitoring" goTo={goTo} /></td>
-              <td>Egy kiválasztott gép élő és visszakereshető nézete grafikonokkal, állapotokkal és adatpont-listával.</td>
+              <td>Egy kiválasztott gép élő és visszakereshető nézete grafikonokkal, állapotokkal és adatpontlistával.</td>
             </tr>
             <tr>
               <td><ChapterLink id="adatexport" label="Adatexport" goTo={goTo} /></td>
-              <td>Kiválasztott gépek és jelek mentése CSV vagy Excelhez formázott táblázatba.</td>
+              <td>Kiválasztott gépek adatpontjainak letöltése vesszős vagy Excelhez formázott, pontosvesszős CSV-fájlba.</td>
             </tr>
             {access.manage_plugin && (
               <>
@@ -225,8 +225,7 @@ function HomeSection({ access }: { access: Access }) {
 
       <h3>Visszalépés a főmenüre</h3>
       <p>
-        Minden belső oldal és a Monitoring tetején megtalálható a <UiTag icon="home-alt" label="Kezdőlap" /> gomb,
-        amelyre kattintva bármikor vissza lehet térni a főmenüre.
+        A KFGyR oldalain, a Gépparkban és a Monitoringban a <UiTag label="Kezdőlap" /> gomb vezet vissza a főmenüre.
       </p>
 
       {access.manage_plugin && (
@@ -252,16 +251,18 @@ function FleetSection({ goTo }: { goTo: (id: string) => void }) {
       <ul>
         <li>Felül az adatgyűjtő (agent) elérhetőség szerint színezett címkéje és a gép neve látható.</li>
         <li>
-          A középső rész legfeljebb 6 állapotot, az alsó sor legfeljebb 3 félköríves műszert mutat a jelnevekkel
-          együtt, a gép alapértelmezett dashboardjáról.
+          A középső rész az első hat állapotpanel, az alsó sor az első három műszer utolsó értékét mutatja
+          a panelnevekkel együtt. A Géppark a gép alapértelmezett dashboardjának panelsorrendjét követi.
         </li>
         <li>
           A kártya jobb alsó sarkában lévő <UiTag icon="external-link-alt" label="Megnyitás a Monitoringban" /> ikonra
-          kattintva közvetlenül az adott gép részletes oldala nyitható meg.
+          kattintva az adott gép alapértelmezett dashboardja nyílik meg a Monitoringban.
         </li>
       </ul>
 
-      <h3>Állapotok színjelzése</h3>
+      <h3>Az agent és a gép állapotjelzése</h3>
+      <p>Az agent neve zöld, ha az agent válaszol, piros, ha nem érhető el, és szürke, ha az elérhetősége ismeretlen.</p>
+      <p>Az egyes gépállapotok külön színjelzést kapnak.</p>
       <div className={s.badgeRow}>
         <Badge color="green" text="AVAILABLE / ACTIVE / NORMAL — rendben" />
         <Badge color="orange" text="WARNING — figyelmeztetés" />
@@ -269,8 +270,8 @@ function FleetSection({ goTo }: { goTo: (id: string) => void }) {
       </div>
 
       <Callout kind="tip" title="Részletes trendek">
-        Múltbeli grafikonokhoz és a teljes adatpont-listához a{' '}
-        <ChapterLink id="monitoring" label="Monitoring" goTo={goTo} /> oldal nyitható meg.
+        A múltbeli grafikonok és a teljes adatpontlista a Monitoringban érhetők el. A használatukról az útmutató{' '}
+        <ChapterLink id="monitoring" label="Monitoring" goTo={goTo} /> fejezete ad részleteket.
       </Callout>
     </div>
   );
@@ -282,14 +283,14 @@ function MonitoringSection({ access }: { access: Access }) {
     <div className={s.body}>
       <p>
         A <strong>KFGyR · Monitoring</strong> egy kiválasztott gép részletes, élő és visszakereshető nézete.
-        Alapértelmezésben az elmúlt 5 percet mutatja, és 5 másodpercenként frissül.
+        A grafikonok és az időszakhoz kötött panelek kezdetben az elmúlt 5 percet mutatják. A nézet 5 másodpercenként frissül.
       </p>
 
       <h3>Gép és dashboard kiválasztása</h3>
       <ol>
         <li>A felső navigációs sávban először az <strong>Agent</strong>, majd a <strong>Gép</strong> választható ki.</li>
-        <li>Ha a géphez több nézet is készült, a <strong>Dashboard</strong> választóban lehet váltani közöttük.</li>
-        <li>Mobilon a felső választógombra kattintva nyitható meg a gép- és dashboard-lista.</li>
+        <li>Gépváltáskor az alapértelmezett dashboard nyílik meg. A <strong>Dashboard</strong> választóban lehet másik nézetre váltani.</li>
+        <li>Mobilon a gép nevére koppintva nyílik meg az agent-, gép- és dashboardválasztó.</li>
       </ol>
 
       <h3>Agent-elérhetőség jelzése</h3>
@@ -299,28 +300,28 @@ function MonitoringSection({ access }: { access: Access }) {
         <Badge color="darkgrey" text="Agent elérhetősége ismeretlen" />
       </div>
       <p>
-        A felső jelvény azt mutatja, hogy a gép adatforrása válaszol-e jelenleg a hálózaton (kikapcsolt vagy lekapcsolt
-        gépnél piros jelzés jelenik meg).
+        A jelvény az agent élő válaszát ellenőrzi. Piros jelzésnél az agent nem érhető el. Szürke lehet akkor is,
+        ha az agent válaszol, de a kiválasztott gép nem szerepel a válaszában. Mobilon a jelvény a választóablakban látható.
       </p>
 
       <h3>Időszak és paneltípusok</h3>
       <ul>
-        <li>A jobb felső időválasztóval bármilyen korábbi időszakra vissza lehet tekinteni, és az automatikus frissítés is itt állítható.</li>
+        <li>A jobb felső időválasztóval az adatmegőrzési időn belüli korábbi időszakok is vizsgálhatók. Az automatikus frissítés ugyanitt állítható.</li>
         <li><strong>Állapot:</strong> nagy szöveges kártya; ha engedélyezve van, alatta színes idővonal mutatja az állapotváltásokat.</li>
         <li><strong>Aktuális érték:</strong> az utoljára mért számérték a beállított mértékegységgel.</li>
-        <li><strong>Műszer:</strong> félköríves skála a megadott minimum és maximum tartományban.</li>
+        <li><strong>Műszer:</strong> az utolsó tárolt számérték félköríves skálán, a megadott minimum és maximum között.</li>
         <li><strong>Grafikon:</strong> idősoros görbe a kiválasztott időablakra.</li>
         <li>
           <strong>Gyors adatpontnézegető:</strong> a lap alján lévő kereshető táblázat a gép összes adatpontjának
           utolsó, az időablakon belüli értékét sorolja fel.
         </li>
       </ul>
+      <p>Az Állapot, az Aktuális érték és a Műszer az utolsó tárolt értéket az időablakon kívülről is megjelenítheti.</p>
 
       {access.manage_plugin && (
         <Callout kind="tip" title="Közvetlen szerkesztés">
-          A felső sávban lévő <UiTag icon="pen" label="Dashboard szerkesztése" /> (vagy új gépnél{' '}
-          <UiTag icon="plus" label="Dashboard hozzáadása" />) gombra kattintva közvetlenül az aktuális gép paneljeinek
-          szerkesztőjébe lehet lépni.
+          A <UiTag icon="pen" label="Dashboard szerkesztése" /> az aktuális dashboard Panelszerkesztőjét nyitja meg.
+          Ha a géphez még nincs dashboard, a <UiTag icon="plus" label="Dashboard hozzáadása" /> a létrehozó ablakhoz vezet.
         </Callout>
       )}
     </div>
@@ -332,26 +333,27 @@ function ExportSection() {
   return (
     <div className={s.body}>
       <p>
-        Az <strong>Adatexport</strong> oldalon táblázatos CSV-fájlként tölthetők le a gépek korábbi mérései saját
-        elemzéshez vagy Excel-táblázathoz.
+        Az <strong>Adatexport</strong> oldalon CSV-fájlként tölthetők le a gépek korábbi mérései saját elemzéshez vagy
+        Excelben való megnyitáshoz.
       </p>
 
       <h3>Letöltés lépései</h3>
       <ol>
         <li>A <strong>Gépek</strong> listában egy vagy több gép jelölhető ki (gépeléssel a lista szűrhető).</li>
         <li>
-          Az <strong>Adatpontok</strong> mezőben a kívánt jelek választhatók ki, vagy az{' '}
-          <UiTag label="Összes adatpont kijelölése" /> gombra kattintva az összes jel megjelölhető.
+          Az <strong>Adatpontok</strong> mezőben kiválaszthatók a kívánt adatpontok. Az{' '}
+          <UiTag label="Összes adatpont kijelölése" /> gomb minden elérhető adatpontot kijelöl.
         </li>
         <li>A <strong>Kezdőidő</strong> és a <strong>Végidő</strong> a helyi időzónában adható meg.</li>
         <li>
           A <strong>Sorkorlát</strong> (legfeljebb 100 000 sor) és a <strong>Formátum</strong> kiválasztása:
           <ul>
             <li><strong>CSV (vesszővel):</strong> általános adatfeldolgozáshoz.</li>
-            <li><strong>Excelhez formázott CSV (pontosvesszővel):</strong> magyar Excelben közvetlenül oszlopokra bontva nyílik meg.</li>
+            <li><strong>Excelhez formázott CSV (pontosvesszővel):</strong> pontosvesszővel és Excelhez illesztett UTF-8 kódolással készül.</li>
           </ul>
         </li>
         <li>A <UiTag icon="download-alt" label="CSV letöltése" /> gombra kattintva indul el a fájl letöltése.</li>
+        <li>Ha az Excel egyetlen oszlopban jeleníti meg az adatokat, a szöveg- vagy CSV-importnál a pontosvesszőt kell megadni elválasztóként.</li>
       </ol>
 
       <Callout kind="note" title="Időbélyegek és részleges export">
@@ -372,18 +374,21 @@ function AgentsSection({ goTo }: { goTo: (id: string) => void }) {
         megjelenítési név a gépeknek, és itt szüneteltethető a gyűjtés.
       </p>
 
-      <h3>Új agent és gép felvétele</h3>
+      <h3>Új agent keresése vagy kézi megadása</h3>
+      <ul>
+        <li>
+          <strong>Hálózati kereséssel.</strong> A <UiTag icon="search" label="Hálózati keresés" /> ablakban ki kell választani
+          a hálózati tartományt és a vizsgált portokat, majd a <UiTag label="Keresés indítása" /> gombot.
+          A felvétel a találat melletti <UiTag label="Agent beállítása" /> gombbal folytatható.
+        </li>
+        <li>
+          <strong>Kézzel.</strong> Az <UiTag icon="plus" label="Agent hozzáadása" /> ablakban megadható az egyedi név
+          és az agent címe, a porttal és szükség esetén az URL-útvonallal együtt.
+        </li>
+      </ul>
+      <h3>A gépek összerendelése és mentése</h3>
       <ol>
-        <li>
-          <strong>Automatikusan:</strong> a <UiTag icon="search" label="Hálózati keresés" /> gombra kattintva
-          kiválasztható a helyi hálózat, majd a talált eszköznél az <UiTag label="Agent beállítása" /> gombra
-          kattintva folytatható a felvétel.
-        </li>
-        <li>
-          <strong>Kézzel:</strong> az <UiTag icon="plus" label="Agent hozzáadása" /> gombra kattintva megadható az
-          egyedi név, valamint az agent hálózati címe (URL / IP és port).
-        </li>
-        <li>A <UiTag icon="search" label="Kapcsolat és eszközkeresés" /> gombra kattintva lekérdezhetők a gép adatai.</li>
+        <li>Ha a gépek listája még üres, a <UiTag icon="search" label="Kapcsolat és eszközkeresés" /> gombbal tölthető be.</li>
         <li>Minden megtalált gépnél megadható egy <strong>Megjelenítési név</strong>, és kiválasztható egy <strong>Séma</strong>.</li>
         <li>A <UiTag icon="check" label="Hozzáadás a listához" /> gombra kattintva előkészíthető a módosítás.</li>
         <li>Végül a lap alján megjelenő sávban a <UiTag label="Mentés és alkalmazás" /> gombra kattintva menthető és élesíthető a lista.</li>
@@ -441,25 +446,25 @@ function CatalogSection() {
       </ol>
 
       <h3>Jelek és adatpontok összekötése</h3>
-      <ol>
+      <ul>
         <li>
-          <strong>Új jel beolvasott gépből:</strong> az <UiTag icon="plus" label="Új jel gépadatpontból" /> gombra
-          kattintva kijelölhető a gép és az adatpont; a rendszer automatikusan javasol nevet, azonosítót és egységet.
+          <strong>Meglévő jel.</strong> Az aktív sémában a jel sorának jobb oldalán az{' '}
+          <UiTag icon="plus" label="Adatpont hozzárendelése" /> gombbal választható ki a gép és az adatpont.
+          Kézzel is megadható a gépen belüli, <code>/</code> jellel kezdődő útvonal.
         </li>
         <li>
-          <strong>Kézi felvétel:</strong> a <UiTag icon="plus" label="Jel hozzáadása" /> gombra kattintva előre is
-          felvehetők közös jelek. (A <strong>Jelazonosító</strong> létrehozás után nem módosítható.)
+          <strong>Új jel gépadatpontból.</strong> Az <UiTag icon="plus" label="Új jel gépadatpontból" /> gombbal felvehető
+          és rögtön az aktív sémához rendelhető egy új jel. A rendszer nevet, azonosítót és mértékegységet javasol.
         </li>
         <li>
-          <strong>Összekötés a sémában:</strong> a jel sorának jobb oldalán az{' '}
-          <UiTag icon="plus" label="Adatpont hozzárendelése" /> gombra kattintva választható adatpont a gép listájából
-          (vagy <code>/</code>-rel kezdődő útvonal is megadható).
+          <strong>Új jel hozzárendelés nélkül.</strong> A <UiTag icon="plus" label="Jel hozzáadása" /> gombbal előre is
+          felvehető jel. A <strong>Jelazonosító</strong> létrehozás után nem módosítható.
         </li>
-      </ol>
+      </ul>
 
       <h3>Színjelölés és megjelenítési mértékegységek</h3>
       <ul>
-        <li>A jelnevek és útvonalak színe a gép funkcionális ágát jelöli (például tengelyek, vezérlő, rendszerek).</li>
+        <li>A színezett jelnevek és útvonalak szabványos komponenságat jelölnek, például tengelyeket, vezérlőt vagy rendszereket.</li>
         <li>
           A <UiTag icon="calculator-alt" label="Megjelenítési mértékegységek" /> gombra kattintva megnyíló ablakban a gép
           nyers kódjaihoz (pl. <code>REVOLUTION/MINUTE</code>) rövid, olvasható felirat (pl. <code>rpm</code>) adható
@@ -468,7 +473,7 @@ function CatalogSection() {
       </ul>
 
       <Callout kind="warning" title="Védett törlés és eltérő mértékegység">
-        Eltérő mértékegységű adatpont hozzárendelésekor a rendszer figyelmeztet, és nem írja felül a jel mentett
+        Gépből választott, eltérő mértékegységű adatpontnál a rendszer figyelmeztet, és nem írja felül a jel mentett
         egységét. Sémában vagy dashboardon használt jel, illetve géphez rendelt séma nem törölhető a hivatkozások
         eltávolításáig.
       </Callout>
@@ -489,16 +494,24 @@ function EditorSection() {
       <ol>
         <li>A listából a kívánt gép kiválasztása után a <UiTag icon="plus" label="Dashboard hozzáadása" /> gombra kattintva hozható létre új nézet.</li>
         <li>Név megadása után a <strong>Kiindulás</strong> listában üres dashboard vagy egy azonos sémájú gép meglévő dashboardja választható.</li>
+        <li>A <UiTag label="Létrehozás" /> gomb menti a dashboardot és megnyitja a Panelszerkesztőt.</li>
       </ol>
+
+      <h3>Az alapértelmezett dashboard kiválasztása</h3>
+      <p>
+        A gép első dashboardja automatikusan alapértelmezett lesz. A <strong>Dashboardok</strong> listában a kitöltött,
+        sárga csillag jelöli az alapértelmezett nézetet. Egy másik kártya körvonalas csillagára kattintva azonnal menthető
+        a választás. A Géppark ezt a nézetet használja, és a Monitoringban gépváltáskor is ez nyílik meg.
+      </p>
 
       <h3>Panelek beállítása és mentése</h3>
       <ol>
         <li>A kívánt nézetcsoport (<strong>Állapot</strong>, <strong>Aktuális érték</strong>, <strong>Műszer</strong> vagy <strong>Grafikon</strong>) lenyitása után a <UiTag icon="plus" label="Panel hozzáadása" /> kártyára kattintva vehető fel új panel.</li>
-        <li>A <strong>Jel a katalógusból</strong> listából kiválasztható a jel, és igény szerint egyedi név is megadható.</li>
+        <li>A <strong>Jel a katalógusból</strong> listában az adott gép sémájában hozzárendelt, a gépen ténylegesen elérhető adatponttal rendelkező jelek választhatók. A panelhez egyedi név is megadható.</li>
         <li>
           A nézet opcióinak beállítása:
           <ul>
-            <li><strong>Állapot:</strong> bekapcsolható az <strong>Állapotidősor megjelenítése</strong> színes idővonala.</li>
+            <li><strong>Állapot:</strong> az <strong>Állapotidősor megjelenítése</strong> kapcsolóval színes idővonal adható az állapotkártya alá.</li>
             <li><strong>Műszer:</strong> kötelező megadni a <strong>Minimum</strong> és <strong>Maximum</strong> értéket.</li>
             <li><strong>Grafikon:</strong> választható <strong>Vonalszín</strong>.</li>
           </ul>
@@ -549,13 +562,15 @@ function AccessSection() {
       <ol>
         <li>A Kezdőlapról a <strong>Jogosultságkezelés</strong> oldal nyitható meg.</li>
         <li>A <strong>Felhasználó hozzáadása</strong> listából kiválasztható egy meglévő <em>Viewer</em> fiók.</li>
-        <li>A <UiTag icon="plus" label="Hozzáadás" /> gombra kattintva adható meg a jogosultság (eltávolításhoz a név melletti <UiTag icon="trash-alt" label="Eltávolítás" /> gombra kattintva vonható vissza).</li>
+        <li>A <UiTag icon="plus" label="Hozzáadás" /> gombbal adható meg a jogosultság.</li>
+        <li>A jogosultság visszavonásához a név mellett az <UiTag icon="trash-alt" label="Eltávolítás" /> gombot kell választani, majd megerősíteni.</li>
       </ol>
 
       <h3>Relay kapcsolat beállítása</h3>
       <p>
         A Grafana bővítmény beállításainál a <strong>KFGyR Monitoring → Relay kapcsolat</strong> fülön ellenőrizhető a
-        háttérkapcsolat állapota és tesztelhető az összeköttetés.
+        háttérkapcsolat állapota és tesztelhető az összeköttetés. A kezelt telepítésen a címet és a tokent
+        a telepítési beállítások kezelik.
       </p>
     </div>
   );
@@ -566,52 +581,80 @@ function TasksSection({ access, goTo }: { access: Access; goTo: (id: string) => 
   return (
     <div className={s.body}>
       <div className={s.taskBlock}>
-        <h4>Korábbi műszak adatainak visszanézése</h4>
+        <h3>Korábbi műszak adatainak visszanézése</h3>
         <ol>
-          <li>A <strong>Monitoring</strong> oldalon a kívánt gép kiválasztása.</li>
-          <li>A jobb felső időválasztóra kattintva a kívánt nap és óra beállítása.</li>
-          <li>Az automatikus frissítés kikapcsolásával (<em>Off</em>) elkerülhető, hogy az időablak nézelődés közben elmozduljon.</li>
+          <li>A <strong>Monitoring</strong> oldalon a kívánt gép és dashboard kiválasztása.</li>
+          <li>A jobb felső időválasztóban a műszak pontos kezdő- és végidejének megadása.</li>
+          <li>A műszak adatainak ellenőrzése a grafikonon, a bekapcsolt állapotidősoron vagy a Gyors adatpontnézegetőben.</li>
         </ol>
+        <p>Relatív időtartomány használatakor az automatikus frissítés kikapcsolásával (<em>Off</em>) rögzíthető az aktuális nézet.</p>
       </div>
 
       <div className={s.taskBlock}>
-        <h4>Adatok megnyitása magyar Excelben</h4>
+        <h3>Adatok megnyitása Excelben</h3>
         <ol>
-          <li>Az <ChapterLink id="adatexport" label="Adatexport" goTo={goTo} /> oldalra lépve a gép, a jelek és az időszak kiválasztása.</li>
-          <li>Az <strong>Excelhez formázott CSV (pontosvesszővel)</strong> formátum kiválasztása után a <UiTag icon="download-alt" label="CSV letöltése" /> gombra kattintva indítható a fájl mentése.</li>
+          <li>A Kezdőlapról az <strong>Adatexport</strong> megnyitása, majd a gépek, adatpontok és az időszak kiválasztása.</li>
+          <li>Az <strong>Excelhez formázott CSV (pontosvesszővel)</strong> formátum kiválasztása.</li>
+          <li>A <UiTag icon="download-alt" label="CSV letöltése" /> gomb kiválasztása és a fájl megnyitása Excelben.</li>
+          <li>Ha minden adat egy oszlopba kerül, a fájl újraimportálása pontosvesszős elválasztással.</li>
         </ol>
+        <p>Az UTC-időbélyegekről és a sorkorlátról az útmutató <ChapterLink id="adatexport" label="Adatexport" goTo={goTo} /> fejezete ad részleteket.</p>
       </div>
 
       <div className={s.taskBlock}>
-        <h4>„Nincs érték” vagy szaggatott vonal a grafikonon</h4>
+        <h3>Hiányzó érték vagy szaggatott grafikon</h3>
         <ul>
-          <li>A felső <strong>Agent</strong> jelvény jelzi az állapotot: ha piros, a gép ki van kapcsolva vagy nem válaszol a hálózaton.</li>
-          <li>Ritkán változó jeleknél az időablak bővítésével, vagy a lap alján a <strong>Gyors adatpontnézegető</strong> táblázatban ellenőrizhető a legutóbbi érték.</li>
+          <li>A piros jelvény azt jelenti, hogy az agent nem érhető el. Egy zöld jelvény mellett is lehet hiányzó minta.</li>
+          <li>Ritkán változó adatpontnál érdemes hosszabb időszakot választani. A <strong>Gyors adatpontnézegető</strong> csak a kiválasztott időszakban keres mintát.</li>
+          <li>Ha az állapotkártyán még látható érték, az lehet a korábban tárolt utolsó minta.</li>
         </ul>
       </div>
 
       {access.manage_plugin && (
         <>
           <div className={s.taskBlock}>
-            <h4>Új gép bekötésének ajánlott sorrendje</h4>
+            <h3>Új gép bekötésének ajánlott sorrendje</h3>
             <ol>
-              <li>Új géptípusnál séma létrehozása a <ChapterLink id="jelkatalogus" label="Jelkatalógus" goTo={goTo} /> oldalon.</li>
-              <li>Az <ChapterLink id="agentek" label="Agentek és gépek" goTo={goTo} /> oldalon az agent felvétele, a gép elnevezése és a séma hozzárendelése után a <UiTag label="Mentés és alkalmazás" /> gombra kattintva véglegesíthető a kapcsolat.</li>
-              <li>Az első adatok beérkezése után a <strong>Jelkatalógus</strong> oldalon az <UiTag icon="plus" label="Új jel gépadatpontból" /> gombra kattintva köthetők össze a gép adatpontjai a magyar jelnevekkel.</li>
-              <li>A <ChapterLink id="dashboard-szerkeszto" label="Dashboard szerkesztő" goTo={goTo} /> oldalon hozható létre a gép dashboardja.</li>
+              <li>Meglévő gépséma kiválasztása, vagy új séma létrehozása a <strong>Jelkatalógusban</strong>.</li>
+              <li>Az <strong>Agentek és gépek</strong> oldalon új agent felvétele hálózati kereséssel vagy kézzel. Már felvett agentnél a <strong>Szerkesztés</strong> megnyitása.</li>
+              <li>A gép elnevezése és a séma hozzárendelése az agent szerkesztőablakában.</li>
+              <li>A módosítás listába tétele, majd a <UiTag label="Mentés és alkalmazás" /> kiválasztása a főoldalon.</li>
+              <li>Az adatpontok beolvasása után a hiányzó sémakapcsolatok felvétele a meglévő jeleknél. Új katalógusjel a <UiTag icon="plus" label="Új jel gépadatpontból" /> művelettel hozható létre.</li>
+              <li>A gép dashboardjának létrehozása és mentése a <strong>Dashboard szerkesztőben</strong>.</li>
             </ol>
+            <p>A felvétel és a mentés részletei az útmutató <ChapterLink id="agentek" label="Agentek és gépek" goTo={goTo} /> fejezetében olvashatók.</p>
           </div>
 
           <div className={s.taskBlock}>
-            <h4>A Hálózati keresés nem találja a gépet</h4>
+            <h3>A hálózati keresés nem találja az agentet</h3>
             <ul>
-              <li>Ellenőrizendő, hogy a gép be van-e kapcsolva és azonos helyi hálózaton van-e az adatgyűjtővel.</li>
-              <li>Eltérő port vagy külön útvonal esetén kézzel adható meg a port, vagy az <UiTag icon="plus" label="Agent hozzáadása" /> gombra kattintva vehető fel kézzel az eszköz.</li>
+              <li>Ellenőrizendő, hogy az agent fut-e, és a relay felől elérhető-e az engedélyezett hálózaton.</li>
+              <li>A port hozzáadható a <strong>Vizsgált portok</strong> listájához. Külön URL-útvonalnál az <UiTag icon="plus" label="Agent hozzáadása" /> ablakban adható meg a teljes cím.</li>
+              <li>A kézzel megadott cím a <UiTag icon="search" label="Kapcsolat és eszközkeresés" /> gombbal ellenőrizhető.</li>
             </ul>
           </div>
 
           <div className={s.taskBlock}>
-            <h4>Jel vagy séma nem törölhető</h4>
+            <h3>Egy jel nem választható a Panelszerkesztőben</h3>
+            <ul>
+              <li>Az <strong>Agentek és gépek</strong> oldalon ellenőrizhető, melyik séma tartozik a géphez.</li>
+              <li>A <strong>Jelkatalógusban</strong> ennél a sémánál kell ellenőrizni a jel adatpont-hozzárendelését.</li>
+              <li>A jel csak akkor jelenik meg a listában, ha a hozzárendelt adatpontot a rendszer már beolvasta az adott gépről.</li>
+            </ul>
+          </div>
+
+          <div className={s.taskBlock}>
+            <h3>A Gépparkban látható értékek módosítása</h3>
+            <ol>
+              <li>A <strong>Dashboard szerkesztőben</strong> a megfelelő gép kiválasztása.</li>
+              <li>A Gépparkhoz használni kívánt dashboard kijelölése a kártya csillagával.</li>
+              <li>A kijelölt dashboard megnyitása, majd az első hat állapot és az első három műszer sorrendjének beállítása a kártyák nyilaival.</li>
+              <li>A <UiTag icon="save" label="Dashboard mentése" /> gomb kiválasztása.</li>
+            </ol>
+          </div>
+
+          <div className={s.taskBlock}>
+            <h3>Jel vagy séma nem törölhető</h3>
             <p>
               Jel törlése előtt a hivatkozások eltávolítása szükséges az érintett dashboardokról és sémákból; séma
               törlése előtt másik sémát kell választani az <strong>Agentek és gépek</strong> oldalon a hozzá rendelt
@@ -623,10 +666,11 @@ function TasksSection({ access, goTo }: { access: Access; goTo: (id: string) => 
 
       {access.manage_access && (
         <div className={s.taskBlock}>
-          <h4>Kezelői jogosultság adása új kollégának</h4>
+          <h3>Kezelői jogosultság adása új kollégának</h3>
           <ol>
-            <li>A kollégának először be kell lépnie saját fiókkal a Grafanába.</li>
-            <li>A <ChapterLink id="jogosultsagok" label="Jogosultságkezelés" goTo={goTo} /> oldalon a név kiválasztása után a <UiTag icon="plus" label="Hozzáadás" /> gombra kattintva adható meg a jogosultság.</li>
+            <li>Ellenőrizendő, hogy a kollégának van-e <strong>Viewer</strong> fiókja a Grafana megfelelő szervezetében.</li>
+            <li>A Kezdőlapról a <strong>Jogosultságkezelés</strong> megnyitása és a felhasználó kiválasztása.</li>
+            <li>A <UiTag icon="plus" label="Hozzáadás" /> gomb kiválasztása.</li>
           </ol>
         </div>
       )}
@@ -660,18 +704,18 @@ export const guideChapters: GuideChapter[] = [
   {
     id: 'geppark',
     group: 'Gépek figyelése és adatok',
-    title: 'Géppark áttekintés',
+    title: 'A Géppark áttekintése',
     shortTitle: 'Géppark',
     icon: 'apps',
     role: 'viewer',
-    summary: 'Összesített kártyanézet állapot-színekkel és műszerekkel.',
+    summary: 'Gépkártyák állapotszínekkel és műszerekkel.',
     keywords: ['géppark', 'kártya', 'állapot', 'zöld', 'piros', 'sárga', 'műszer'],
     render: (_access, goTo) => <FleetSection goTo={goTo} />,
   },
   {
     id: 'monitoring',
     group: 'Gépek figyelése és adatok',
-    title: 'Részletes Monitoring nézet',
+    title: 'A Monitoring részletes nézete',
     shortTitle: 'Monitoring',
     icon: 'chart-line',
     role: 'viewer',
@@ -686,7 +730,7 @@ export const guideChapters: GuideChapter[] = [
     shortTitle: 'Adatexport',
     icon: 'download-alt',
     role: 'viewer',
-    summary: 'Múltbeli mérések exportálása CSV vagy magyar Excel fájlba.',
+    summary: 'Múltbeli mérések letöltése vesszős vagy Excelhez formázott CSV-fájlba.',
     keywords: ['export', 'csv', 'excel', 'letöltés', 'részleges', 'utc'],
     render: () => <ExportSection />,
   },
@@ -742,7 +786,7 @@ export const guideChapters: GuideChapter[] = [
     icon: 'question-circle',
     role: 'viewer',
     summary: 'Rövid útmutatók a leggyakoribb kérdésekhez és hibajelenségekhez.',
-    keywords: ['gyakori', 'hiba', 'nincs adat', 'új gép', 'excel', 'segítség'],
+    keywords: ['gyakori', 'hiba', 'nincs adat', 'új gép', 'excel', 'géppark', 'alapértelmezett', 'nem választható jel'],
     render: (access, goTo) => <TasksSection access={access} goTo={goTo} />,
   },
 ];

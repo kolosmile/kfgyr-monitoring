@@ -54,6 +54,7 @@ A sikeres mentés nem azonos a sikeres adatgyűjtéssel. A runner az indulási i
 - `POST /v1/dashboards` új, üres vagy meglévő azonos sémájú dashboardból (`source_dashboard_id`) másolt dashboardot hoz létre.
 - `GET /v1/dashboards/{id}` visszaadja a dashboard nevét, paneljeit, revízióját és a gép kiválasztható adatpontjait.
 - `PUT /v1/dashboards` az `id`, `name`, `panels` és `revision` alapján ment (beleértve az opcionális grafikon-vonalszínt és állapotidősor-kapcsolót). A runner csak az adott géphez tartozó adatpontot fogad el.
+- `PUT /v1/dashboards/default` a `machine` és `id` alapján kiválasztja a gép alapértelmezett dashboardját. A runner ellenőrzi, hogy a dashboard a géphez tartozik, és egy tranzakcióban állítja át a jelölést. A válasz a kiválasztott `id`.
 - `POST /v1/dashboards/delete` az `id` és `revision` alapján töröl. Párhuzamos módosításnál a régi revízió 409 választ kap.
 - A korábbi `GET /v1/machine-monitoring/{machine}` és `PUT /v1/machine-monitoring` végpont az alapértelmezett dashboardot kezeli.
 
@@ -61,6 +62,6 @@ A jelkatalógus (`kfgyr.signal_catalog`), a megjelenítési egységek (`kfgyr.di
 
 Az új dashboardpanelek katalógusjelet használnak. A runner csak akkor kínálja fel, ha a gép sémájában van útvonala, és az útvonal az adott gép adatpontjai között ténylegesen megtalálható. A régi, közvetlen DataItem-azonosítóra mutató panelek továbbra is olvashatók és szerkeszthetők. A katalógus egysége nem íródik át, ha egy gép adatpontja eltérő egységet közöl.
 
-A runner induláskor tranzakcióban migrálja a meglévő gépbeállításokat a `kfgyr.machine_dashboards` táblába, gépenként egy „Áttekintés” dashboardként (`machine_dashboards_v1` migráció). A migráció egyszer fut le, és megőrzi a korábbi panelkonfigurációkat. Az első dashboard az alapértelmezett, törlésekor a legrégebbi fennmaradó dashboard veszi át ezt a szerepet.
+A runner induláskor tranzakcióban migrálja a meglévő gépbeállításokat a `kfgyr.machine_dashboards` táblába, gépenként egy „Áttekintés” dashboardként (`machine_dashboards_v1` migráció). A migráció egyszer fut le, és megőrzi a korábbi panelkonfigurációkat. Az első dashboard automatikusan alapértelmezett, később a választás módosítható. Az alapértelmezett dashboard törlésekor a legrégebbi fennmaradó dashboard veszi át ezt a szerepet.
 
 Ezek a műveletek a runner hitelesített API-ján futnak. A mentés a normál PostgreSQL konfigurációs táblát módosítja. A relay adatgyűjtési konfigurációját és alkalmazott revízióját külön kezeli.

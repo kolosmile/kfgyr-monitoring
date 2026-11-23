@@ -22,7 +22,7 @@ from discovery import Discovery, Policy, probe
 import monitoring
 from runner import Runner, healthcheck, read_json
 
-VERSION = "0.4.13"
+VERSION = "0.4.14"
 logger = logging.getLogger("kfgyr.runner")
 
 
@@ -231,6 +231,10 @@ def create_app(directory=None, token=None, policy=None, supervise=True):
     @app.put("/v1/dashboards")
     def update_dashboard(body: monitoring.DashboardUpdate, user=Depends(actor)):
         return monitoring.update_dashboard(body, user)
+
+    @app.put("/v1/dashboards/default")
+    def set_default_dashboard(body: monitoring.DashboardDefault):
+        return monitoring.set_default_dashboard(body)
 
     @app.post("/v1/dashboards/delete")
     def delete_dashboard(body: monitoring.DashboardDelete):
