@@ -363,6 +363,7 @@ export function ProfilesPage() {
     (panel.point && item.kind === 'point' && item.id === panel.point));
   const panelName = (panel: Panel) => panel.name || panelOption(panel)?.label || 'Névtelen panel';
   const unavailablePanels = assignment?.panels.filter((panel) => !panelOption(panel)) ?? [];
+  const unavailableViews = new Set(unavailablePanels.map((panel) => panel.view));
   const groups = new Map<string, Option[]>();
   for (const item of catalog?.machines ?? []) {
     const agent = machineLabel(item.label).agent || 'Egyéb';
@@ -405,8 +406,8 @@ export function ProfilesPage() {
           {unavailablePanels.length > 0 && (
             <Alert severity="warning" title="Elérhetetlen adatpontok">
               {unavailablePanels.map((panel) => panel.name || panel.signal_id || panel.point).join(', ')}.
-              {' '}Ezekhez a panelekhez jelenleg nincs elérhető adatpont. A dashboard menthető,
-              az érintett panelekhez a szerkesztésüknél választhatsz másik jelet.
+              {' '}A dashboard menthető. Az érintett panelhez választhatsz másik jelet, vagy a Jelkatalógusban
+              módosíthatod a jel adatpont-hozzárendelését a gép sémájában.
             </Alert>
           )}
           {skippedPanels > 0 && <Alert severity="warning" title={`${skippedPanels} panel kimaradt a másolásból`}>
@@ -539,7 +540,7 @@ export function ProfilesPage() {
                           setOpenViews((current) => ({ ...current, [value]: open }));
                         }
                       }}>
-                      <summary className={styles.panelGroupTitle}>
+                      <summary className={`${styles.panelGroupTitle} ${unavailableViews.has(value) ? styles.panelUnavailable : ''}`}>
                         <Icon name={icon} aria-hidden />{label}<Icon name="angle-right" aria-hidden />
                       </summary>
                       <div className={styles.panelGrid}>
@@ -557,7 +558,7 @@ export function ProfilesPage() {
                             changePanels(next);
                           };
                           return (
-                            <article className={styles.panelCard} key={index}>
+                            <article className={`${styles.panelCard} ${!option ? styles.panelUnavailable : ''}`} key={index}>
                               <strong className={styles.panelTitle}>
                                 <Icon name={icon} aria-hidden />
                                 <span className={styles.panelText} title={label}>{label}</span>

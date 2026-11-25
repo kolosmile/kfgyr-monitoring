@@ -126,7 +126,7 @@ class Store:
             config = {"client": {"name": "Monitoring", "timezone": "Europe/Budapest"}, "relay": {"agents": []}}
             return {"revision": "initial", "config": config, "yaml": yaml.safe_dump(config, allow_unicode=True, sort_keys=False)}
 
-    def save(self, base, config, actor):
+    def save(self, base, config, actor, *, purge_removed_agents=False):
         with self.lock:
             try:
                 json.dumps(config, allow_nan=False)
@@ -136,8 +136,10 @@ class Store:
             if before["revision"] != base:
                 raise Problem(409, "A konfiguráció közben megváltozott. Töltsd újra az oldalt.")
             validate(config, before["config"], self.policy)
-            failed = read_json(self.directory / "runner-state.json", {}).get("failed_revision")
-            if config == before["config"] and failed != base and (self.directory / "desired.json").exists():
+            state = read_json(self.directory / "runner-state.json", {})
+            desired = read_json(self.directory / "desired.json", {})
+            if (config == before["config"] and state.get("failed_revision") != base and desired
+                    and (purge_removed_agents or not desired.get("purge_agents"))):
                 return before
             content = yaml.safe_dump(config, allow_unicode=True, sort_keys=False).encode()
             if len(content) > MAX_BODY:
@@ -146,9 +148,17 @@ class Store:
             revisions = self.directory / "revisions"
             revisions.mkdir(exist_ok=True)
             atomic_write(revisions / (revision + ".yaml"), content)
-            audit = {"revision": revision, "previous_revision": base, "actor": actor[:200], "created_at": datetime.now(timezone.utc).isoformat()}
-            atomic_write(revisions / (revision + ".json"), json.dumps(audit).encode())
             manifest = {"revision": revision, "sha256": hashlib.sha256(content).hexdigest()}
+            audit = {"revision": revision, "previous_revision": base, "actor": actor[:200], "created_at": datetime.now(timezone.utc).isoformat()}
+            if purge_removed_agents:
+                previous = {agent["alias"] for agent in before["config"]["relay"]["agents"]}
+                remaining = {agent["alias"] for agent in config["relay"]["agents"]}
+                if (state.get("last_good") or {}).get("revision") != base:
+                    previous.update(desired.get("purge_agents", []))
+                removed = sorted(previous - remaining)
+                if removed:
+                    manifest["purge_agents"] = audit["purge_agents"] = removed
+            atomic_write(revisions / (revision + ".json"), json.dumps(audit).encode())
             atomic_write(self.directory / "desired.json", json.dumps(manifest).encode())
             return {"revision": revision, "config": copy.deepcopy(config), "yaml": content.decode()}
 

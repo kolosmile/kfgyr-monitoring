@@ -399,12 +399,18 @@ function AgentsSection({ goTo }: { goTo: (id: string) => void }) {
         <ChapterLink id="jelkatalogus" label="Jelkatalógus" goTo={goTo} /> oldalon kell létrehozni.
       </Callout>
 
-      <h3>Szüneteltetés, elvetés és visszaállítás</h3>
+      <h3>Szüneteltetés, eltávolítás és visszaállítás</h3>
       <ul>
         <li>
           <strong>Szüneteltetés:</strong> a <UiTag icon="pen" label="Szerkesztés" /> ablakban az{' '}
           <strong>Agent engedélyezve</strong> kapcsoló kikapcsolásával, majd mentéssel állítható le az új adatok
           gyűjtése. A már tárolt múltbeli adatok megmaradnak.
+        </li>
+        <li>
+          <strong>Eltávolítás:</strong> az <UiTag icon="trash-alt" label="Eltávolítás a listából" /> után a
+          <strong> Mentés és alkalmazás</strong> összesítője felsorolja az érintett agenteket. A sikeres alkalmazás
+          végleg törli a hozzájuk tartozó gépek mentett adatait és dashboardjait. A konfiguráció visszaállítása
+          ezeket nem állítja helyre.
         </li>
         <li>
           <strong>Elvetés:</strong> mentés előtt az alsó sávban az <UiTag label="Elvetés" /> gombra kattintva
@@ -492,7 +498,7 @@ function CatalogSection() {
   );
 }
 
-function EditorSection() {
+function EditorSection({ goTo }: { goTo: (id: string) => void }) {
   const s = useStyles2(getStyles);
   return (
     <div className={s.body}>
@@ -531,6 +537,12 @@ function EditorSection() {
         <li>A <UiTag label="Módosítások átvétele" /> gombra kattintva a panel bekerül a nézetbe, majd a kártyák nyilaival a panelek sorrendje rendezhető.</li>
         <li>A <UiTag icon="save" label="Dashboard mentése" /> gombra kattintva menthető a beállítás; az eredmény a <UiTag icon="chart-line" label="Monitoring megnyitása" /> gombra kattintva tekinthető meg.</li>
       </ol>
+
+      <Callout kind="warning" title="Elérhetetlen adatpontok">
+        A sárga keret jelöli az érintett kategóriákat és paneleket. A panelben másik jelet választhatsz, vagy a
+        {' '}<ChapterLink id="jelkatalogus" label="Jelkatalógusban" goTo={goTo} /> javíthatod a gép sémájában a
+        jel adatpont-hozzárendelését.
+      </Callout>
 
       <Callout kind="tip" title="Folyamatos adatgyűjtés">
         A dashboardok mentése, átnevezése vagy törlése azonnali, és nem állítja meg az adatgyűjtést.
@@ -777,7 +789,7 @@ export const guideChapters: GuideChapter[] = [
     role: 'operator',
     summary: 'Gépenkénti dashboardok létrehozása, panelek felvétele, rendezése és másolása.',
     keywords: ['dashboard szerkesztő', 'panel', 'műszer', 'állapotidősor', 'vonalszín'],
-    render: () => <EditorSection />,
+    render: (_access, goTo) => <EditorSection goTo={goTo} />,
   },
   {
     id: 'jogosultsagok',

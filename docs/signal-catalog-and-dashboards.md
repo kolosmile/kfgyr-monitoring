@@ -30,6 +30,8 @@ Az MTConnect-eszközök az egységeket szabványos kódokkal (például `MILLIME
 
 ## Dashboard szerkesztő (`/a/kfgyr-monitoring-app/profiles`)
 
+Ha egy mentett panel adatpontja nem oldható fel az adott gépen, a Panelszerkesztő felül felsorolja az érintett paneleket. A megfelelő kategóriák és panelkártyák sárga keretet kapnak. A panelben másik jel választható, vagy a **Jelkatalógusban** módosítható az érintett jel adatpont-hozzárendelése a gép sémájában.
+
 A **Dashboard szerkesztő** oldalon a beolvasott gépekhez több önálló dashboard hozható létre, szerkeszthető, átnevezhető és törölhető. Új dashboard létrehozásakor kiindulásként választható egy azonos sémához tartozó másik gép vagy ugyanazon gép meglévő dashboardja. A forrás kiválasztása után az előnézet kiírja az átvihető panelek számát, és névvel, paneltípussal felsorolja a célgépen fel nem oldható paneleket. A létrehozás újra ellenőrzi a hozzárendeléseket és kihagyja a fel nem oldható paneleket.
 
 A gép első dashboardja automatikusan alapértelmezett. A **Dashboardok** listában a kitöltött sárga csillag jelöli ezt a nézetet. Egy másik kártya körvonalas csillagával azonnal menthető az új választás. A műveletet a relay `PUT /v1/dashboards/default` végpontja végzi, és gépenként egyetlen `is_default` jelölést tart meg. Ha az alapértelmezett dashboardot törlik, a legrégebben létrehozott megmaradt dashboard lesz az új alapértelmezett.

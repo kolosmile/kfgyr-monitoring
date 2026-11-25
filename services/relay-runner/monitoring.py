@@ -618,6 +618,7 @@ def create_dashboard(body, actor):
     with psycopg.connect(connect_timeout=5) as db:
         agent, device, _ = machine_info(db, body.machine)
         db.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (agent + "/" + device,))
+        machine_info(db, body.machine)
         panels, skipped = [], []
         if body.source_dashboard_id is not None:
             panels, skipped = copy_dashboard_panels(db, body.machine, (agent, device), body.source_dashboard_id)
@@ -863,6 +864,32 @@ def validate_schema_assignments(config, previous):
             if schema_id not in known:
                 raise Problem(400, "A géphez választott séma már nem létezik. Töltsd újra a sémalistát.")
     return True
+
+
+def purge_agent_data(aliases):
+    with psycopg.connect(connect_timeout=5) as db:
+        db.execute("SET LOCAL lock_timeout = '5s'")
+        if db.execute("SELECT to_regclass('raw.nodes')").fetchone()[0]:
+            affected = db.execute("""
+                SELECT node_id, props->>'agentAlias',
+                       CASE WHEN props->>'node_type'='Device' THEN props->>'deviceId' END
+                FROM raw.nodes WHERE props->>'agentAlias'=ANY(%s)
+                ORDER BY node_id FOR UPDATE
+            """, (aliases,)).fetchall()
+            for _, agent, device in affected:
+                if device:
+                    db.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (agent + "/" + device,))
+            nodes = [row[0] for row in affected]
+            if nodes:
+                # Delete references first. History and bins may be TimescaleDB hypertables.
+                db.execute("DELETE FROM raw.history WHERE node_id=ANY(%s)", (nodes,))
+                db.execute("DELETE FROM raw.history WHERE dataitem_id=ANY(%s)", (nodes,))
+                db.execute("DELETE FROM raw.bins WHERE device_id=ANY(%s)", (nodes,))
+                db.execute("DELETE FROM raw.edges WHERE from_id=ANY(%s) OR to_id=ANY(%s)", (nodes, nodes))
+                db.execute("DELETE FROM raw.nodes WHERE node_id=ANY(%s)", (nodes,))
+        db.execute("DELETE FROM kfgyr.machine_dashboards WHERE agent_alias=ANY(%s)", (aliases,))
+        db.execute("DELETE FROM kfgyr.machine_monitoring WHERE agent_alias=ANY(%s)", (aliases,))
+        db.execute("DELETE FROM kfgyr.machine_schema_assignments WHERE agent_alias=ANY(%s)", (aliases,))
 
 
 def sync_machine_schema_assignments(config):

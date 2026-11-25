@@ -649,7 +649,7 @@ export function App() {
             title="Módosítások mentése és alkalmazása"
             confirmText="Mentés és alkalmazás"
             dismissText="Vissza a szerkesztéshez"
-            confirmVariant="primary"
+            confirmVariant={removed.length ? 'destructive' : 'primary'}
             body={
               <div>
                 <p>Az alábbi változtatások lépnek életbe:</p>
@@ -659,6 +659,12 @@ export function App() {
                   ))}
                 </ul>
                 <p>A relay újraindul, az adatgyűjtés rövid időre megszakad.</p>
+                {removed.length > 0 && (
+                  <Alert title="Az eltávolított agentek adatai törlődnek" severity="warning">
+                    A sikeres alkalmazás után végleg törlődnek az érintett gépek mentett adatai és dashboardjai.
+                    Érintett agentek: {removed.map((agent) => agent.alias).join(', ')}.
+                  </Alert>
+                )}
                 {retentionChanged && (
                   <Alert title="Megőrzési idő változik" severity="warning">
                     A rövidebb megőrzési idő a már tárolt, régebbi adatok törlését is okozhatja.
@@ -702,7 +708,9 @@ export function App() {
             modalClass={s.deleteConfirmation}
             confirmText="Eltávolítás a listából"
             dismissText="Mégse"
-            body="Az agent a mentés és alkalmazás után leáll az adatgyűjtéssel. A korábban tárolt adatok megmaradnak, és a megőrzési szabályok továbbra is érvényesek."
+            body={savedAgents.some((agent) => agent.alias === agents[confirmation.remove].alias)
+              ? 'A „Mentés és alkalmazás” sikeres lefutása után a relay végleg törli az agenthez tartozó gépek mentett adatait és dashboardjait. A konfiguráció visszaállítása ezeket nem állítja helyre.'
+              : 'Az agent lekerül a szerkesztett listáról.'}
             onConfirm={() => {
               setSetup({
                 ...setup,

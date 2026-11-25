@@ -38,6 +38,8 @@ Csak a runner csatolja a konfiguráció volume-ját. A `revisions/*.yaml` és au
 
 A sikeres mentés nem azonos a sikeres adatgyűjtéssel. A runner az indulási időszak túlélését ellenőrzi; az agentkapcsolat és a beérkező adatok a dashboardon ellenőrzendők. Hibás induláskor a korábbi stabil verzió fut, miközben a felület jelzi a kért verzió hibáját.
 
+Adatbázis-támogatással a normál konfigurációmentés az eltávolított agentek aliasait a kért verzióhoz és az auditfájlhoz rögzíti. A runner az új relay folyamat sikeres indulása után, a még aktuális verzióhoz hajtja végre a törlést. Alias alapján egyetlen PostgreSQL-tranzakcióban törli a kapcsolódó mintákat (`raw.history`), összesítéseket (`raw.bins`), csomópontkapcsolatokat (`raw.edges`), eszközöket és adatpontokat (`raw.nodes`), valamint a géphez kötött KFGyR-beállításokat és dashboardokat. Adatbázishibánál a tranzakció visszagördül, a runner újrapróbálkozik. A sikertelen konfigurációindítás és a konfiguráció-visszaállítás önmagában nem indít adattörlést.
+
 
 ## Gépmonitoring konfiguráció
 

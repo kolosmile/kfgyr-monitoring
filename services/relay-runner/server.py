@@ -16,13 +16,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 import uvicorn
+from psycopg import Error as DatabaseError
 
 from configuration import MAX_BODY, Problem, RollbackRequest, SaveRequest, Store
 from discovery import Discovery, Policy, probe
 import monitoring
 from runner import Runner, healthcheck, read_json
 
-VERSION = "0.4.17"
+VERSION = "0.4.18"
 logger = logging.getLogger("kfgyr.runner")
 
 
@@ -78,15 +79,27 @@ def create_app(directory=None, token=None, policy=None, supervise=True):
     runner = None
     thread = None
 
+    def purge_removed(manifest):
+        with store.lock:
+            if read_json(store.directory / "desired.json") != manifest:
+                return False
+            try:
+                monitoring.purge_agent_data(manifest["purge_agents"])
+            except DatabaseError:
+                logger.exception("Agent data removal failed for configuration %s", manifest["revision"])
+                return False
+        return True
+
     @asynccontextmanager
     async def lifespan(app):
         nonlocal runner, thread
         watcher = None
         if supervise:
-            if os.getenv("KFGYR_MONITORING_DB_ENABLED") == "1":
+            schema_support_enabled = os.getenv("KFGYR_MONITORING_DB_ENABLED") == "1"
+            if schema_support_enabled:
                 await asyncio.to_thread(monitoring.migrate)
                 await asyncio.to_thread(monitoring.sync_machine_schema_assignments, store.load()["config"])
-            runner = Runner()
+            runner = Runner(purge_removed=purge_removed if schema_support_enabled else None)
             thread = threading.Thread(target=runner.run, kwargs={"install_signals": False}, daemon=True)
             thread.start()
             async def watch_supervisor():
@@ -251,25 +264,27 @@ def create_app(directory=None, token=None, policy=None, supervise=True):
     @app.put("/v1/config")
     def put_config(body: SaveRequest, user=Depends(actor)):
         schema_support_enabled = os.getenv("KFGYR_MONITORING_DB_ENABLED") == "1"
-        if schema_support_enabled:
-            previous = store.load()["config"]
-            monitoring.validate_schema_assignments(body.config, previous)
-        saved = store.save(body.base_revision, body.config, user)
-        if schema_support_enabled:
-            monitoring.sync_machine_schema_assignments(saved["config"])
-        return saved
+        with store.lock:
+            if schema_support_enabled:
+                previous = store.load()["config"]
+                monitoring.validate_schema_assignments(body.config, previous)
+            saved = store.save(body.base_revision, body.config, user, purge_removed_agents=schema_support_enabled)
+            if schema_support_enabled:
+                monitoring.sync_machine_schema_assignments(saved["config"])
+            return saved
 
     @app.post("/v1/rollback")
     def rollback(body: RollbackRequest, user=Depends(actor)):
         schema_support_enabled = os.getenv("KFGYR_MONITORING_DB_ENABLED") == "1"
-        if schema_support_enabled:
-            previous = store.load()["config"]
-            target = store.load_revision(body.revision)["config"]
-            monitoring.validate_schema_assignments(target, previous)
-        saved = store.rollback(body.base_revision, body.revision, user)
-        if schema_support_enabled:
-            monitoring.sync_machine_schema_assignments(saved["config"])
-        return saved
+        with store.lock:
+            if schema_support_enabled:
+                previous = store.load()["config"]
+                target = store.load_revision(body.revision)["config"]
+                monitoring.validate_schema_assignments(target, previous)
+            saved = store.rollback(body.base_revision, body.revision, user)
+            if schema_support_enabled:
+                monitoring.sync_machine_schema_assignments(saved["config"])
+            return saved
 
     @app.get("/v1/status")
     def status():

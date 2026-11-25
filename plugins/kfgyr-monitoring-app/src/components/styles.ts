@@ -185,6 +185,7 @@ export const getStyles = (t: GrafanaTheme2) => ({
     borderRadius: 8,
     background: t.colors.background.primary,
   }),
+  panelUnavailable: css({ '&&': { borderColor: t.colors.warning.main } }),
   panelTitle: css({
     display: 'flex', alignItems: 'center', gap: 6, minWidth: 0,
     '& > svg': { color: 'var(--panel-accent)', flexShrink: 0 },

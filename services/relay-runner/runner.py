@@ -56,7 +56,7 @@ def read_revision(directory, manifest):
 
 
 class Runner:
-    def __init__(self):
+    def __init__(self, purge_removed=None):
         self.directory = Path(os.environ.get("KFGYR_CONFIG_DIR", "/var/lib/kfgyr-monitoring"))
         self.runtime = Path(os.environ.get("KFGYR_RELAY_RUNTIME_DIR", "/run/kfgyr-relay"))
         self.grace = float(os.environ.get("KFGYR_RELAY_STARTUP_SECONDS", "10"))
@@ -74,6 +74,8 @@ class Runner:
         self.saved = read_json(self.directory / "runner-state.json", {})
         self.failed = self.saved.get("failed_revision")
         self.good = self.saved.get("last_good")
+        self.purge_removed = purge_removed
+        self.next_purge_attempt = 0
 
     def persist(self):
         atomic_write(self.directory / "runner-state.json", json.dumps({
@@ -133,6 +135,7 @@ class Runner:
         self.child = subprocess.Popen(["node", "/usr/app/src/index.js"], env=environment, cwd="/usr/app", start_new_session=True)
         self.started = time.monotonic()
         self.pending = True
+        self.next_purge_attempt = 0
         self.status("applying", "A relay folyamat elindult; az indulási időszak ellenőrzése folyamatban.")
         print("runner: starting revision", manifest["revision"], flush=True)
 
@@ -147,6 +150,22 @@ class Runner:
         else:
             self.stop_child()
             self.status("failed", "A relay nem tudott elindulni. Javítsd a konfigurációt, majd ments új verziót.")
+
+    def finish_apply(self):
+        if (self.purge_removed and self.active.get("purge_agents")
+                and (self.good or {}).get("revision") != self.active["revision"]):
+            if time.monotonic() < self.next_purge_attempt:
+                return
+            if not self.purge_removed(self.active):
+                self.next_purge_attempt = time.monotonic() + 5
+                self.status("applying", "A törölt agentek adatainak eltávolítása folyamatban van.")
+                return
+        self.good = self.active
+        if self.requested and self.active["revision"] == self.requested["revision"]:
+            self.failed = None
+        self.persist()
+        self.pending = False
+        self.status("running", "A relay folyamat fut. Az adatbeérkezést a dashboardon ellenőrizd.")
 
     def run(self, install_signals=True):
         def shutdown(_signum, _frame):
@@ -176,12 +195,7 @@ class Runner:
                             if time.monotonic() - self.started >= 5:
                                 self.start(self.active)
                     if self.child and self.child.poll() is None and self.pending and time.monotonic() - self.started >= self.grace:
-                        self.pending = False
-                        self.good = self.active
-                        if self.requested and self.active["revision"] == self.requested["revision"]:
-                            self.failed = None
-                        self.persist()
-                        self.status("running", "A relay folyamat fut. Az adatbeérkezést a dashboardon ellenőrizd.")
+                        self.finish_apply()
                     if time.monotonic() - self.last_status >= 5:
                         self.status()
                 except (ValueError, OSError, KeyError) as error:

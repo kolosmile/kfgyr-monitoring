@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.58 — 2026-11-25
+
+- Highlight panel cards and categories with unavailable data items and explain schema repair.
+- Warn before removing an agent and its machine data.
+
 ## 0.4.57 — 2026-11-25
 
 - Assign an unused machine data item to an existing or new signal from the same dialog.

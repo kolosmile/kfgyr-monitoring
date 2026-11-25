@@ -14,6 +14,10 @@ Az „Elvetés” a legutóbb mentett konfigurációt tölti be. Az űrlap módo
 
 A már mentett agentnevek és eszközaliasok az adatbázis azonosításának részei, ezért rögzítettek. A relay az agent összes eszközét olvassa; a névlista szerkesztése nem eszközönkénti adatgyűjtési szűrő. Az agent teljes adatgyűjtése az engedélyezés kapcsolójával szüneteltethető.
 
+## Agent eltávolítása és adattörlés
+
+Az **Eltávolítás a listából** előkészíti a törlést. A **Mentés és alkalmazás** összesítője név szerint felsorolja az érintett agenteket. A runner a konfiguráció sikeres alkalmazása után végleg törli ezeknek az agenteknek a gépeit, adatpontjait, mintáit, összesítéseit, valamint a géphez tartozó dashboardokat és séma-hozzárendeléseket. A közös sémák, katalógusjelek és más agentek adatai megmaradnak. Az agent szüneteltetése megtartja az adatokat. A konfiguráció visszaállítása a törölt adatokat nem állítja helyre.
+
 Az alsó **Gépek** részen minden géphez kötelező sémát választani. Új gépnél a lista nem választ ki alapértelmezett sémát, így a gép és a sémája egymás ellenőrzése után kerül a konfigurációba. A séma a gyártó- vagy gépcsalád-specifikus, gépen belüli MTConnect útvonalakat jelenti. Új katalógusjeleket és sémákat a **Jelkatalógus** oldalon (`/a/kfgyr-monitoring-app/schemas`) hozhatsz létre; a jelkatalógus és a **Dashboard szerkesztő** részleteit a [jelkatalógus és dashboardok dokumentuma](signal-catalog-and-dashboards.md) írja le.
 
 A monitoring neve és időzónája a „Monitoring beállításai” ablakban módosítható, ugyanazzal a mentési folyamattal. A technikai állapot és az utolsó mentett YAML külön lenyitható részben található.

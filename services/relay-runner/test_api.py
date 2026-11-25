@@ -79,6 +79,28 @@ class APITests(unittest.TestCase):
         self.assertEqual(audit["actor"], "admin")
         self.assertEqual(self.client.post("/v1/rollback", json={"base_revision": second["revision"], "revision": "../desired"}).status_code, 422)
 
+    def test_confirmed_agent_removal_follows_pending_revisions_but_not_rollback(self):
+        store = self.app.state.store
+        initial = self.seed().json()
+        removed = copy.deepcopy(CONFIG)
+        removed["relay"]["agents"] = []
+        disabled = copy.deepcopy(CONFIG)
+        disabled["relay"]["agents"][0]["ignore"] = True
+        paused = store.save(initial["revision"], disabled, "operator", purge_removed_agents=True)
+        manifest = store.directory / "desired.json"
+        self.assertNotIn("purge_agents", json.loads(manifest.read_text()))
+        deletion = store.save(paused["revision"], removed, "operator", purge_removed_agents=True)
+        self.assertEqual(json.loads(manifest.read_text())["purge_agents"], ["Demo"])
+        self.assertEqual(json.loads((store.directory / "revisions" / (deletion["revision"] + ".json")).read_text())
+                         ["purge_agents"], ["Demo"])
+        removed["client"]["name"] = "Changed"
+        pending = store.save(deletion["revision"], removed, "operator", purge_removed_agents=True)
+        self.assertEqual(json.loads(manifest.read_text())["purge_agents"], ["Demo"])
+        restored = store.save(pending["revision"], CONFIG, "operator", purge_removed_agents=True)
+        self.assertNotIn("purge_agents", json.loads(manifest.read_text()))
+        store.rollback(restored["revision"], deletion["revision"], "operator")
+        self.assertNotIn("purge_agents", json.loads(manifest.read_text()))
+
     def test_rejected_config_does_not_change_manifest(self):
         saved = self.seed().json()
         for key, value in (("retention", "0days"), ("retention", "1week'; DROP TABLE raw.history; --"), ("url", "http://127.0.0.1")):
