@@ -23,7 +23,7 @@ from discovery import Discovery, Policy, probe
 import monitoring
 from runner import Runner, healthcheck, read_json
 
-VERSION = "0.4.18"
+VERSION = "0.4.19"
 logger = logging.getLogger("kfgyr.runner")
 
 
@@ -268,7 +268,8 @@ def create_app(directory=None, token=None, policy=None, supervise=True):
             if schema_support_enabled:
                 previous = store.load()["config"]
                 monitoring.validate_schema_assignments(body.config, previous)
-            saved = store.save(body.base_revision, body.config, user, purge_removed_agents=schema_support_enabled)
+            saved = store.save(body.base_revision, body.config, user, purge_removed_agents=schema_support_enabled,
+                               confirm_agent_data_removal=body.confirm_agent_data_removal)
             if schema_support_enabled:
                 monitoring.sync_machine_schema_assignments(saved["config"])
             return saved

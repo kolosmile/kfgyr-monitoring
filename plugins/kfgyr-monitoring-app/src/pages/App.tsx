@@ -190,7 +190,11 @@ export function App() {
     setError('');
     setNotice('');
     try {
-      const next = await api<Snapshot>('config', 'PUT', { base_revision: snapshot.revision, config: setup });
+      const next = await api<Snapshot>('config', 'PUT', {
+        base_revision: snapshot.revision,
+        config: setup,
+        ...(removed.length ? { confirm_agent_data_removal: true } : {}),
+      });
       setSnapshot(next);
       setSetup(clone(next.config));
       setNotice(

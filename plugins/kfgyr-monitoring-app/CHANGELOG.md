@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.59 — 2026-11-25
+
+- Send an explicit data-removal confirmation when applying a staged agent removal.
+
 ## 0.4.58 — 2026-11-25
 
 - Highlight panel cards and categories with unavailable data items and explain schema repair.

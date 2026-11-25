@@ -89,7 +89,14 @@ class APITests(unittest.TestCase):
         paused = store.save(initial["revision"], disabled, "operator", purge_removed_agents=True)
         manifest = store.directory / "desired.json"
         self.assertNotIn("purge_agents", json.loads(manifest.read_text()))
-        deletion = store.save(paused["revision"], removed, "operator", purge_removed_agents=True)
+        with patch.dict("os.environ", {"KFGYR_MONITORING_DB_ENABLED": "1"}), \
+             patch("monitoring.validate_schema_assignments"), patch("monitoring.sync_machine_schema_assignments"):
+            payload = {"base_revision": paused["revision"], "config": removed}
+            self.assertEqual(self.client.put("/v1/config", json=payload).status_code, 422)
+            self.assertEqual(store.load()["revision"], paused["revision"])
+            result = self.client.put("/v1/config", json={**payload, "confirm_agent_data_removal": True})
+        self.assertEqual(result.status_code, 200)
+        deletion = result.json()
         self.assertEqual(json.loads(manifest.read_text())["purge_agents"], ["Demo"])
         self.assertEqual(json.loads((store.directory / "revisions" / (deletion["revision"] + ".json")).read_text())
                          ["purge_agents"], ["Demo"])
