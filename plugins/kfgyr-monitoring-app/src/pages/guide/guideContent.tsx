@@ -462,8 +462,10 @@ function CatalogSection() {
           Kézzel is megadható a gépen belüli, <code>/</code> jellel kezdődő útvonal.
         </li>
         <li>
-          <strong>Új jel gépadatpontból.</strong> Az <UiTag icon="plus" label="Új jel gépadatpontból" /> gombbal felvehető
-          és rögtön az aktív sémához rendelhető egy új jel. A rendszer nevet, azonosítót és mértékegységet javasol.
+          <strong>Kiindulás gépadatpontból.</strong> A <UiTag icon="plus" label="Gépadatpont felvétele" /> ablakban először
+          a gépet és egy szabad adatpontot válassz. A <strong>Meglévő jel</strong> opció egy katalógusjelhez rendeli az
+          útvonalat az aktív sémában. Ha a jelnek már van útvonala, mentés előtt látszik, melyiket cseréled le.
+          Az <strong>Új jel</strong> opció nevet, azonosítót és mértékegységet javasol.
         </li>
         <li>
           <strong>Új jel hozzárendelés nélkül.</strong> A <UiTag icon="plus" label="Jel hozzáadása" /> gombbal előre is
@@ -629,7 +631,7 @@ function TasksSection({ access, goTo }: { access: Access; goTo: (id: string) => 
               <li>Az <strong>Agentek és gépek</strong> oldalon új agent felvétele hálózati kereséssel vagy kézzel. Már felvett agentnél a <strong>Szerkesztés</strong> megnyitása.</li>
               <li>A gép elnevezése és a séma hozzárendelése az agent szerkesztőablakában.</li>
               <li>A módosítás listába tétele, majd a <UiTag label="Mentés és alkalmazás" /> kiválasztása a főoldalon.</li>
-              <li>Az adatpontok beolvasása után a hiányzó sémakapcsolatok felvétele a meglévő jeleknél. Új katalógusjel a <UiTag icon="plus" label="Új jel gépadatpontból" /> művelettel hozható létre.</li>
+              <li>Az adatpontok beolvasása után a <UiTag icon="plus" label="Gépadatpont felvétele" /> ablakban a szabad adatponthoz meglévő jelet választhatsz, vagy újat hozhatsz létre.</li>
               <li>A gép dashboardjának létrehozása és mentése a <strong>Dashboard szerkesztőben</strong>.</li>
             </ol>
             <p>A felvétel és a mentés részletei az útmutató <ChapterLink id="agentek" label="Agentek és gépek" goTo={goTo} /> fejezetében olvashatók.</p>

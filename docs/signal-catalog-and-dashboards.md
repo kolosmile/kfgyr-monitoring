@@ -14,6 +14,8 @@ A **Jelkatalógus** oldal egyetlen táblázatban mutatja a katalógusjeleket és
 
 Új jel vagy hozzárendelés felvehető kézzel, illetve egy már beolvasott gép még fel nem használt adatpontjából választva. Ha a kiválasztott gépadatpont nyers egysége eltér a katalógusjel mentett egységétől, a felület figyelmeztet, de nem írja felül a katalógusjel egységét.
 
+Az **Adatpont hozzárendelése** művelet egy meglévő jelből indul. A **Gépadatpont felvétele** ablakban fordított a sorrend. A gép és a szabad adatpont kiválasztása után a **Meglévő jel** opció egy katalógusjelet használ, az **Új jel** opció pedig új katalógusbejegyzést hoz létre. Ha a meglévő jelhez már tartozik útvonal az aktív sémában, a felület mutatja a jelenlegi útvonalat, és külön **Hozzárendelés cseréje** gombbal menthető a módosítás.
+
 A gépadatpont-választó legördülő lista a relatív útvonal mellett a gép által közölt MTConnect-nevet is megjeleníti, ha van ilyen. A listában az útvonalra és a névre egyaránt lehet keresni, például az `Srpm` névre. A séma táblázatában a relatív útvonal látszik, és sémamásoláskor is ez kerül át. Ha a relay az ütköző útvonalakat szögletes zárójeles utótaggal különbözteti meg (például `Load[Sload]`), az utótag a mentett útvonal része.
 
 A **Sémák** kártya **Hozzárendelve** listája mutatja, mely gépek használják az aktív sémát. A kártya megmutatja azt is, hány katalógusjelhez van útvonal rendelve. A **Csak a hozzárendelt jelek** szűrővel ezek a jelek külön listázhatók. Asztali nézetben a keresők és a hozzáadási lehetőségek a görgethető sorok fölött maradnak.

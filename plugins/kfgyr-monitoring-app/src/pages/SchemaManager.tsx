@@ -13,8 +13,11 @@ type MappingState = { schemaId: string; mappings?: Mapping[]; failed?: boolean }
 type CatalogResponse = { signals: Signal[] };
 type SchemaResponse = { schemas: SchemaOption[] };
 type MachinesResponse = { machines: Machine[] };
+type SignalDestination = 'existing' | 'new';
 type SignalEditor = {
   mode: 'catalog' | 'machine';
+  destination?: SignalDestination;
+  existingSignalId?: string;
   originalId?: string;
   id: string;
   name: string;
@@ -228,6 +231,15 @@ export function SchemaManager({ machine }: { machine?: string }) {
     .filter((item) => item.endpoint && item.signal_id !== mappingEditor?.signalId)
     .map((item) => item.endpoint!)), [mappings, mappingEditor?.signalId]);
   const availableMachineItems = machineItems.filter((item) => !usedEndpoints.has(item.path));
+  const useExistingSignal = signalEditor?.destination === 'existing';
+  const existingSignal = useExistingSignal ? signals.find(({ id }) => id === signalEditor?.existingSignalId) : undefined;
+  const previousEndpoint = existingSignal && mappingBySignal.get(existingSignal.id)?.endpoint;
+  const selectedSignalPoint = signalEditor?.mode === 'machine'
+    ? availableMachineItems.find(({ id }) => id === signalEditor.pointId)
+    : undefined;
+  const canSaveSignal = !!signalEditor
+    && (signalEditor.mode !== 'machine' || (!!selectedSchema && !!selectedSignalPoint))
+    && (useExistingSignal ? !!existingSignal : !!(signalEditor.name.trim() && signalEditor.id.trim()));
 
   async function reload(schemaId = selectedSchema) {
     setError('');
@@ -236,30 +248,28 @@ export function SchemaManager({ machine }: { machine?: string }) {
   }
 
   async function saveSignal() {
-    if (!signalEditor || saving) {
+    if (!signalEditor || saving || !canSaveSignal) {
       return;
     }
     setSubmitted(true);
     const { id, name, units, originalId, mode, endpoint } = signalEditor;
-    if (!name.trim() || !id.trim() || (mode === 'machine' && !endpoint)) {
-      return;
-    }
     setSaving(true);
     setError('');
+    setNotice('');
     try {
-      if (originalId) {
+      if (existingSignal) {
+        await writeMapping(existingSignal.id, endpoint);
+      } else if (originalId) {
         await api('signals', 'PUT', { id: originalId, name: name.trim(), units: units.trim() });
       } else {
         await api('signals', 'POST', { id: id.trim(), name: name.trim(), units: units.trim() });
-        if (mode === 'machine' && selectedSchema) {
-          await api(`schemas/${encodeURIComponent(selectedSchema)}/mappings`, 'PUT', {
-            signal_id: id.trim(), endpoint,
-          });
+        if (mode === 'machine') {
+          await writeMapping(id.trim(), endpoint);
         }
       }
       setSignalEditor(undefined);
       setSubmitted(false);
-      setNotice(originalId ? 'A jel adatai frissültek.' : mode === 'machine'
+      setNotice(existingSignal ? 'A séma-hozzárendelés mentve.' : originalId ? 'A jel adatai frissültek.' : mode === 'machine'
         ? 'A jel bekerült a katalógusba és a sémához rendeltük.'
         : 'A jel bekerült a katalógusba. A séma-hozzárendelés külön adható meg.');
       await reload(selectedSchema);
@@ -269,6 +279,12 @@ export function SchemaManager({ machine }: { machine?: string }) {
     } finally {
       setSaving(false);
     }
+  }
+
+  function writeMapping(signalId: string, endpoint: string) {
+    return api(`schemas/${encodeURIComponent(selectedSchema)}/mappings`, 'PUT', {
+      signal_id: signalId, endpoint: endpoint.trim(),
+    });
   }
 
   async function saveSchema() {
@@ -306,10 +322,7 @@ export function SchemaManager({ machine }: { machine?: string }) {
     setSaving(true);
     setError('');
     try {
-      await api(`schemas/${encodeURIComponent(selectedSchema)}/mappings`, 'PUT', {
-        signal_id: mappingEditor.signalId,
-        endpoint: mappingEditor.endpoint.trim(),
-      });
+      await writeMapping(mappingEditor.signalId, mappingEditor.endpoint);
       setMappingEditor(undefined);
       setNotice('A séma-hozzárendelés mentve.');
       await reload(selectedSchema);
@@ -389,8 +402,10 @@ export function SchemaManager({ machine }: { machine?: string }) {
 
   function openSignalEditor(mode: SignalEditor['mode'], signal?: Signal) {
     setSubmitted(false);
+    setError('');
     setSignalEditor({
       mode, originalId: signal?.id, id: signal?.id ?? '', name: signal?.name ?? '', units: signal?.units ?? '',
+      destination: mode === 'machine' ? 'existing' : undefined,
       machine: mode === 'machine' ? checkingMachine : '', pointId: '', endpoint: '',
     });
   }
@@ -406,7 +421,7 @@ export function SchemaManager({ machine }: { machine?: string }) {
 
   return (
     <>
-      {error && !schemaEditor && <Alert severity="error" title="A művelet sikertelen">{error}</Alert>}
+      {error && !schemaEditor && !signalEditor && <Alert severity="error" title="A művelet sikertelen">{error}</Alert>}
       {notice && <Alert severity="success" title={notice} />}
       <div className={styles.schemaColumns}>
         <section className={styles.formCard} ref={listCardRef}>
@@ -440,7 +455,7 @@ export function SchemaManager({ machine }: { machine?: string }) {
                   <td>
                     <button type="button" className={styles.schemaAdd} disabled={saving || !mappingsReady}
                       onClick={() => openSignalEditor('machine')}>
-                      <Icon name="plus" aria-hidden /> Új jel gépadatpontból
+                      <Icon name="plus" aria-hidden /> Gépadatpont felvétele
                     </button>
                   </td>
                 </tr>
@@ -598,9 +613,10 @@ export function SchemaManager({ machine }: { machine?: string }) {
       </div>
 
       {signalEditor && (
-        <Modal title={signalEditor.originalId ? 'Jel módosítása' : signalEditor.mode === 'machine' ? 'Új jel gépadatpontból' : 'Jel hozzáadása'}
-          isOpen onDismiss={() => setSignalEditor(undefined)}>
+        <Modal title={signalEditor.originalId ? 'Jel módosítása' : signalEditor.mode === 'machine' ? 'Gépadatpont felvétele' : 'Jel hozzáadása'}
+          isOpen onDismiss={() => { if (!saving) { setSignalEditor(undefined); setError(''); } }}>
           <div className={styles.schemaModalFields}>
+            {error && <Alert severity="error" title="A mentés sikertelen">{error}</Alert>}
             {signalEditor.mode === 'machine' && (
               <>
                 <Field label="Gép" htmlFor="new-signal-machine">
@@ -620,26 +636,56 @@ export function SchemaManager({ machine }: { machine?: string }) {
                     }} />
                 </Field>
                 {picker?.error && <Alert severity="error" title="A gép adatpontlistája nem érhető el">{picker.error}</Alert>}
+                <Field label="Hozzárendelés célja" htmlFor="signal-destination">
+                  <Combobox<SignalDestination> id="signal-destination" value={signalEditor.destination}
+                    options={[{ value: 'existing', label: 'Meglévő jel' }, { value: 'new', label: 'Új jel' }]}
+                    onChange={({ value }) => setSignalEditor({ ...signalEditor, destination: value })} />
+                </Field>
               </>
             )}
-            <Field label="Jelazonosító" htmlFor="signal-id" description={signalEditor.originalId ? 'Létrehozás után az azonosító nem módosítható.' : 'Egyedi, gépileg használható azonosító.'}>
-              <Input id="signal-id" value={signalEditor.id} disabled={!!signalEditor.originalId}
-                onChange={(event) => setSignalEditor({ ...signalEditor, id: event.currentTarget.value })} />
-            </Field>
-            <Field label="Magyar elnevezés" htmlFor="signal-name" invalid={submitted && !signalEditor.name.trim()}
-              error={submitted && !signalEditor.name.trim() ? 'Adj nevet a jelnek.' : undefined}>
-              <Input id="signal-name" value={signalEditor.name} maxLength={120}
-                onChange={(event) => setSignalEditor({ ...signalEditor, name: event.currentTarget.value })} />
-            </Field>
-            <Field label="Mértékegység" htmlFor="signal-units" description="A gépből választott adatpont egysége előre kitölti ezt a mezőt.">
-              <Input id="signal-units" value={signalEditor.units} maxLength={80}
-                onChange={(event) => setSignalEditor({ ...signalEditor, units: event.currentTarget.value })} />
-            </Field>
+            {useExistingSignal ? (
+              <>
+                <Field label="Katalógusjel" htmlFor="existing-signal">
+                  <Combobox id="existing-signal" value={signalEditor.existingSignalId ?? null}
+                    placeholder="Válassz jelet" options={signals.map(({ id, name }) => ({
+                      value: id, label: `${name} · ${id}`,
+                    }))}
+                    onChange={({ value }) => setSignalEditor({ ...signalEditor, existingSignalId: value })} />
+                </Field>
+                {previousEndpoint && (
+                  <Alert severity="warning" title="A jelhez már tartozik adatpont">
+                    Mentéskor a <code>{previousEndpoint}</code> útvonalat lecseréled az aktív sémában.
+                  </Alert>
+                )}
+                {selectedSignalPoint && existingSignal && selectedSignalPoint.units !== existingSignal.units && (
+                  <Alert severity="warning" title="Eltérő mértékegység">
+                    A jel mentett egysége „{existingSignal.units || 'nincs megadva'}”, a gépadatpont egysége
+                    „{selectedSignalPoint.units || 'nincs megadva'}”. A jel a mentett egységét megtartja.
+                  </Alert>
+                )}
+              </>
+            ) : (
+              <>
+                <Field label="Jelazonosító" htmlFor="signal-id" description={signalEditor.originalId ? 'Létrehozás után az azonosító nem módosítható.' : 'Egyedi, gépileg használható azonosító.'}>
+                  <Input id="signal-id" value={signalEditor.id} disabled={!!signalEditor.originalId}
+                    onChange={(event) => setSignalEditor({ ...signalEditor, id: event.currentTarget.value })} />
+                </Field>
+                <Field label="Magyar elnevezés" htmlFor="signal-name" invalid={submitted && !signalEditor.name.trim()}
+                  error={submitted && !signalEditor.name.trim() ? 'Adj nevet a jelnek.' : undefined}>
+                  <Input id="signal-name" value={signalEditor.name} maxLength={120}
+                    onChange={(event) => setSignalEditor({ ...signalEditor, name: event.currentTarget.value })} />
+                </Field>
+                <Field label="Mértékegység" htmlFor="signal-units" description="A gépből választott adatpont egysége előre kitölti ezt a mezőt.">
+                  <Input id="signal-units" value={signalEditor.units} maxLength={80}
+                    onChange={(event) => setSignalEditor({ ...signalEditor, units: event.currentTarget.value })} />
+                </Field>
+              </>
+            )}
             <Modal.ButtonRow>
-              <Button type="button" variant="secondary" onClick={() => setSignalEditor(undefined)}>Mégse</Button>
-              <Button type="button" disabled={saving || !signalEditor.name.trim() || !signalEditor.id.trim() ||
-                (signalEditor.mode === 'machine' && (!signalEditor.endpoint || !selectedSchema))} onClick={saveSignal}>
-                Mentés
+              <Button type="button" variant="secondary" disabled={saving}
+                onClick={() => { setSignalEditor(undefined); setError(''); }}>Mégse</Button>
+              <Button type="button" disabled={saving || !canSaveSignal} onClick={saveSignal}>
+                {useExistingSignal ? previousEndpoint ? 'Hozzárendelés cseréje' : 'Hozzárendelés mentése' : 'Mentés'}
               </Button>
             </Modal.ButtonRow>
           </div>

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.57 — 2026-11-25
+
+- Assign an unused machine data item to an existing or new signal from the same dialog.
+
 ## 0.4.56 — 2026-11-25
 
 - List the machines assigned to the active schema and update the signal catalog section of the User Guide.
