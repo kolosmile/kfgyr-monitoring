@@ -510,7 +510,7 @@ function EditorSection({ goTo }: { goTo: (id: string) => void }) {
       <h3>Dashboard létrehozása vagy másolása</h3>
       <ol>
         <li>A listából a kívánt gép kiválasztása után a <UiTag icon="plus" label="Dashboard hozzáadása" /> gombra kattintva hozható létre új nézet.</li>
-        <li>Név megadása után a <strong>Kiindulás</strong> listában üres dashboard vagy egy azonos sémájú gép meglévő dashboardja választható.</li>
+        <li>Név megadása után a <strong>Kiindulás</strong> listában üres dashboard vagy bármelyik meglévő gépdashboard választható, eltérő sémájú gépé is.</li>
         <li>Másoláskor az előnézet kiírja, hány panel vihető át, és felsorolja a kimaradó panelek nevét és típusát.</li>
         <li>A <UiTag label="Létrehozás" /> gomb menti a dashboardot és megnyitja a Panelszerkesztőt.</li>
       </ol>

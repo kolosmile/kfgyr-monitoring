@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.60 — 2026-11-25
+
+- Document dashboard copying between machines with different schemas.
+
 ## 0.4.59 — 2026-11-25
 
 - Send an explicit data-removal confirmation when applying a staged agent removal.

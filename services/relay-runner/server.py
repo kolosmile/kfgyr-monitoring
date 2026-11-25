@@ -23,7 +23,7 @@ from discovery import Discovery, Policy, probe
 import monitoring
 from runner import Runner, healthcheck, read_json
 
-VERSION = "0.4.19"
+VERSION = "0.4.20"
 logger = logging.getLogger("kfgyr.runner")
 
 

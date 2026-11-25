@@ -186,6 +186,7 @@ class APITests(unittest.TestCase):
             {"signal_id": "rpm", "view": "gauge"},
             {"signal_id": "old_spindle", "view": "chart"},
             {"name": "X pozíció", "point": "old-point", "view": "chart"},
+            {"name": "Orsófordulat", "point": "source-rpm", "view": "chart"},
         ]
         source_row = ("Source", "d1", "generic", source, "22")
         db = MagicMock()
@@ -194,19 +195,22 @@ class APITests(unittest.TestCase):
         with patch("monitoring.psycopg.connect") as connect, \
              patch("monitoring.machine_info", return_value=("Target", "d2", "Target/CV5")), \
              patch("monitoring._machine_signal_options", side_effect=[
-                 [{"id": "rpm", "kind": "signal"}], [], [{"id": "rpm", "kind": "signal"}], [],
+                 [{"id": "rpm", "kind": "signal"}], [{"id": "rpm", "point_id": "source-rpm"}],
+                 [{"id": "rpm", "kind": "signal"}], [{"id": "rpm", "point_id": "source-rpm"}],
              ]):
             connect.return_value.__enter__.return_value = db
             payload = {"machine": "123", "source_dashboard_id": 7}
             self.assertEqual(self.client.post("/v1/dashboards/copy-preview", json=payload,
                                               headers={"Authorization": "Bearer wrong"}).status_code, 401)
             preview = self.client.post("/v1/dashboards/copy-preview", json=payload)
-            self.assertEqual(preview.json(), {"copied_panels": 1, "skipped_panels": [
+            self.assertEqual(preview.json(), {"copied_panels": 2, "skipped_panels": [
                 {"name": "C orsófordulat", "view": "chart"}, {"name": "X pozíció", "view": "chart"},
             ]})
             created = self.client.post("/v1/dashboards", json={**payload, "name": "Másolat"})
         self.assertEqual(created.json(), {"id": 8, "skipped_panels": 2})
-        self.assertEqual(db.execute.call_args.args[1][3].obj, source[:1])
+        self.assertEqual(db.execute.call_args.args[1][3].obj, [
+            source[0], {"name": "Orsófordulat", "signal_id": "rpm", "view": "chart"},
+        ])
 
     def test_machine_availability_uses_configured_agent(self):
         self.seed()

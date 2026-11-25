@@ -446,20 +446,17 @@ def list_dashboards(machine):
             WHERE agent_alias=%s AND device_id=%s ORDER BY is_default DESC, lower(name), id
         """, key).fetchall()
         sources = db.execute("""
-            SELECT d.id, d.name, source.agent_alias,
-                   coalesce(node.props->>'deviceAlias', source.device_id)
-            FROM kfgyr.machine_schema_assignments target
-            JOIN kfgyr.machine_schema_assignments source ON source.schema_id=target.schema_id
-            JOIN kfgyr.machine_dashboards d ON d.agent_alias=source.agent_alias AND d.device_id=source.device_id
-            JOIN LATERAL (
+            SELECT d.id, d.name, d.agent_alias,
+                   coalesce(node.props->>'deviceAlias', d.device_id)
+            FROM kfgyr.machine_dashboards d
+            LEFT JOIN LATERAL (
                 SELECT props FROM raw.nodes WHERE props->>'node_type'='Device'
-                  AND props->>'agentAlias'=source.agent_alias AND props->>'deviceId'=source.device_id
+                  AND props->>'agentAlias'=d.agent_alias AND props->>'deviceId'=d.device_id
                 ORDER BY node_id LIMIT 1
             ) node ON true
-            WHERE target.agent_alias=%s AND target.device_id=%s
-            ORDER BY lower(source.agent_alias), lower(coalesce(node.props->>'deviceAlias', source.device_id)),
+            ORDER BY lower(d.agent_alias), lower(coalesce(node.props->>'deviceAlias', d.device_id)),
                      lower(d.name), d.id
-        """, key).fetchall()
+        """).fetchall()
         return {"dashboards": [
             {"id": row[0], "name": row[1], "revision": row[2], "is_default": row[3]}
             for row in rows
@@ -559,17 +556,15 @@ def copy_dashboard_panels(db, machine, key, source_id):
     row = db.execute("""
         SELECT d.agent_alias, d.device_id, d.profile, d.signals, node.node_id::text
         FROM kfgyr.machine_dashboards d
-        JOIN kfgyr.machine_schema_assignments source USING (agent_alias, device_id)
-        JOIN kfgyr.machine_schema_assignments target ON target.schema_id=source.schema_id
-        JOIN LATERAL (
+        LEFT JOIN LATERAL (
             SELECT node_id FROM raw.nodes WHERE props->>'node_type'='Device'
               AND props->>'agentAlias'=d.agent_alias AND props->>'deviceId'=d.device_id
             ORDER BY node_id LIMIT 1
         ) node ON true
-        WHERE d.id=%s AND target.agent_alias=%s AND target.device_id=%s
-    """, (source_id, *key)).fetchone()
+        WHERE d.id=%s
+    """, (source_id,)).fetchone()
     if not row:
-        raise Problem(422, "A forrásdashboard nem található, vagy másik gépsémához tartozik.")
+        raise Problem(422, "A forrásdashboard nem található.")
 
     source_agent, source_device, profile, signals, source_machine = row
     panels = signals if isinstance(signals, list) else legacy_panels(profile, signals)
@@ -578,7 +573,7 @@ def copy_dashboard_panels(db, machine, key, source_id):
     signal_ids = {item["id"] for item in available if item["kind"] == "signal"}
     point_ids = {item["id"] for item in available if item["kind"] == "point"}
     source_points = {}
-    if not same_machine and panel_point_ids(panels):
+    if not same_machine and source_machine and panel_point_ids(panels):
         for item in _machine_signal_options(db, source_machine):
             if item["id"] in signal_ids:
                 source_points.setdefault(item["point_id"], set()).add(item["id"])
