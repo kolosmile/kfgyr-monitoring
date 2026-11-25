@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.55 — 2026-11-25
+
+- Filter the signal catalog to assigned signals and fit the scrollable rows to the desktop viewport.
+
 ## 0.4.54 — 2026-11-25
 
 - Check schema mappings against a selected machine and highlight missing paths.

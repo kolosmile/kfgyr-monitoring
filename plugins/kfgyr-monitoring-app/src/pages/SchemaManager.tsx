@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Badge, Button, Checkbox, Combobox, ConfirmModal, Field, Icon, IconButton, Input, Modal, Spinner, Tooltip, useStyles2 } from '@grafana/ui';
 import { api } from '../api';
 import { getStyles } from '../components/styles';
@@ -27,6 +27,16 @@ type SchemaEditor = { id?: string; name: string; sourceSchemaId?: string };
 type MappingEditor = { signalId: string; source: 'manual' | 'machine'; machine: string; endpoint: string };
 const emptyMappings: Mapping[] = [];
 const missingMappingText = 'Az adatpont-hozzárendelés ezen a gépen nem oldható fel. Módosítsd, vagy hozz létre új sémát.';
+
+function updateScrollFades(list: HTMLDivElement) {
+  const frame = list.parentElement;
+  if (!frame) {
+    return;
+  }
+  frame.toggleAttribute('data-fade-start', list.scrollTop > 1);
+  frame.toggleAttribute('data-fade-end', list.scrollHeight - list.clientHeight - list.scrollTop > 1);
+  frame.style.setProperty('--schema-scrollbar-width', `${list.offsetWidth - list.clientWidth}px`);
+}
 
 function useMachineDataItems(machine: string) {
   const [state, setState] = useState<{ machine: string; items?: DataItem[]; error?: string }>();
@@ -79,6 +89,7 @@ export function SchemaManager({ machine }: { machine?: string }) {
   const [mappingState, setMappingState] = useState<MappingState>();
   const [checkingMachine, setCheckingMachine] = useState(machine ?? '');
   const [differencesOnly, setDifferencesOnly] = useState(false);
+  const [assignedOnly, setAssignedOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -91,6 +102,8 @@ export function SchemaManager({ machine }: { machine?: string }) {
   const [deleteMapping, setDeleteMapping] = useState<{ schema: SchemaOption; mapping: Mapping }>();
   const [submitted, setSubmitted] = useState(false);
   const mappingRequest = useRef(0);
+  const listRef = useRef<HTMLDivElement>(null);
+  const listCardRef = useRef<HTMLElement>(null);
 
   async function loadBase(preferredSchema?: string) {
     const [catalog, schemaResult, machineResult] = await Promise.all([
@@ -175,8 +188,41 @@ export function SchemaManager({ machine }: { machine?: string }) {
     const signalText = `${signal.name} ${signal.id} ${signal.units} ${displayUnitLabels.get(signal.units) ?? ''}`.toLocaleLowerCase('hu');
     const endpoint = mappingBySignal.get(signal.id)?.endpoint ?? '';
     return signalText.includes(signalSearch) && endpoint.toLocaleLowerCase('hu').includes(endpointSearch)
+      && (!assignedOnly || !mappingsReady || !!endpoint)
       && (!differencesOnly || !checkedPaths || !mappingsReady || missing.has(signal.id));
   });
+
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    const card = listCardRef.current;
+    const table = list?.querySelector('table');
+    if (!list || !card || !table) {
+      return;
+    }
+    const resize = () => {
+      const cardStyle = getComputedStyle(card);
+      const bottomSpace = parseFloat(cardStyle.paddingBottom) + parseFloat(cardStyle.borderBottomWidth) + 16;
+      const available = window.innerHeight - Math.max(0, list.getBoundingClientRect().top) - bottomSpace;
+      const rows = Array.from(table.tBodies[0].rows).slice(0, 5);
+      const minimum = Math.ceil(rows.reduce((height, row) => height + row.getBoundingClientRect().height, 0));
+      list.style.setProperty('--schema-list-height', `${Math.max(minimum, Math.floor(available))}px`);
+      updateScrollFades(list);
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(card);
+    observer.observe(table);
+    window.addEventListener('resize', resize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', resize);
+    };
+  }, [loading, selectedSchema, visibleSignals.length, notice, error]);
+
+  useLayoutEffect(() => {
+    listRef.current?.scrollTo({ top: 0 });
+  }, [selectedSchema, signalSearch, endpointSearch, assignedOnly, differencesOnly]);
+
   const usedEndpoints = useMemo(() => new Set(mappings
     .filter((item) => item.endpoint && item.signal_id !== mappingEditor?.signalId)
     .map((item) => item.endpoint!)), [mappings, mappingEditor?.signalId]);
@@ -351,6 +397,7 @@ export function SchemaManager({ machine }: { machine?: string }) {
   const mappingSignal = mappingEditor && signals.find((item) => item.id === mappingEditor.signalId);
   const selectedDataItem = mappingEditor && machineItems.find((item) => item.path === mappingEditor.endpoint);
   const unitMismatch = !!selectedDataItem && mappingSignal?.units !== selectedDataItem.units;
+  const columns = <colgroup><col /><col className={styles.schemaConnectorColumn} /><col /></colgroup>;
 
   if (loading) {
     return <div role="status"><Spinner /> A jelkatalógus és a sémák betöltése…</div>;
@@ -361,10 +408,10 @@ export function SchemaManager({ machine }: { machine?: string }) {
       {error && !schemaEditor && <Alert severity="error" title="A művelet sikertelen">{error}</Alert>}
       {notice && <Alert severity="success" title={notice} />}
       <div className={styles.schemaColumns}>
-        <section className={styles.formCard}>
-          <div className={styles.schemaScroll} role="region" aria-label="Jelek és adatpontok" tabIndex={0}>
-            <table className={styles.schemaTable} aria-label="Jelek és a sémához rendelt adatpontok">
-              <colgroup><col /><col className={styles.schemaConnectorColumn} /><col /></colgroup>
+        <section className={styles.formCard} ref={listCardRef}>
+          <div className={styles.schemaListControls}>
+            <table className={styles.schemaTable} role="presentation">
+              {columns}
               <thead>
                 <tr>
                   <th scope="col">
@@ -397,73 +444,85 @@ export function SchemaManager({ machine }: { machine?: string }) {
                   </td>
                 </tr>
               </thead>
-              <tbody className={styles.schemaRows} aria-busy={Boolean(schema && !mappingsReady && !currentMappingState?.failed)}>
-                {visibleSignals.map((signal) => {
-                  const mapping = mappingBySignal.get(signal.id);
-                  const displayUnit = displayUnitLabels.get(signal.units);
-                  const signalDetails = displayUnit ? signal.id : `${signal.id} · ${signal.units || 'Nincs megadott egység'}`;
-                  return (
-                    <tr key={signal.id} className={`${styles.mtconnectBranchClass(mapping?.endpoint)} ${missing.has(signal.id) ? styles.schemaMissingRow : ''}`}>
-                      <th scope="row">
-                        <div className={styles.schemaCell}>
-                          <div className={styles.schemaRowText}>
-                            <strong className={`${styles.schemaTruncated} ${styles.schemaSignalName}`}
-                              title={signal.name}>{signal.name}</strong>
-                            <small className={styles.schemaTruncated} title={signalDetails}>{signalDetails}</small>
-                          </div>
-                          <div className={styles.schemaActions}>
-                            {displayUnit && <Badge color="blue" tooltip={`${displayUnit} · ${signal.units}`}
-                              text={<span className={styles.displayUnitBadgeText}>{displayUnit}</span>} />}
-                            <IconButton type="button" name="pen" aria-label={`${signal.name} módosítása`}
-                              tooltip="Jel módosítása" disabled={saving} onClick={() => openSignalEditor('catalog', signal)} />
-                            <IconButton type="button" variant="destructive" name="trash-alt"
-                              aria-label={`${signal.name} törlése`} tooltip="Jel törlése" disabled={saving} onClick={() => setDeleteSignal(signal)} />
-                          </div>
-                        </div>
-                      </th>
-                      <td className={styles.schemaConnector} aria-hidden>
-                        {mapping?.endpoint && <Icon name="arrow-right" size="sm" />}
-                      </td>
-                      <td>
-                        {mapping?.endpoint && schema ? (
+            </table>
+          </div>
+          <div className={styles.schemaListFrame}>
+            <div className={styles.schemaScroll} ref={listRef} onScroll={(event) => updateScrollFades(event.currentTarget)}
+              role="region" aria-label="Jelek és adatpontok" tabIndex={0}>
+              <table className={styles.schemaTable} aria-label="Jelek és a sémához rendelt adatpontok">
+                {columns}
+                <thead className={styles.schemaAccessibleHeader}>
+                  <tr><th scope="col"><span>Jelek</span></th><td /><th scope="col"><span>Adatpontok</span></th></tr>
+                </thead>
+                <tbody className={styles.schemaRows} aria-busy={Boolean(schema && !mappingsReady && !currentMappingState?.failed)}>
+                  {visibleSignals.map((signal) => {
+                    const mapping = mappingBySignal.get(signal.id);
+                    const displayUnit = displayUnitLabels.get(signal.units);
+                    const signalDetails = displayUnit ? signal.id : `${signal.id} · ${signal.units || 'Nincs megadott egység'}`;
+                    return (
+                      <tr key={signal.id} className={`${styles.mtconnectBranchClass(mapping?.endpoint)} ${missing.has(signal.id) ? styles.schemaMissingRow : ''}`}>
+                        <th scope="row">
                           <div className={styles.schemaCell}>
-                            <span className={`${styles.schemaPath} ${styles.schemaTruncated}`} title={mapping.endpoint}>
-                              {mapping.endpoint}
-                            </span>
+                            <div className={styles.schemaRowText}>
+                              <strong className={`${styles.schemaTruncated} ${styles.schemaSignalName}`}
+                                title={signal.name}>{signal.name}</strong>
+                              <small className={styles.schemaTruncated} title={signalDetails}>{signalDetails}</small>
+                            </div>
                             <div className={styles.schemaActions}>
-                              {missing.has(signal.id) && (
-                                <Tooltip content={missingMappingText}>
-                                  <span className={styles.schemaMissingIcon} tabIndex={0} role="img" aria-label={missingMappingText}>
-                                    <Icon name="exclamation-circle" aria-hidden size="sm" />
-                                  </span>
-                                </Tooltip>
-                              )}
-                              <IconButton type="button" name="pen" tooltip="Hozzárendelés módosítása"
-                                aria-label={`${signal.name} hozzárendelésének módosítása`} disabled={saving}
-                                onClick={() => openMapping(signal.id)} />
+                              {displayUnit && <Badge color="blue" tooltip={`${displayUnit} · ${signal.units}`}
+                                text={<span className={styles.displayUnitBadgeText}>{displayUnit}</span>} />}
+                              <IconButton type="button" name="pen" aria-label={`${signal.name} módosítása`}
+                                tooltip="Jel módosítása" disabled={saving} onClick={() => openSignalEditor('catalog', signal)} />
                               <IconButton type="button" variant="destructive" name="trash-alt"
-                                aria-label={`${signal.name} hozzárendelésének törlése`} tooltip="Hozzárendelés törlése"
-                                disabled={saving} onClick={() => setDeleteMapping({ schema, mapping })} />
+                                aria-label={`${signal.name} törlése`} tooltip="Jel törlése" disabled={saving} onClick={() => setDeleteSignal(signal)} />
                             </div>
                           </div>
-                        ) : mappingsReady ? (
-                          <button type="button" className={styles.schemaAdd} disabled={saving}
-                            aria-label={`${signal.name} adatpontjának hozzárendelése`} onClick={() => openMapping(signal.id)}>
-                            <Icon name="plus" aria-hidden /> Adatpont hozzárendelése
-                          </button>
-                        ) : <span aria-label="Az adatpont nem jeleníthető meg">–</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {!visibleSignals.length && (
-                  <tr><td colSpan={3} className={styles.muted}>
-                    {differencesOnly && checkedPaths && !missing.size ? 'Nincs eltérő hozzárendelés ezen a gépen.'
-                      : signals.length ? 'Nincs a keresésnek megfelelő találat.' : 'A jelkatalógus még üres.'}
-                  </td></tr>
-                )}
-              </tbody>
-            </table>
+                        </th>
+                        <td className={styles.schemaConnector} aria-hidden>
+                          {mapping?.endpoint && <Icon name="arrow-right" size="sm" />}
+                        </td>
+                        <td>
+                          {mapping?.endpoint && schema ? (
+                            <div className={styles.schemaCell}>
+                              <span className={`${styles.schemaPath} ${styles.schemaTruncated}`} title={mapping.endpoint}>
+                                {mapping.endpoint}
+                              </span>
+                              <div className={styles.schemaActions}>
+                                {missing.has(signal.id) && (
+                                  <Tooltip content={missingMappingText}>
+                                    <span className={styles.schemaMissingIcon} tabIndex={0} role="img" aria-label={missingMappingText}>
+                                      <Icon name="exclamation-circle" aria-hidden size="sm" />
+                                    </span>
+                                  </Tooltip>
+                                )}
+                                <IconButton type="button" name="pen" tooltip="Hozzárendelés módosítása"
+                                  aria-label={`${signal.name} hozzárendelésének módosítása`} disabled={saving}
+                                  onClick={() => openMapping(signal.id)} />
+                                <IconButton type="button" variant="destructive" name="trash-alt"
+                                  aria-label={`${signal.name} hozzárendelésének törlése`} tooltip="Hozzárendelés törlése"
+                                  disabled={saving} onClick={() => setDeleteMapping({ schema, mapping })} />
+                              </div>
+                            </div>
+                          ) : mappingsReady ? (
+                            <button type="button" className={styles.schemaAdd} disabled={saving}
+                              aria-label={`${signal.name} adatpontjának hozzárendelése`} onClick={() => openMapping(signal.id)}>
+                              <Icon name="plus" aria-hidden /> Adatpont hozzárendelése
+                            </button>
+                          ) : <span aria-label="Az adatpont nem jeleníthető meg">–</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {!visibleSignals.length && (
+                    <tr><td colSpan={3} className={styles.muted}>
+                      {differencesOnly && checkedPaths && !missing.size ? 'Nincs eltérő hozzárendelés ezen a gépen.'
+                        : assignedOnly && mappingsReady && !assignedMappings.length ? 'Ehhez a sémához még nincs adatpont hozzárendelve.'
+                          : signals.length ? 'Nincs a keresésnek megfelelő találat.' : 'A jelkatalógus még üres.'}
+                    </td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -488,6 +547,8 @@ export function SchemaManager({ machine }: { machine?: string }) {
                 }} />
             </Field>
             {mappingsReady && <p className={styles.muted} role="status">{assignedMappings.length}/{signals.length} jelhez van adatpont rendelve</p>}
+            {mappingsReady && <Checkbox label="Csak a hozzárendelt jelek" value={assignedOnly}
+              onChange={(event) => setAssignedOnly(event.currentTarget.checked)} />}
             {schema && (
               <div className={styles.schemaSettingsActions}>
                 <Button type="button" size="sm" variant="secondary" icon="pen" disabled={saving}

@@ -241,11 +241,32 @@ export const getStyles = (t: GrafanaTheme2) => ({
     display: 'flex', flexWrap: 'wrap', gap: 8,
     '& > button': { flex: '1 0 auto', justifyContent: 'center' },
   }),
+  schemaListControls: css({
+    '@media (min-width: 951px)': {
+      overflowY: 'hidden',
+      scrollbarGutter: 'stable',
+    },
+  }),
+  schemaListFrame: css({
+    position: 'relative',
+    '@media (min-width: 951px)': {
+      '&::before, &::after': {
+        position: 'absolute', zIndex: 1, left: 0, right: 'var(--schema-scrollbar-width, 0px)',
+        height: 16, pointerEvents: 'none',
+      },
+      '&[data-fade-start]::before': {
+        content: '""', top: 0, background: `linear-gradient(${t.colors.background.primary}, transparent)`,
+      },
+      '&[data-fade-end]::after': {
+        content: '""', bottom: 0, background: `linear-gradient(transparent, ${t.colors.background.primary})`,
+      },
+    },
+  }),
   schemaScroll: css({
     '@media (min-width: 951px)': {
-      maxHeight: 'max(320px, calc(100dvh - 240px))',
+      maxHeight: 'var(--schema-list-height, 320px)',
       overflowY: 'auto',
-      '& thead': { position: 'sticky', top: 0, zIndex: 1, background: t.colors.background.primary },
+      scrollbarGutter: 'stable',
     },
   }),
   schemaTable: css({
@@ -255,6 +276,10 @@ export const getStyles = (t: GrafanaTheme2) => ({
     '& tbody th': { fontWeight: 'normal' },
   }),
   schemaSearch: css({ marginTop: 8, fontWeight: 'normal' }),
+  schemaAccessibleHeader: css({
+    '&& th': { padding: 0 },
+    span: { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' },
+  }),
   schemaConnectorColumn: css({ width: 32, '@media (max-width: 520px)': { width: 20 } }),
   schemaConnector: css({
     position: 'relative',
