@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.56 — 2026-11-25
+
+- List the machines assigned to the active schema and update the signal catalog section of the User Guide.
+
 ## 0.4.55 — 2026-11-25
 
 - Filter the signal catalog to assigned signals and fit the scrollable rows to the desktop viewport.

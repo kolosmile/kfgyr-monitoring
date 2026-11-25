@@ -16,7 +16,9 @@ A **Jelkatalógus** oldal egyetlen táblázatban mutatja a katalógusjeleket és
 
 A gépadatpont-választó legördülő lista a relatív útvonal mellett a gép által közölt MTConnect-nevet is megjeleníti, ha van ilyen. A listában az útvonalra és a névre egyaránt lehet keresni, például az `Srpm` névre. A séma táblázatában a relatív útvonal látszik, és sémamásoláskor is ez kerül át. Ha a relay az ütköző útvonalakat szögletes zárójeles utótaggal különbözteti meg (például `Load[Sload]`), az utótag a mentett útvonal része.
 
-A **Sémák** kártya megmutatja, hány katalógusjelhez van útvonal rendelve. Az **Ellenőrzés gépen** kártyán bármelyik beolvasott gép kiválasztható, így egy klónozott séma még a géphez rendelés előtt is ellenőrizhető. Az ellenőrzés azt számolja, hogy a mentett sémaútvonalak közül hány szerepel a gép mentett adatpontlistájában. A hiányzó útvonal sárga sorjelölést és kék felkiáltójelet kap. A **Csak az eltérések** kapcsoló ezeket a sorokat mutatja.
+A **Sémák** kártya **Hozzárendelve** listája mutatja, mely gépek használják az aktív sémát. A kártya megmutatja azt is, hány katalógusjelhez van útvonal rendelve. A **Csak a hozzárendelt jelek** szűrővel ezek a jelek külön listázhatók. Asztali nézetben a keresők és a hozzáadási lehetőségek a görgethető sorok fölött maradnak.
+
+Az **Ellenőrzés gépen** kártyán bármelyik beolvasott gép kiválasztható, így egy klónozott séma még a géphez rendelés előtt is ellenőrizhető. Az ellenőrzés azt számolja, hogy a mentett sémaútvonalak közül hány szerepel a gép mentett adatpontlistájában. A hiányzó útvonal sárga sorjelölést és kék felkiáltójelet kap. A **Csak az eltérések** kapcsoló ezeket a sorokat mutatja.
 
 A Dashboard szerkesztőből megnyitva a Jelkatalógus előválasztja a szerkesztett gépet és annak sémáját. Az ellenőrzéshez kiválasztott gép az új jel és a gépadatpont-hozzárendelés ablakában is előválasztott. Utána az aktív séma többi gépe, majd a többi beolvasott gép következik. Az ellenőrzés csak a nézetet változtatja meg. A hozzárendelés mentése a teljes kiválasztott sémát módosítja, ezért gépspecifikus eltéréshez külön séma klónozható.
 

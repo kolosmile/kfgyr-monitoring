@@ -241,6 +241,13 @@ export const getStyles = (t: GrafanaTheme2) => ({
     display: 'flex', flexWrap: 'wrap', gap: 8,
     '& > button': { flex: '1 0 auto', justifyContent: 'center' },
   }),
+  schemaAssignedMachines: css({
+    fontSize: 13,
+    overflowWrap: 'anywhere',
+    '& ul': { margin: '4px 0 0', paddingInlineStart: 18 },
+    '& li + li': { marginTop: 2 },
+    '& p': { margin: '4px 0 0' },
+  }),
   schemaListControls: css({
     '@media (min-width: 951px)': {
       overflowY: 'hidden',

@@ -446,6 +446,10 @@ function CatalogSection() {
       </ol>
 
       <h3>Jelek és adatpontok összekötése</h3>
+      <p>A <strong>Sémák</strong> kártyán a <strong>Hozzárendelve</strong> lista mutatja, mely gépek használják az aktív
+        sémát. A <strong>Csak a hozzárendelt jelek</strong> jelölőnégyzet a mentett útvonallal rendelkező jelekre szűkíti
+        a táblázatot. Asztali nézetben a keresők és a hozzáadási lehetőségek a görgethető sorok fölött maradnak.
+        Ha van elég találat, a lista legalább öt sor magas. A széleken látható halványítás jelzi, merre van még további sor.</p>
       <p>A gépadatpontok legördülő listájában útvonalra és gépi névre (például <code>Srpm</code>) is kereshetsz.
         A sématáblázatban a hozzárendelt útvonal jelenik meg.</p>
       <p>Az <strong>Ellenőrzés gépen</strong> kártyán kiválaszthatsz egy gépet, és láthatod, hány hozzárendelés

@@ -169,6 +169,7 @@ export function SchemaManager({ machine }: { machine?: string }) {
   const machineItems = picker?.items ?? [];
 
   const schema = schemas.find((item) => item.id === selectedSchema);
+  const assignedMachines = machines.filter((item) => item.schema_id === schema?.id);
   const currentMappingState = mappingState?.schemaId === selectedSchema ? mappingState : undefined;
   const mappings = currentMappingState?.mappings ?? emptyMappings;
   const mappingsReady = Boolean(currentMappingState?.mappings);
@@ -546,6 +547,16 @@ export function SchemaManager({ machine }: { machine?: string }) {
                   try { await loadMappings(value || ''); } catch (err) { setError(errorText(err)); }
                 }} />
             </Field>
+            {schema && (
+              <div className={styles.schemaAssignedMachines}>
+                <strong>Hozzárendelve:</strong>
+                {assignedMachines.length ? (
+                  <ul aria-label="Hozzárendelt gépek">
+                    {assignedMachines.map(({ id, label }) => <li key={id}>{label}</li>)}
+                  </ul>
+                ) : <p className={styles.muted}>Ehhez a sémához még nincs gép rendelve.</p>}
+              </div>
+            )}
             {mappingsReady && <p className={styles.muted} role="status">{assignedMappings.length}/{signals.length} jelhez van adatpont rendelve</p>}
             {mappingsReady && <Checkbox label="Csak a hozzárendelt jelek" value={assignedOnly}
               onChange={(event) => setAssignedOnly(event.currentTarget.checked)} />}
