@@ -22,7 +22,7 @@ from discovery import Discovery, Policy, probe
 import monitoring
 from runner import Runner, healthcheck, read_json
 
-VERSION = "0.4.16"
+VERSION = "0.4.17"
 logger = logging.getLogger("kfgyr.runner")
 
 
@@ -223,6 +223,10 @@ def create_app(directory=None, token=None, policy=None, supervise=True):
     @app.get("/v1/dashboards/{dashboard_id}")
     def dashboard(dashboard_id: int):
         return monitoring.read_dashboard(dashboard_id)
+
+    @app.post("/v1/dashboards/copy-preview")
+    def dashboard_copy_preview(body: monitoring.DashboardCopyPreview):
+        return monitoring.preview_dashboard_copy(body)
 
     @app.post("/v1/dashboards")
     def create_dashboard(body: monitoring.DashboardCreate, user=Depends(actor)):

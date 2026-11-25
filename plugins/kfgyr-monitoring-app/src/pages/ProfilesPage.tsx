@@ -35,6 +35,7 @@ type Option = { id: string; label: string; schema_id?: string };
 type Catalog = { machines: Option[] };
 type Dashboard = { id: number; name: string; revision: number; is_default: boolean };
 type CopySource = { id: number; name: string; agent: string; machine: string };
+type CopyPreview = { copied_panels: number; skipped_panels: Array<{ name: string; view: View }> };
 type DashboardList = { dashboards: Dashboard[]; copy_sources?: CopySource[] };
 type PanelOption = { kind: 'signal' | 'point'; id: string; label: string; units?: string; endpoint?: string };
 type Assignment = { id: number; name: string; panels: Panel[]; revision: number; options: PanelOption[] };
@@ -96,6 +97,7 @@ export function ProfilesPage() {
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(initialRoute.create);
   const [copySourceId, setCopySourceId] = useState(0);
+  const [previewState, setPreviewState] = useState<{ key: string; result?: CopyPreview; error?: string }>();
   const [createError, setCreateError] = useState('');
   const [skippedPanels, setSkippedPanels] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -108,6 +110,19 @@ export function ProfilesPage() {
   const [savedPanels, setSavedPanels] = useState('');
   const [confirmBack, setConfirmBack] = useState(false);
   const dirty = !!assignment && JSON.stringify({ panels: assignment.panels, name: dashboardName }) !== savedPanels;
+  const previewKey = creating && machine && copySourceId ? `${machine}/${copySourceId}` : '';
+  const preview = previewState?.key === previewKey ? previewState : undefined;
+
+  useEffect(() => {
+    let active = true;
+    setPreviewState(undefined);
+    if (previewKey) {
+      api<CopyPreview>('dashboards/copy-preview', 'POST', { machine, source_dashboard_id: copySourceId })
+        .then((result) => active && setPreviewState({ key: previewKey, result }))
+        .catch((err) => active && setPreviewState({ key: previewKey, error: errorText(err) }));
+    }
+    return () => { active = false; };
+  }, [previewKey, machine, copySourceId]);
 
   useEffect(() => {
     api<Catalog>('machines').then(setCatalog).catch((err) => setError(errorText(err)));
@@ -194,7 +209,7 @@ export function ProfilesPage() {
   }
 
   async function createDashboard() {
-    if (!dashboardName.trim() || saving) {
+    if (!dashboardName.trim() || saving || (copySourceId && !preview?.result)) {
       return;
     }
     setSaving(true);
@@ -626,9 +641,25 @@ export function ProfilesPage() {
                 }))]}
                 onChange={(option) => setCopySourceId(option.value)} />
             </Field>
+            {previewKey && (
+              preview?.error ? <Alert severity="error" title="A másolás előnézete nem érhető el">{preview.error}</Alert>
+              : preview?.result ? (
+                <Alert severity={preview.result.skipped_panels.length ? 'warning' : 'info'}
+                  title={`${preview.result.copied_panels} panel átvihető · ${preview.result.skipped_panels.length} panel kimarad`}>
+                  {preview.result.skipped_panels.length > 0 && (
+                    <ul className={styles.dashboardCopyOmissions}>
+                      {preview.result.skipped_panels.map((panel, index) => (
+                        <li key={index}>{panel.name} · {views.find(({ value }) => value === panel.view)?.label ?? panel.view}</li>
+                      ))}
+                    </ul>
+                  )}
+                </Alert>
+              ) : <p role="status"><Spinner /> A másolható panelek ellenőrzése…</p>
+            )}
             <Modal.ButtonRow>
               <Button type="button" variant="secondary" disabled={saving} onClick={() => setCreating(false)}>Mégse</Button>
-              <Button type="button" disabled={saving || !dashboardName.trim()} onClick={createDashboard}>Létrehozás</Button>
+              <Button type="button" disabled={saving || !dashboardName.trim() || (!!copySourceId && !preview?.result)}
+                onClick={createDashboard}>Létrehozás</Button>
             </Modal.ButtonRow>
           </Modal>
         )}

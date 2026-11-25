@@ -51,6 +51,7 @@ A sikeres mentés nem azonos a sikeres adatgyűjtéssel. A runner az indulási i
 - `GET /v1/machines/{machine}/dataitems` visszaadja a gép relatív adatpontútvonalait, egységeit és az agent által közölt `name` mezőt. A `name` hiányzó gépi névnél üres karakterlánc. A sémához a relatív `path` értéket kell menteni.
 - `GET /v1/availability/{machine}` a géphez tartozó agent `/probe` válaszával ellenőrzi a gép élő elérhetőségét (`online`, `offline` vagy `unknown`).
 - `GET /v1/machines/{machine}/dashboards` felsorolja a gép dashboardjait és az azonos sémájú másolható forrásdashboardokat.
+- `POST /v1/dashboards/copy-preview` a `machine` és `source_dashboard_id` alapján visszaadja az átvihető panelek számát (`copied_panels`) és a kimaradó panelek `name` és `view` mezőit (`skipped_panels`). Ugyanazt a feloldási logikát futtatja, mint a másolás.
 - `POST /v1/dashboards` új, üres vagy meglévő azonos sémájú dashboardból (`source_dashboard_id`) másolt dashboardot hoz létre.
 - `GET /v1/dashboards/{id}` visszaadja a dashboard nevét, paneljeit, revízióját és a gép kiválasztható adatpontjait.
 - `PUT /v1/dashboards` az `id`, `name`, `panels` és `revision` alapján ment (beleértve az opcionális grafikon-vonalszínt és állapotidősor-kapcsolót). A runner csak az adott géphez tartozó adatpontot fogad el.

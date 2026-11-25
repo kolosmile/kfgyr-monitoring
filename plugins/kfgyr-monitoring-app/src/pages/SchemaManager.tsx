@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Badge, Button, Combobox, ConfirmModal, Field, Icon, IconButton, Input, Modal, Spinner, useStyles2 } from '@grafana/ui';
+import { Alert, Badge, Button, Checkbox, Combobox, ConfirmModal, Field, Icon, IconButton, Input, Modal, Spinner, Tooltip, useStyles2 } from '@grafana/ui';
 import { api } from '../api';
 import { getStyles } from '../components/styles';
 import { errorText, SchemaOption, Signal } from '../types';
@@ -26,6 +26,23 @@ type SignalEditor = {
 type SchemaEditor = { id?: string; name: string; sourceSchemaId?: string };
 type MappingEditor = { signalId: string; source: 'manual' | 'machine'; machine: string; endpoint: string };
 const emptyMappings: Mapping[] = [];
+const missingMappingText = 'Az adatpont-hozzárendelés ezen a gépen nem oldható fel. Módosítsd, vagy hozz létre új sémát.';
+
+function useMachineDataItems(machine: string) {
+  const [state, setState] = useState<{ machine: string; items?: DataItem[]; error?: string }>();
+  useEffect(() => {
+    if (!machine) {
+      return;
+    }
+    let active = true;
+    setState({ machine });
+    api<{ dataitems: DataItem[] }>(`machines/${encodeURIComponent(machine)}/dataitems`)
+      .then(({ dataitems }) => active && setState({ machine, items: dataitems }))
+      .catch((err) => active && setState({ machine, error: errorText(err) }));
+    return () => { active = false; };
+  }, [machine]);
+  return machine && state?.machine === machine ? state : undefined;
+}
 
 function dataItemLabel(item: DataItem) {
   return [item.path, item.name?.trim(), item.units].filter(Boolean).join(' · ');
@@ -60,7 +77,8 @@ export function SchemaManager({ machine }: { machine?: string }) {
   const [endpointQuery, setEndpointQuery] = useState('');
   const [displayUnitLabels, setDisplayUnitLabels] = useState(new Map<string, string>());
   const [mappingState, setMappingState] = useState<MappingState>();
-  const [machineItems, setMachineItems] = useState<DataItem[]>([]);
+  const [checkingMachine, setCheckingMachine] = useState(machine ?? '');
+  const [differencesOnly, setDifferencesOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -132,29 +150,32 @@ export function SchemaManager({ machine }: { machine?: string }) {
 
   const activeMachine = signalEditor?.mode === 'machine' ? signalEditor.machine : mappingEditor?.source === 'machine'
     ? mappingEditor.machine : '';
-  useEffect(() => {
-    let active = true;
-    if (!activeMachine) {
-      setMachineItems([]);
-      return () => { active = false; };
-    }
-    api<{ dataitems: DataItem[] }>(`machines/${encodeURIComponent(activeMachine)}/dataitems`)
-      .then((result) => active && setMachineItems(result.dataitems))
-      .catch((err) => active && setError(errorText(err)));
-    return () => { active = false; };
-  }, [activeMachine]);
+  const check = useMachineDataItems(checkingMachine);
+  const otherItems = useMachineDataItems(activeMachine !== checkingMachine ? activeMachine : '');
+  const picker = activeMachine && activeMachine === checkingMachine ? check : otherItems;
+  const machineItems = picker?.items ?? [];
 
   const schema = schemas.find((item) => item.id === selectedSchema);
   const currentMappingState = mappingState?.schemaId === selectedSchema ? mappingState : undefined;
   const mappings = currentMappingState?.mappings ?? emptyMappings;
   const mappingsReady = Boolean(currentMappingState?.mappings);
   const mappingBySignal = useMemo(() => new Map(mappings.map((item) => [item.signal_id, item])), [mappings]);
+  const checkedPaths = useMemo(() => check?.items && new Set(check.items.map((item) => item.path)), [check?.items]);
+  const assignedMappings = mappings.filter((item) => item.endpoint);
+  const missing = new Set(checkedPaths
+    ? assignedMappings.filter((item) => !checkedPaths.has(item.endpoint!)).map((item) => item.signal_id)
+    : []);
+  const machinePriority = (item: Machine) => item.id === checkingMachine ? 0 : item.schema_id === selectedSchema ? 1 : 2;
+  const machineOptions = [...machines]
+    .sort((left, right) => machinePriority(left) - machinePriority(right))
+    .map(({ id, label }) => ({ value: id, label }));
   const signalSearch = signalQuery.trim().toLocaleLowerCase('hu');
   const endpointSearch = mappingsReady ? endpointQuery.trim().toLocaleLowerCase('hu') : '';
   const visibleSignals = signals.filter((signal) => {
     const signalText = `${signal.name} ${signal.id} ${signal.units} ${displayUnitLabels.get(signal.units) ?? ''}`.toLocaleLowerCase('hu');
     const endpoint = mappingBySignal.get(signal.id)?.endpoint ?? '';
-    return signalText.includes(signalSearch) && endpoint.toLocaleLowerCase('hu').includes(endpointSearch);
+    return signalText.includes(signalSearch) && endpoint.toLocaleLowerCase('hu').includes(endpointSearch)
+      && (!differencesOnly || !checkedPaths || !mappingsReady || missing.has(signal.id));
   });
   const usedEndpoints = useMemo(() => new Set(mappings
     .filter((item) => item.endpoint && item.signal_id !== mappingEditor?.signalId)
@@ -312,14 +333,18 @@ export function SchemaManager({ machine }: { machine?: string }) {
 
   function openMapping(signalId: string) {
     const endpoint = mappingBySignal.get(signalId)?.endpoint || '';
-    setMappingEditor({ signalId, source: endpoint ? 'manual' : 'machine', machine: '', endpoint });
+    const source = endpoint && !checkingMachine ? 'manual' : 'machine';
+    setMappingEditor({
+      signalId, source, machine: checkingMachine,
+      endpoint: source === 'manual' || checkedPaths?.has(endpoint) ? endpoint : '',
+    });
   }
 
   function openSignalEditor(mode: SignalEditor['mode'], signal?: Signal) {
     setSubmitted(false);
     setSignalEditor({
       mode, originalId: signal?.id, id: signal?.id ?? '', name: signal?.name ?? '', units: signal?.units ?? '',
-      machine: '', pointId: '', endpoint: '',
+      machine: mode === 'machine' ? checkingMachine : '', pointId: '', endpoint: '',
     });
   }
 
@@ -378,7 +403,7 @@ export function SchemaManager({ machine }: { machine?: string }) {
                   const displayUnit = displayUnitLabels.get(signal.units);
                   const signalDetails = displayUnit ? signal.id : `${signal.id} · ${signal.units || 'Nincs megadott egység'}`;
                   return (
-                    <tr key={signal.id} className={styles.mtconnectBranchClass(mapping?.endpoint)}>
+                    <tr key={signal.id} className={`${styles.mtconnectBranchClass(mapping?.endpoint)} ${missing.has(signal.id) ? styles.schemaMissingRow : ''}`}>
                       <th scope="row">
                         <div className={styles.schemaCell}>
                           <div className={styles.schemaRowText}>
@@ -406,6 +431,13 @@ export function SchemaManager({ machine }: { machine?: string }) {
                               {mapping.endpoint}
                             </span>
                             <div className={styles.schemaActions}>
+                              {missing.has(signal.id) && (
+                                <Tooltip content={missingMappingText}>
+                                  <span className={styles.schemaMissingIcon} tabIndex={0} role="img" aria-label={missingMappingText}>
+                                    <Icon name="exclamation-circle" aria-hidden size="sm" />
+                                  </span>
+                                </Tooltip>
+                              )}
                               <IconButton type="button" name="pen" tooltip="Hozzárendelés módosítása"
                                 aria-label={`${signal.name} hozzárendelésének módosítása`} disabled={saving}
                                 onClick={() => openMapping(signal.id)} />
@@ -426,7 +458,8 @@ export function SchemaManager({ machine }: { machine?: string }) {
                 })}
                 {!visibleSignals.length && (
                   <tr><td colSpan={3} className={styles.muted}>
-                    {signals.length ? 'Nincs a keresésnek megfelelő találat.' : 'A jelkatalógus még üres.'}
+                    {differencesOnly && checkedPaths && !missing.size ? 'Nincs eltérő hozzárendelés ezen a gépen.'
+                      : signals.length ? 'Nincs a keresésnek megfelelő találat.' : 'A jelkatalógus még üres.'}
                   </td></tr>
                 )}
               </tbody>
@@ -454,6 +487,7 @@ export function SchemaManager({ machine }: { machine?: string }) {
                   try { await loadMappings(value || ''); } catch (err) { setError(errorText(err)); }
                 }} />
             </Field>
+            {mappingsReady && <p className={styles.muted} role="status">{assignedMappings.length}/{signals.length} jelhez van adatpont rendelve</p>}
             {schema && (
               <div className={styles.schemaSettingsActions}>
                 <Button type="button" size="sm" variant="secondary" icon="pen" disabled={saving}
@@ -470,6 +504,23 @@ export function SchemaManager({ machine }: { machine?: string }) {
             {schema && !mappingsReady && !currentMappingState?.failed &&
               <p className={styles.muted} role="status"><Spinner /> Adatpontok betöltése…</p>}
           </section>
+          <section className={`${styles.formCard} ${styles.schemaSettings}`} aria-labelledby="schema-check-title">
+            <div className={styles.schemaSettingsHeader}><h3 id="schema-check-title">Ellenőrzés gépen</h3></div>
+            <Field label="Gép" htmlFor="schema-check-machine" noMargin>
+              <Combobox id="schema-check-machine" value={checkingMachine || null} placeholder="Válassz gépet"
+                isClearable options={machineOptions} onChange={(option) => setCheckingMachine(option?.value ?? '')} />
+            </Field>
+            {check?.error && <Alert severity="error" title="A gép adatpontlistája nem érhető el">{check.error}</Alert>}
+            {checkingMachine && !check?.items && !check?.error &&
+              <p className={styles.muted} role="status"><Spinner /> A gép adatpontjainak betöltése…</p>}
+            {checkedPaths && mappingsReady && (
+              <>
+                <p className={styles.muted} role="status">{assignedMappings.length - missing.size}/{assignedMappings.length} hozzárendelt adatpont feloldható</p>
+                <Checkbox label="Csak az eltérések" value={differencesOnly}
+                  onChange={(event) => setDifferencesOnly(event.currentTarget.checked)} />
+              </>
+            )}
+          </section>
           <DisplayUnitsSettings onChange={setDisplayUnitLabels} />
         </div>
       </div>
@@ -482,11 +533,12 @@ export function SchemaManager({ machine }: { machine?: string }) {
               <>
                 <Field label="Gép" htmlFor="new-signal-machine">
                   <Combobox id="new-signal-machine" value={signalEditor.machine || null} placeholder="Válassz gépet"
-                    options={machines.map((item) => ({ value: item.id, label: item.label }))}
+                    options={machineOptions}
                     onChange={({ value }) => setSignalEditor({ ...signalEditor, machine: value || '', pointId: '', endpoint: '' })} />
                 </Field>
                 <Field label="Még fel nem használt adatpont" htmlFor="new-signal-point">
                   <Combobox id="new-signal-point" value={signalEditor.pointId || null} placeholder="Válassz adatpontot"
+                    loading={!!activeMachine && !picker?.items && !picker?.error}
                     options={availableMachineItems.map((item) => ({ value: item.id, label: dataItemLabel(item) }))}
                     onChange={({ value }) => {
                       const item = machineItems.find((entry) => entry.id === value);
@@ -495,6 +547,7 @@ export function SchemaManager({ machine }: { machine?: string }) {
                         name: signalEditor.name || (item ? suggestName(item) : '') });
                     }} />
                 </Field>
+                {picker?.error && <Alert severity="error" title="A gép adatpontlistája nem érhető el">{picker.error}</Alert>}
               </>
             )}
             <Field label="Jelazonosító" htmlFor="signal-id" description={signalEditor.originalId ? 'Létrehozás után az azonosító nem módosítható.' : 'Egyedi, gépileg használható azonosító.'}>
@@ -560,20 +613,22 @@ export function SchemaManager({ machine }: { machine?: string }) {
                 { value: 'machine', label: 'Kiválasztás egy gép adatpontjai közül' },
                 { value: 'manual', label: 'Útvonal kézi megadása' },
               ]} onChange={({ value }) => setMappingEditor({ ...mappingEditor, source: value,
-                machine: '', endpoint: value === 'manual' ? mappingEditor.endpoint : '' })} />
+                machine: value === 'machine' ? checkingMachine : '', endpoint: mappingEditor.endpoint })} />
             </Field>
             {mappingEditor.source === 'machine' && (
               <>
                 <Field label="Gép" htmlFor="mapping-machine">
                   <Combobox id="mapping-machine" value={mappingEditor.machine || null} placeholder="Válassz gépet"
-                    options={machines.map((item) => ({ value: item.id, label: item.label }))}
+                    options={machineOptions}
                     onChange={({ value }) => setMappingEditor({ ...mappingEditor, machine: value || '', endpoint: '' })} />
                 </Field>
                 <Field label="A sémában még nem használt adatpont" htmlFor="mapping-endpoint-select">
                   <Combobox id="mapping-endpoint-select" value={mappingEditor.endpoint || null} placeholder="Válassz adatpontot"
+                    loading={!!activeMachine && !picker?.items && !picker?.error}
                     options={availableMachineItems.map((item) => ({ value: item.path, label: dataItemLabel(item) }))}
                     onChange={({ value }) => setMappingEditor({ ...mappingEditor, endpoint: value || '' })} />
                 </Field>
+                {picker?.error && <Alert severity="error" title="A gép adatpontlistája nem érhető el">{picker.error}</Alert>}
                 <Field label="A jel mentett mértékegysége" htmlFor="mapping-signal-units">
                   <Input id="mapping-signal-units" value={mappingSignal.units || 'Nincs megadva'} disabled />
                 </Field>
@@ -591,7 +646,7 @@ export function SchemaManager({ machine }: { machine?: string }) {
             <Modal.ButtonRow>
               <Button type="button" variant="secondary" onClick={() => setMappingEditor(undefined)}>Mégse</Button>
               <Button type="button" disabled={saving || !mappingEditor.endpoint.trim() ||
-                (mappingEditor.source === 'machine' && !mappingEditor.machine)} onClick={saveMapping}>Hozzárendelés mentése</Button>
+                (mappingEditor.source === 'machine' && !selectedDataItem)} onClick={saveMapping}>Hozzárendelés mentése</Button>
             </Modal.ButtonRow>
           </div>
         </Modal>

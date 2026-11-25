@@ -448,6 +448,9 @@ function CatalogSection() {
       <h3>Jelek és adatpontok összekötése</h3>
       <p>A gépadatpontok legördülő listájában útvonalra és gépi névre (például <code>Srpm</code>) is kereshetsz.
         A sématáblázatban a hozzárendelt útvonal jelenik meg.</p>
+      <p>Az <strong>Ellenőrzés gépen</strong> kártyán kiválaszthatsz egy gépet, és láthatod, hány hozzárendelés
+        oldható fel a mentett adatpontjai alapján. A <strong>Csak az eltérések</strong> kapcsoló a sárgával jelölt
+        sorokat mutatja. Ha több gép használja a sémát, egyedi eltéréshez klónozd, majd ellenőrizd a célgépen.</p>
       <ul>
         <li>
           <strong>Meglévő jel.</strong> Az aktív sémában a jel sorának jobb oldalán az{' '}
@@ -496,6 +499,7 @@ function EditorSection() {
       <ol>
         <li>A listából a kívánt gép kiválasztása után a <UiTag icon="plus" label="Dashboard hozzáadása" /> gombra kattintva hozható létre új nézet.</li>
         <li>Név megadása után a <strong>Kiindulás</strong> listában üres dashboard vagy egy azonos sémájú gép meglévő dashboardja választható.</li>
+        <li>Másoláskor az előnézet kiírja, hány panel vihető át, és felsorolja a kimaradó panelek nevét és típusát.</li>
         <li>A <UiTag label="Létrehozás" /> gomb menti a dashboardot és megnyitja a Panelszerkesztőt.</li>
       </ol>
 

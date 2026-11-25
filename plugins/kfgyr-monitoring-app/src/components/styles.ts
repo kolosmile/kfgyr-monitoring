@@ -269,6 +269,11 @@ export const getStyles = (t: GrafanaTheme2) => ({
   }),
   schemaAddRows: css({ '& td': { paddingBottom: 14 } }),
   schemaRows: css({ '& > tr > th, & > tr > td': { borderTop: `1px solid ${t.colors.border.weak}`, paddingBlock: 9 } }),
+  schemaMissingRow: css({
+    background: `color-mix(in srgb, ${t.colors.warning.main} 16%, ${t.colors.background.primary})`,
+    '& > td > svg': { background: 'transparent' },
+  }),
+  schemaMissingIcon: css({ display: 'inline-flex', color: t.colors.info.text, marginRight: 6 }),
   schemaCell: css({
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap',
     minHeight: 36, minWidth: 0, gap: '3px 8px',
@@ -309,6 +314,9 @@ export const getStyles = (t: GrafanaTheme2) => ({
     '& tbody th, & tbody td': { borderTop: `1px solid ${t.colors.border.weak}` },
   }),
   schemaModalFields: css({ display: 'grid', gap: 14, minWidth: 'min(520px, calc(100vw - 80px))' }),
+  dashboardCopyOmissions: css({
+    maxHeight: 'min(25dvh, 180px)', overflowY: 'auto', margin: 0, paddingLeft: 22, overflowWrap: 'anywhere',
+  }),
   agent: css({
     border: `1px solid ${t.colors.border.weak}`,
     borderRadius: 8,

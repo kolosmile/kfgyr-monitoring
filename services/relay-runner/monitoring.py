@@ -90,6 +90,12 @@ class Panel(BaseModel):
         return self
 
 
+class DashboardCopyPreview(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    machine: str = Field(min_length=1, max_length=128)
+    source_dashboard_id: int = Field(ge=1)
+
+
 class DashboardCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     machine: str = Field(min_length=1, max_length=128)
@@ -577,13 +583,32 @@ def copy_dashboard_panels(db, machine, key, source_id):
             if item["id"] in signal_ids:
                 source_points.setdefault(item["point_id"], set()).add(item["id"])
 
-    copied = []
+    copied, omitted = [], []
     for panel in panels:
         if panel.get("signal_id") in signal_ids or panel.get("point") in point_ids:
             copied.append(panel)
         elif len(matches := source_points.get(panel.get("point"), ())) == 1:
             copied.append({k: v for k, v in panel.items() if k != "point"} | {"signal_id": next(iter(matches))})
-    return copied, len(panels) - len(copied)
+        else:
+            omitted.append(panel)
+    return copied, omitted
+
+
+def preview_dashboard_copy(body):
+    with psycopg.connect(connect_timeout=5) as db:
+        copied, omitted = copy_dashboard_panels(db, body.machine, machine_key(db, body.machine),
+                                                body.source_dashboard_id)
+        signal_ids = {panel["signal_id"] for panel in omitted if panel.get("signal_id") and not panel.get("name")}
+        names = {}
+        if signal_ids:
+            names = {signal: name for signal, name in db.execute(
+                "SELECT id, name FROM kfgyr.signal_catalog WHERE id=ANY(%s)", (list(signal_ids),)
+            )}
+        return {"copied_panels": len(copied), "skipped_panels": [
+            {"name": panel.get("name") or names.get(panel.get("signal_id")) or panel.get("signal_id")
+             or panel.get("point") or "Névtelen panel", "view": panel["view"]}
+            for panel in omitted
+        ]}
 
 
 def create_dashboard(body, actor):
@@ -593,7 +618,7 @@ def create_dashboard(body, actor):
     with psycopg.connect(connect_timeout=5) as db:
         agent, device, _ = machine_info(db, body.machine)
         db.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (agent + "/" + device,))
-        panels, skipped = ([], 0)
+        panels, skipped = [], []
         if body.source_dashboard_id is not None:
             panels, skipped = copy_dashboard_panels(db, body.machine, (agent, device), body.source_dashboard_id)
         row = db.execute("""
@@ -602,7 +627,7 @@ def create_dashboard(body, actor):
                 SELECT 1 FROM kfgyr.machine_dashboards WHERE agent_alias=%s AND device_id=%s
             )) RETURNING id
         """, (agent, device, name, Jsonb(panels), actor, agent, device)).fetchone()
-        return {"id": row[0], "skipped_panels": skipped}
+        return {"id": row[0], "skipped_panels": len(skipped)}
 
 
 def update_dashboard(body, actor):

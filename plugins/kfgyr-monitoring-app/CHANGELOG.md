@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.54 — 2026-11-25
+
+- Check schema mappings against a selected machine and highlight missing paths.
+- Preview omitted panels before copying a dashboard.
+
 ## 0.4.53 — 2026-11-23
 
 - Add a bug-report link and developer contact details to the User Guide.
